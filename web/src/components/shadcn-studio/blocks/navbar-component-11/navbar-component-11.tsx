@@ -22,8 +22,9 @@ const Navbar = ({ navigationData }: { navigationData: NavigationItem }) => {
       <div className='mx-auto flex max-w-7xl items-center gap-10 px-4 py-3 sm:px-6'>
         <a href='#'>
           <div className='flex items-center'>
-            <LogoSvg className='size-8 [&_line]:stroke-black [&_path]:stroke-black [&_rect]:fill-white' />
-            <span className='ml-3 text-xl font-semibold text-white max-[500px]:hidden'>shadcn/studio</span>
+           <img   className="w-[6vw] h-[2vw]"
+ src="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTR-8lZds1AikFdvgnnfkLdGONKOAs0Tcn5OA&s" alt="" />
+            <span className='ml-3 text-xl font-semibold text-white max-[500px]:hidden'>MediaBox</span>
           </div>
         </a>
 
@@ -50,7 +51,7 @@ const Navbar = ({ navigationData }: { navigationData: NavigationItem }) => {
 
           <DropdownMenu>
             <DropdownMenuTrigger className='lg:hidden' asChild>
-              <Button variant='outline' size='icon' className='!bg-background'>
+              <Button variant='outline' size='icon' className='bg-background'>
                 <MenuIcon />
                 <span className='sr-only'>Menu</span>
               </Button>
