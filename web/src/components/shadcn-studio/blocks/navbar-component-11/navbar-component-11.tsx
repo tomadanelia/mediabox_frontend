@@ -9,7 +9,6 @@ import {
   DropdownMenuTrigger
 } from '@/components/ui/dropdown-menu'
 
-import LogoSvg from '@/assets/svg/logo'
 
 type NavigationItem = {
   title: string
