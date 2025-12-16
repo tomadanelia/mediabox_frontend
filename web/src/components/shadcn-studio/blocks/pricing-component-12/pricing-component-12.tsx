@@ -33,7 +33,7 @@ const Pricing = ({ plans }: { plans: Plans }) => {
             Pricing
           </Badge>
           <h2 className='text-2xl font-semibold text-white md:text-3xl lg:text-4xl'>
-            Choose the best option for your logistic company
+            Choose the best option for you
           </h2>
           <p className='text-xl text-white'>
             A Comprehensive Breakdown of Our Pricing Plans to Help You Make the Best Choice!

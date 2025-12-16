@@ -24,7 +24,7 @@ const plans = [
     icon: EclipseIcon,
     name: 'Basic',
     price: 49,
-    description: 'Recommended for those new to the crypto market or looking for a simple and easy-to-use platform.',
+    description: 'For those new to the crypto market or looking for a simple and easy-to-use platform.',
     features: [
       'Basic Portfolio Tracking',
       'Access to Crypto News',
@@ -35,9 +35,9 @@ const plans = [
   },
   {
     icon: RocketIcon,
-    name: 'Enterprise',
+    name: 'Premium',
     price: 99,
-    description: 'Recommended for people with at least 1 year of experience in crypto markets.',
+    description: 'For those who want to experience full MediaBox features.',
     features: [
       'Dedicated Account Manager',
       '24/7 Real-Time Market Analysis',
