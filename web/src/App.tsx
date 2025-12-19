@@ -14,7 +14,7 @@ const navigationData = [
     href: '#'
   },
   {
-    title: 'Product Details',
+    title: 'Access Details',
     href: '#'
   }
 ]
