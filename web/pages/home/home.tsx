@@ -1,10 +1,10 @@
 import React from "react"
-import ChannelScroller from "./components/ChannelScroller"
-import type { Channel } from "./components/ChannelScroller"
-import HeroPlayer from "./components/HeroPlayer"
-import type { FeaturedChannel } from "./components/HeroPlayer"
-import LiveCategoryRow from "./components/LiveCategoryRow"
-import type { LiveVideo } from "./components/LiveCategoryRow"
+import ChannelScroller from "./comps/ChannelScroller"
+import type { Channel } from "./comps/ChannelScroller"
+import HeroPlayer from "./comps/HeroPlayer"
+import type { FeaturedChannel } from "./comps/HeroPlayer"
+import LiveCategoryRow from "./comps/LiveCategoryRow"
+import type { LiveVideo } from "./comps/LiveCategoryRow"
 
 const featured: FeaturedChannel = {
   title: "Mediabox Prime",
@@ -20,7 +20,7 @@ const featured: FeaturedChannel = {
 const channels: Channel[] = [
   {
     id: "news-global",
-    name: "News Global 24/7",
+    name: "პირველი არხი",
     genre: "News",
     viewers: "18.2K",
     color: "rgba(59,130,246,0.8)",
@@ -28,7 +28,7 @@ const channels: Channel[] = [
   },
   {
     id: "sports-live",
-    name: "Sports Live Arena",
+    name: "სილქ უნივერსალი",
     genre: "Sports",
     viewers: "27.5K",
     color: "rgba(16,185,129,0.8)",
@@ -36,7 +36,7 @@ const channels: Channel[] = [
   },
   {
     id: "music-vibes",
-    name: "Music Vibes",
+    name: "იმედი",
     genre: "Music",
     viewers: "13.9K",
     color: "rgba(236,72,153,0.8)",
@@ -44,7 +44,7 @@ const channels: Channel[] = [
   },
   {
     id: "documentary-hd",
-    name: "Docu HD",
+    name: "მთავარი არხი",
     genre: "Documentary",
     viewers: "9.4K",
     color: "rgba(234,179,8,0.8)",
@@ -52,7 +52,7 @@ const channels: Channel[] = [
   },
   {
     id: "kids-zone",
-    name: "Kids Zone",
+    name: "რუსთავი 2",
     genre: "Kids",
     viewers: "6.8K",
     color: "rgba(14,165,233,0.8)",
@@ -61,7 +61,7 @@ const channels: Channel[] = [
 ]
 
 const liveSections: { title: string; accent: string; videos: LiveVideo[] }[] = [
-  {
+  { 
     title: "Trending right now",
     accent: "#ef4444",
     videos: [
