@@ -7,6 +7,7 @@ import Timeline from '@/hmcomponents/timeline';
 import DataTableDemoCL from '@/components/shadcn-studio/data-table/data-table-c1';
 import IconButtonModeDemo from '@/components/shadcn-studio/button/button-34';
 import IconButtonDemo from '@/components/shadcn-studio/button/button-31';
+import IconButtonCalendar from '@/components/shadcn-studio/button/custom/button-01';
 import ButtonGroupRoundedDemo from '@/components/shadcn-studio/button-group/button-group-04';
 import ButtonGroupLikeDemo from '@/components/shadcn-studio/button-group/button-group-02';
 export const Stream: React.FC = () => {
@@ -34,9 +35,15 @@ return (
     {/* LEFT */}
     <div className="w-1/4 flex flex-col h-full overflow-hidden">
       <div className="h-15 bg-purple-200 flex items-center px-4">
-        <h2 className="font-bold">
-         F <IconButtonDemo/>
-        </h2>
+        <div className="font-bold flex items-center justify-between w-full">
+         <div>
+          Channels
+          </div> 
+          <div>
+               <IconButtonDemo/>
+          </div>
+      
+        </div>
       </div>
       <div className="flex-1 overflow-y-auto ">
         <DataTableDemo />
@@ -74,9 +81,21 @@ return (
     {/* RIGHT */}
     <div className="w-1/4 flex flex-col ">
   <div className="h-15 bg-purple-200 flex items-center px-4">
-        <h2 className="font-bold">
-         F <IconButtonDemo/>
-        </h2>
+        <div className="font-bold flex items-center justify-between w-full">
+          <div className='flex items-center justify-center'>
+            <div className='h-8 w-8 bg-white rounded-sm'>
+              <div className="h-full w-full bg-linear-to-br from-blue-400 to-purple-600 rounded-sm flex items-center justify-center text-white font-bold text-sm">
+                {channels[selectedChannel].name.charAt(0).toUpperCase()}
+              </div>
+            </div>  <div className='ml-2 flex items-center justify-center' >
+              {channels[selectedChannel].name}
+            </div>
+          </div> 
+          <div className='iclefts'>
+            <IconButtonCalendar/>
+          </div>
+         
+        </div>
       </div>
       <div className="flex-1 overflow-y-auto">
         
