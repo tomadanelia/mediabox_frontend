@@ -34,9 +34,10 @@ return (
     
     {/* LEFT */}
     <div className="w-1/4 flex flex-col h-full overflow-hidden">
-      <div className="h-15 bg-purple-200 flex items-center px-4">
-        <div className="font-bold flex items-center justify-between w-full">
-         <div>
+      <div className="h-15  flex items-center py-2 ">
+        <div className='px-1 w-full h-full bg-gray-800 rounded-r-[10px] flex items-center justify-center'>
+             <div className="font-bold flex items-center justify-between w-full">
+         <div className='text-white ml-4'>
           Channels
           </div> 
           <div>
@@ -44,6 +45,8 @@ return (
           </div>
       
         </div>
+        </div>
+     
       </div>
       <div className="flex-1 overflow-y-auto ">
         <DataTableDemo />
@@ -80,14 +83,14 @@ return (
 
     {/* RIGHT */}
     <div className="w-1/4 flex flex-col ">
-  <div className="h-15 bg-purple-200 flex items-center px-4">
-        <div className="font-bold flex items-center justify-between w-full">
+  <div className="h-15  flex items-center py-2">
+        <div className="px-1 w-full h-full bg-gray-800 rounded-l-[10px] flex items-center justify-between">
           <div className='flex items-center justify-center'>
-            <div className='h-8 w-8 bg-white rounded-sm'>
-              <div className="h-full w-full bg-linear-to-br from-blue-400 to-purple-600 rounded-sm flex items-center justify-center text-white font-bold text-sm">
+            <div className='h-9 w-9 rounded-[[8px]]'>
+              <div className="h-full  w-full bg-linear-to-br from-blue-400 to-purple-600 rounded-[8px] flex items-center justify-center text-white font-bold text-sm">
                 {channels[selectedChannel].name.charAt(0).toUpperCase()}
               </div>
-            </div>  <div className='ml-2 flex items-center justify-center' >
+            </div>  <div className='ml-2 flex items-center justify-center text-white font-bold' >
               {channels[selectedChannel].name}
             </div>
           </div> 
