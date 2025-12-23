@@ -1,6 +1,6 @@
 import React from "react"
 import { ExternalLink, Flame } from "lucide-react"
-import { Badge } from "@/components/ui/badge"
+import { Badge } from "../../../src/components/ui/badge"
 
 type LiveVideo = {
   id: string
@@ -50,7 +50,7 @@ const LiveCategoryRow: React.FC<LiveCategoryRowProps> = ({ title, accent, videos
                   {video.viewers} watching
                 </span>
               </div>
-              <div className="absolute inset-0 bg-gradient-to-t from-slate-950/90 via-slate-900/0 to-slate-900/10" />
+              <div className="absolute inset-0  from-slate-950/90 via-slate-900/0 to-slate-900/10" />
             </div>
 
             <div className="flex items-start justify-between p-4">

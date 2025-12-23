@@ -1,8 +1,8 @@
 import React from "react"
 import { PlayCircle, Radio, Users } from "lucide-react"
 import { Link } from "react-router-dom"
-import { Badge } from "@/components/ui/badge"
-import { Button } from "@/components/ui/button"
+import { Badge } from "../../../src/components/ui/badge"
+import { Button } from "../../../src/components/ui/button"
 
 type FeaturedChannel = {
   title: string
@@ -21,20 +21,20 @@ type HeroPlayerProps = {
 
 const HeroPlayer: React.FC<HeroPlayerProps> = ({ featured }) => {
   return (
-    <section className="space-y-4">
+    <section className="space-y-4 ">
       <div className="flex items-center gap-2 text-sm text-muted-foreground">
         <Radio className="h-4 w-4 text-red-500" />
         <span className="font-medium text-foreground">Live now</span>
         <span className="text-xs text-muted-foreground">Featured channel</span>
       </div>
 
-      <div className="relative w-full overflow-hidden rounded-2xl border border-border bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 pb-[56.25%] shadow-2xl">
+      <div className="relative w-full overflow-hidden rounded-2xl border border-border  from-slate-950 via-slate-900 to-slate-950 pb-[30%] shadow-2xl">
         <img
           src={featured.thumbnail}
           alt={`${featured.title} placeholder`}
           className="absolute inset-0 h-full w-full object-cover opacity-80"
         />
-        <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/75 to-slate-900/40" />
+        <div className="absolute inset-0  from-slate-950 via-slate-950/75 to-slate-900/40" />
 
         <div className="absolute inset-0 flex flex-col justify-end p-6 sm:p-8 lg:p-10">
           <div className="mb-4 flex flex-wrap items-center gap-2">
