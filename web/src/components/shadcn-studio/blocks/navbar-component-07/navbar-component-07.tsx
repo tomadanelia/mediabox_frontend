@@ -1,5 +1,5 @@
 import { Link, NavLink } from "react-router-dom"
-import { BellIcon, PlayIcon, SearchIcon, TvMinimalPlay } from "lucide-react"
+import { BellIcon, Languages, Moon, PlayIcon, SearchIcon, Sun, TvMinimalPlay } from "lucide-react"
 
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
@@ -7,16 +7,24 @@ import { Input } from "@/components/ui/input"
 
 import NotificationDropdown from "@/components/shadcn-studio/blocks/dropdown-notification"
 import ProfileDropdown from "@/components/shadcn-studio/blocks/dropdown-profile"
+import useUIStore from "@/store/ui-store"
+import type { UIStore } from "@/store/ui-store"
 
 const Navbar = () => {
+  const isDark = useUIStore((state: UIStore) => state.isDark)
+  const language = useUIStore((state: UIStore) => state.language)
+  const toggleDarkMode = useUIStore((state: UIStore) => state.toggleDarkMode)
+  const cycleLanguage = useUIStore((state: UIStore) => state.cycleLanguage)
+
   const navLinks = [
     { to: "/", label: "Home" },
     { to: "/stream", label: "Stream" },
+    { to: "#", label: "Packets", placeholder: true },
   ]
 
   return (
     <header className="top-0 z-50 h-20 bg-background/90 backdrop-blur">
-      <div className="mx-auto flex h-full max-w-7xl items-center justify-between gap-6 px-4 sm:px-6">
+      <div className="flex h-full w-full items-center justify-between gap-6 px-4 sm:px-6">
         <div className="flex items-center gap-4">
           <Link to="/" className="flex items-center gap-3">
             <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-gradient-to-br from-blue-500 to-fuchsia-500 text-white shadow-lg">
@@ -33,9 +41,14 @@ const Navbar = () => {
               <NavLink
                 key={link.to}
                 to={link.to}
+                onClick={(event) => {
+                  if (link.placeholder) event.preventDefault()
+                }}
                 className={({ isActive }) =>
                   `rounded-full px-4 py-2 text-sm font-medium transition ${
-                    isActive ? "bg-primary/10 text-primary" : "text-muted-foreground hover:text-foreground"
+                    isActive && !link.placeholder
+                      ? "bg-primary/10 text-primary"
+                      : "text-muted-foreground hover:text-foreground"
                   }`
                 }
               >
@@ -66,6 +79,25 @@ const Navbar = () => {
               </Button>
             }
           />
+
+          <Button
+            variant="outline"
+            size="icon"
+            aria-pressed={isDark}
+            onClick={toggleDarkMode}
+            className="relative cursor-pointer"
+          >
+            {isDark ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+            <span className="sr-only ">Toggle dark mode</span>
+          </Button>
+
+          <Button variant="outline" size="icon" onClick={cycleLanguage} className="relative cursor-pointer">
+            <Languages className="h-4 w-4" />
+            <span className="absolute -bottom-2 right-0 rounded-full bg-primary px-1 text-[10px] font-semibold text-primary-foreground">
+              {language.toUpperCase()}
+            </span>
+            <span className="sr-only">Switch language</span>
+          </Button>
 
           <Button asChild className="hidden gap-2 bg-primary text-primary-foreground shadow-lg sm:inline-flex">
             <Link to="/stream">
