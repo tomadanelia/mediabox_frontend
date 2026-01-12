@@ -62,10 +62,10 @@ const ChannelScheduleCL = () => {
   }
 
   return (
-    <div className='w-full h-[calc(100vh-220px)]'>
+    <div className='w-full h-[calc(100vh-196px)] flex'>
   
 
-      <div className='rounded-lg border max-h-125 overflow-auto'>
+      <div className='rounded-lg border w-full  overflow-auto'>
         <div className='divide-y'>
           {schedule.map((show, idx) => (
             <div key={idx} className='flex items-center gap-3 px-4 py-2.5 hover:bg-accent/50 transition-colors'>

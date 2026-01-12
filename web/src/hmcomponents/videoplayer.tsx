@@ -1,23 +1,26 @@
 import React, { useState, useRef, useEffect } from 'react';
+import BadgeLiveDemo from '@/components/shadcn-studio/badge/cusotm/badge-c01';
 import {
-  ChevronLeftIcon,
   ArrowsPointingOutIcon,
-  ArrowUturnLeftIcon,
-  ArrowUturnRightIcon,
   SpeakerWaveIcon,
   SpeakerXMarkIcon,
-  StopIcon,
-  PlayIcon,
 } from '@heroicons/react/24/solid';
-
+import { Play, Pause, SkipBack, SkipForward, RotateCcw, RotateCw, ScreenShare, PictureInPicture2, Share, Forward } from 'lucide-react';
+import ChannelsPanelDemo from './FullScreenList';
+import { sampleChannels } from './FullScreenList';
 type Stream = {
   id: number;
-  title: string;
+  name: string;
   url: string;
+  categories: string[];
   thumbnail: string;
 };
 
-const VideoPlayer: React.FC = () => {
+type VideoPlayerProps = {
+  stream: Stream;
+};
+
+const VideoPlayer: React.FC<VideoPlayerProps> = ({ stream }) => {
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const containerRef = useRef<HTMLDivElement | null>(null);
 
@@ -28,30 +31,8 @@ const VideoPlayer: React.FC = () => {
   const [isMuted, setIsMuted] = useState<boolean>(false);
   const [showControls, setShowControls] = useState<boolean>(true);
   const [showVolumeSlider, setShowVolumeSlider] = useState<boolean>(false);
-
-  const [streams] = useState<Stream[]>([
-    {
-      id: 1,
-      title: 'Big Buck Bunny',
-      url: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4',
-      thumbnail:
-        'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/images/BigBuckBunny.jpg',
-    },
-    {
-      id: 2,
-      title: 'Elephant Dream',
-      url: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ElephantsDream.mp4',
-      thumbnail:
-        'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/images/ElephantsDream.jpg',
-    },
-    {
-      id: 3,
-      title: 'For Bigger Blazes',
-      url: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4',
-      thumbnail:
-        'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/images/ForBiggerBlazes.jpg',
-    },
-  ]);
+  const [isFullscreen, setIsFullscreen] = useState<boolean>(false);
+  const [showChannels, setShowChannels] = useState<boolean>(false);
 
   const [currentStream, setCurrentStream] = useState<number>(0);
 
@@ -68,6 +49,18 @@ const VideoPlayer: React.FC = () => {
     return () => {
       video.removeEventListener('timeupdate', updateTime);
       video.removeEventListener('loadedmetadata', updateDuration);
+    };
+  }, []);
+
+  useEffect(() => {
+    const handleFullscreenChange = () => {
+      setIsFullscreen(!!document.fullscreenElement);
+    };
+
+    document.addEventListener('fullscreenchange', handleFullscreenChange);
+
+    return () => {
+      document.removeEventListener('fullscreenchange', handleFullscreenChange);
     };
   }, []);
 
@@ -126,7 +119,11 @@ const VideoPlayer: React.FC = () => {
   };
 
   const toggleFullscreen = () => {
-    containerRef.current?.requestFullscreen();
+    if (!document.fullscreenElement) {
+      containerRef.current?.requestFullscreen();
+    } else {
+      document.exitFullscreen();
+    }
   };
 
   const changeStream = (index: number) => {
@@ -151,7 +148,7 @@ const VideoPlayer: React.FC = () => {
   };
 
   return (
-    <div className="flex w-full relative justify-center p-4 bg-b">
+    <div className="flex w-full relative justify-center p-4 ">
       <div className="w-full flex flex-row max-w-6xl rounded-sm">
         <div
           ref={containerRef}
@@ -164,68 +161,178 @@ const VideoPlayer: React.FC = () => {
         >
           <video
             ref={videoRef}
-            src={streams[currentStream].url}
+            src={stream.url}
             className="w-full aspect-video"
             onClick={togglePlay}
           />
 
+          {/* Channels Button - Top Right Corner in Fullscreen */}
+          {isFullscreen && (
+            <button 
+              onClick={() => setShowChannels(!showChannels)} 
+              className={`absolute top-6 right-6 z-50 text-white hover:text-orange-400 transition-all cursor-pointer px-4 py-2 bg-black/60 backdrop-blur-sm rounded-lg border border-white/20 ${showControls ? 'opacity-100' : 'opacity-0'}`}
+            >
+              Channels
+            </button>
+          )}
+
+          {/* Channels Panel - Only in Fullscreen */}
+          {isFullscreen && showChannels && (
+  <ChannelsPanelDemo 
+    onClose={() => setShowChannels(false)}
+    channels={sampleChannels}
+   
+  />
+)}
+
+
+          {/* Centered Control Buttons */}
           <div
-            className={`absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/90 via-black/50 to-transparent px-6 pb-4 pt-20 transition-opacity duration-300 ${
-              showControls ? 'opacity-100' : 'opacity-0'
-            }`}
+            className={`absolute bottom-0 left-0 right-0 h-full flex justify-center items-center bg-gradient-to-t from-black/90 via-black/50 to-transparent px-6 pb-4 pt-20 transition-opacity duration-300 ${showControls ? 'opacity-100' : 'opacity-0'
+              }`}
           >
-            <div className="flex items-center justify-center gap-4">
-              {/* Left */}
-              <div className="flex items-center gap-3 flex-shrink-0">
-                <button onClick={togglePlay} className="text-white">
-                  {isPlaying ? (
-                    <StopIcon className="w-6 h-6" />
-                  ) : (
-                    <PlayIcon className="w-6 h-6" />
-                  )}
-                </button>
+            <div
+              className={`absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/90 via-black/50 to-transparent px-6 pb-4 pt-20 transition-opacity duration-300 ${showControls ? 'opacity-100' : 'opacity-0'
+                }`}
+            >
+              <div className="flex items-center justify-center gap-4">
+                {/* Left */}
+                <div className="flex items-center gap-3 flex-shrink-0">
 
-                <button onClick={() => skip(-10)} className="text-white">
-                  <ArrowUturnLeftIcon className="w-6 h-6" />
-                </button>
-
-                <button onClick={() => skip(10)} className="text-white">
-                  <ArrowUturnRightIcon className="w-6 h-6" />
-                </button>
-
-                <button
-                  onClick={toggleMute}
-                  onMouseEnter={() => setShowVolumeSlider(true)}
-                  className="text-white"
-                >
-                  {isMuted ? (
-                    <SpeakerXMarkIcon className="w-6 h-6" />
-                  ) : (
-                    <SpeakerWaveIcon className="w-6 h-6" />
-                  )}
-                </button>
-
-                <div className="text-white text-sm">
-                  {formatTime(currentTime)} / {formatTime(duration)}
-                </div>
-              </div>
-
-              {/* Progress */}
-              <div className="flex-1 h-6 flex items-center">
-                <div
-                  className="w-full h-1 bg-white/30 rounded-full cursor-pointer"
-                  onClick={handleSeek}
-                >
                   <div
-                    className="h-full bg-gradient-to-r from-orange-500 to-yellow-500 rounded-full"
-                    style={{ width: `${(currentTime / duration) * 100}%` }}
-                  />
-                </div>
-              </div>
+  className='relative w-6 h-6'
+  onMouseEnter={() => setShowVolumeSlider(true)}
+  onMouseLeave={() => setShowVolumeSlider(false)}
+>
+  <button
+    onClick={toggleMute}
+    className="text-white w-6 h-6"
+  >
+    {isMuted ? (
+      <SpeakerXMarkIcon className="w-6 h-6 cursor-pointer" />
+    ) : (
+      <SpeakerWaveIcon className="w-6 h-6 cursor-pointer" />
+    )}
+  </button>
 
-              {/* Right */}
-              <button onClick={toggleFullscreen} className="text-white">
-                <ArrowsPointingOutIcon className="w-6 h-6" />
+  {showVolumeSlider && (
+    <>
+      {/* Invisible bridge to prevent slider from disappearing */}
+      <div className='absolute bottom-6 left-1/2 -translate-x-1/2 w-8 h-6' />
+      
+      <div className='absolute bottom-10 left-1/2 -translate-x-1/2'>
+        <div className='h-40 w-6 rounded-sm bg-gray-400/20 backdrop-blur-sm p-1 flex items-center justify-center'>
+           <div 
+    className="absolute w-2 bottom-4   bg-gradient-to-r from-orange-500 to-yellow-500 rounded-full"
+    style={{ height: `${(isMuted ? 0 : volume) * 80}%` }}
+  />
+  <input
+    type="range"
+    min="0"
+    max="1"
+    step="0.01"
+    value={isMuted ? 0 : volume}
+    onChange={handleVolumeChange}
+    className="w-36 h-2 absolute  appearance-none rounded-full cursor-pointer border-none outline-none -rotate-90"
+  />
+        
+        </div>
+      </div>
+    </>
+  )}
+</div>
+                  <div className="text-white text-sm">
+                    {formatTime(currentTime)} / {formatTime(duration)}
+                  </div>
+                </div>
+
+                {/* Progress */}
+                <div className="flex-1 h-6 flex items-center">
+                  <div
+                    className="w-full h-1 bg-white/30 rounded-full cursor-pointer"
+                    onClick={handleSeek}
+                  >
+                    <div
+                      className="h-full bg-gradient-to-r from-orange-500 to-yellow-500 rounded-full"
+                      style={{ width: `${(currentTime / duration) * 100}%` }}
+                    />
+                  </div>
+                </div>
+
+                {/* Right */}
+                <div className="flex items-center gap-3 flex-shrink-0">
+
+                  <button onClick={() => skip(-10)} className="text-white cursor-pointer">
+                    <Forward className="w-6 h-6" />
+                  </button>
+
+                  <button onClick={() => skip(10)} className="text-white cursor-pointer">
+                    <PictureInPicture2 className="w-6 h-6" />
+                  </button>
+
+                  <button
+                    onClick={toggleMute}
+                    onMouseEnter={() => setShowVolumeSlider(true)}
+                    className="text-white"
+                  >
+
+                    <ScreenShare className="w-6 h-6 cursor-pointer" />
+
+                  </button>
+                  <button onClick={toggleFullscreen} className="text-white relative cursor-pointer">
+                    <ArrowsPointingOutIcon className="w-6 h-6" />
+                   
+                  </button>
+                    <button className='absolute bottom-12 right-6'>
+                    <BadgeLiveDemo/>
+                   </button>
+                </div>
+
+              </div>
+            </div>
+            <div className="flex items-center justify-center gap-6">
+              <button
+                
+                className="text-white hover:text-orange-400 transition-colors"
+                title="Previous video"
+              >
+                <SkipBack className="w-8 h-8" />
+              </button>
+
+              <button
+                onClick={() => skip(-10)}
+                className="text-white hover:text-orange-400 transition-colors"
+                title="Skip back 10s"
+              >
+                <RotateCcw className="w-7 h-7" />
+              </button>
+
+              <button
+                onClick={togglePlay}
+                className="text-white hover:text-orange-400 transition-colors"
+                title={isPlaying ? "Pause" : "Play"}
+              >
+                {isPlaying ? (
+                  <Pause className="w-10 h-10" />
+                ) : (
+                  <Play className="w-10 h-10" />
+                )}
+              </button>
+
+              <button
+                onClick={() => skip(10)}
+                className="text-white hover:text-orange-400 transition-colors"
+                title="Skip forward 10s"
+              >
+                <RotateCw className="w-7 h-7" />
+              </button>
+
+              <button
+                
+                className="text-white hover:text-orange-400 transition-colors"
+                title="Next video"
+              >
+                <SkipForward className="w-8 h-8" />
               </button>
             </div>
           </div>
