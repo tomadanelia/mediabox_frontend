@@ -18,8 +18,8 @@ const Navbar = () => {
 
   const navLinks = [
     { to: "/", label: "Home" },
-    { to: "/stream", label: "Stream" },
-    { to: "#", label: "Packets", placeholder: true },
+    { to: "/TV", label: "TV" },
+    { to: "/packets", label: "Packets"},
   ]
 
   return (
@@ -41,12 +41,9 @@ const Navbar = () => {
               <NavLink
                 key={link.to}
                 to={link.to}
-                onClick={(event) => {
-                  if (link.placeholder) event.preventDefault()
-                }}
                 className={({ isActive }) =>
                   `rounded-full px-4 py-2 text-sm font-medium transition ${
-                    isActive && !link.placeholder
+                    isActive
                       ? "bg-primary/10 text-primary"
                       : "text-muted-foreground hover:text-foreground"
                   }`
@@ -102,7 +99,7 @@ const Navbar = () => {
           <Button asChild className="hidden gap-2 bg-primary text-primary-foreground shadow-lg sm:inline-flex">
             <Link to="/stream">
               <PlayIcon className="h-4 w-4" />
-              Open stream
+              Open Live
             </Link>
           </Button>
 
