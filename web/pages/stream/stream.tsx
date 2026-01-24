@@ -1,6 +1,6 @@
 
 
-import React, { useState } from 'react';
+import React, { useState,useRef,useEffect } from 'react';
 import VideoPlayer from '@/hmcomponents/videoplayer';
 import DataTableDemo from '@/components/shadcn-studio/data-table/data-table-11';
 import Timeline from '@/hmcomponents/timeline';
@@ -39,49 +39,84 @@ import { GeorgiaLogo } from '@/components/svg_telecom_production/svglib';
 // Add a button to toggle the calendar visibility
 
 
-export const Stream: React.FC = () => {
- 
+export const Stream: React.FC = () => { 
   const [isCalendarVisible, setIsCalendarVisible] = useState(false);
-
+  const [data, setData] = useState<any>(null)
+  const [timeProgramm,setTimeProgramm] = useState<any>(null)
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const didFetch = useRef(false)
+  const didFetchProgramm = useRef(false)
+    const channels = [
+  // Sports
+  { id: 22, name: 'ESPN Sports', url: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ElephantsDream.mp4', categories: ['sports'], thumbnail: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/images/BigBuckBunny.jpg' },
+ ];                                                                                                                                   
+ const [selectedChannel, setSelectedChannel] = useState(channels[0]);
   const toggleCalendar = () => {
     setIsCalendarVisible(prev => !prev);
   };
-  const channels = [
-  // Sports
-  { id: 1, name: 'ESPN Sports', url: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4', categories: ['sports'], thumbnail: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/images/BigBuckBunny.jpg' },
-  { id: 2, name: 'Sports Zone', url: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ElephantsDream.mp4', categories: ['sports', 'news'], thumbnail: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/images/ElephantsDream.jpg' },
-  { id: 3, name: 'Live Football', url: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4', categories: ['sports'], thumbnail: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/images/ForBiggerBlazes.jpg' },
+
+
+  useEffect(() => {
+  if (didFetch.current) return
+  didFetch.current = true
+
+  const fetchData = async () => {
+    setLoading(true)
+    setError(null)
+    try {
+      const response = await fetch("http://159.89.20.100/api/channels")
+      if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`)
+      const result = await response.json()
+      setData(result)
+    } catch (err: any) {
+      setError(err.message)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  fetchData()
+  }, [])
+useEffect(() => {
+  if (!selectedChannel?.id) return
+
+  const controller = new AbortController()
+
+  const fetchPrograms = async () => {
+    setLoading(true)
+    setError(null)
+    try {
+      const response = await fetch(
+        `http://159.89.20.100/api/channels/${selectedChannel.id}/programs?date=2026-01-24`,
+        { signal: controller.signal }
+      )
+      if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`)
+      const result = await response.json()
+      setTimeProgramm(result)
+    } catch (err: any) {
+      if (err.name !== 'AbortError') setError(err.message)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  fetchPrograms()
+
+  return () => controller.abort()
+}, [selectedChannel?.id])
+
+
+
+  useEffect(() => {
+  if (data) console.log("channels:", data)
+  }, [data])
+  console.log(timeProgramm);
   
-  // Movies
-  { id: 4, name: 'Cinema Plus', url: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerEscapes.mp4', categories: ['movies'], thumbnail: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/images/ForBiggerEscapes.jpg' },
-  { id: 5, name: 'Movie Mania', url: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerFun.mp4', categories: ['movies', 'music'], thumbnail: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/images/ForBiggerFun.jpg' },
-  { id: 6, name: 'Hollywood HD', url: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerJoyrides.mp4', categories: ['movies'], thumbnail: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/images/ForBiggerJoyrides.jpg' },
-  
-  // Gaming
-  { id: 7, name: 'Twitch Gaming', url: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerMeltdowns.mp4', categories: ['gaming'], thumbnail: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/images/ForBiggerMeltdowns.jpg' },
-  { id: 8, name: 'E-Sports Live', url: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/Sintel.mp4', categories: ['gaming', 'sports'], thumbnail: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/images/Sintel.jpg' },
-  { id: 9, name: 'Game Stream', url: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/SubaruOutbackOnStreetAndDirt.mp4', categories: ['gaming', 'coding'], thumbnail: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/images/SubaruOutbackOnStreetAndDirt.jpg' },
-  
-  // News
-  { id: 10, name: 'CNN News', url: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/TearsOfSteel.mp4', categories: ['news'], thumbnail: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/images/TearsOfSteel.jpg' },
-  { id: 11, name: 'BBC World', url: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/VolkswagenGTIReview.mp4', categories: ['news'], thumbnail: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/images/VolkswagenGTIReview.jpg' },
-  { id: 12, name: 'Global News', url: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/WeAreGoingOnBullrun.mp4', categories: ['news', 'sports'], thumbnail: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/images/WeAreGoingOnBullrun.jpg' },
-  
-  // Music
-  { id: 13, name: 'MTV Music', url: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/WhatCarCanYouGetForAGrand.mp4', categories: ['music'], thumbnail: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/images/WhatCarCanYouGetForAGrand.jpg' },
-  { id: 14, name: 'Music Live', url: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4', categories: ['music'], thumbnail: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/images/BigBuckBunny.jpg' },
-  { id: 15, name: 'Vevo Channel', url: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ElephantsDream.mp4', categories: ['music', 'movies'], thumbnail: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/images/ElephantsDream.jpg' },
-  
-  // Photography
-  { id: 16, name: 'Nat Geo Wild', url: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4', categories: ['photography', 'news'], thumbnail: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/images/ForBiggerBlazes.jpg' },
-  { id: 17, name: 'Photo Masters', url: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerEscapes.mp4', categories: ['photography'], thumbnail: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/images/ForBiggerEscapes.jpg' },
-  
-  // Coding
-  { id: 18, name: 'Dev Channel', url: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerFun.mp4', categories: ['coding'], thumbnail: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/images/ForBiggerFun.jpg' },
-  { id: 19, name: 'Code Academy', url: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerJoyrides.mp4', categories: ['coding', 'news'], thumbnail: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/images/ForBiggerJoyrides.jpg' },
-  { id: 20, name: 'Tech Talks', url: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerMeltdowns.mp4', categories: ['coding', 'gaming'], thumbnail: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/images/ForBiggerMeltdowns.jpg' },
-];
- const [selectedChannel, setSelectedChannel] = useState(channels[0]);
+
+ useEffect(() => {
+  if (selectedChannel) console.log("selectedchannel:", selectedChannel)
+}, [selectedChannel])
   const categories = [
   { id: 'Georgian', icon: null, label: 'Georgian',logo: GeorgiaLogo  },
   { id: 'movies', icon: Clapperboard, label: 'Movies' },
@@ -113,9 +148,9 @@ const toggleCategory = (categoryId: string) => {
   ];
 
   return (
-    <div className="flex flex-col w-full h-full relative">
+    <div className="flex flex-col justify-between w-full h-[calc(100vh-80px)] relative">
 
-      {/* TOP: fills leftover space */}
+      {/* TOP: fills space */}
       <div className="flex-1 flex w-full ">
 
         {/* LEFT */}
@@ -136,7 +171,7 @@ const toggleCategory = (categoryId: string) => {
           </div>
           <div className="flex-1 overflow-y-auto ">
             <DataTableDemo 
-  filteredChannels={filteredChannels} 
+  filteredChannels={data} 
   onChannelSelect={(channel) => {
     setSelectedChannel(channel);
   }}
@@ -153,7 +188,7 @@ const toggleCategory = (categoryId: string) => {
                   <BadgeLiveDemo />
                 </div>
               </div>
-              <div className='h-full absolute w-full flex z-1 items-center justify-center gap-2'>
+              <div className='h-[40px] absolute w-full flex z-1 items-center justify-center gap-2'>
                 <ButtonGroupSocialDemo />
                 <ButtonCopyDemo />
 
@@ -184,9 +219,7 @@ const toggleCategory = (categoryId: string) => {
               {/* <div className='flex'>
                 <ButtonGroupRoundedDemo />
               </div> */}
-              <div className=' flex-1 h-10'>
-                <Timeline />
-              </div>
+              
 
             </div>
 
@@ -215,7 +248,7 @@ const toggleCategory = (categoryId: string) => {
           </div>
           <div className="flex-1 overflow-y-auto">
             <div onClick={toggleCalendar}>
-              <DataTableDemoCL />
+              <DataTableDemoCL timeProgramm={timeProgramm} />
             </div>
 
 
@@ -228,8 +261,10 @@ const toggleCategory = (categoryId: string) => {
           </div>
         </div>
       </div>
-
-
+<div>
+  <div className=' flex-1 h-10'>
+                <Timeline />
+              </div>
       <div className="h-14 justify-center bg-gray-700 dark:bg-gray-600 w-full shrink-0 flex items-center gap-4 px-4 overflow-x-auto">
         <div className="flex items-center left-4 justify-center gap-3">
           <IconButtonDemo />
@@ -243,7 +278,7 @@ const toggleCategory = (categoryId: string) => {
     <div
       key={category.id}
       onClick={() => toggleCategory(category.id)}
-      className={`flex hover:-translate-y-1 hover:scale-[1.1] h-10 px-2 rounded-sm items-center justify-center transition-all cursor-pointer ${
+      className={`flex relative hover:-translate-y-1 hover:scale-[1.1] h-10 px-2 rounded-sm items-center justify-center transition-all cursor-pointer ${
         isSelected
           ? 'bg-gradient-to-br from-orange-500 to-yellow-500'
           : 'bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700'
@@ -258,25 +293,29 @@ const toggleCategory = (categoryId: string) => {
           }
         />
       )}
+ 
+      <div className='absolute w-full h-full '>
+        <Tooltip>
+                                      <TooltipTrigger asChild>
+                                          <div className='w-full h-full'>
+      
+                                          </div>
+                                      </TooltipTrigger>
+                                      <TooltipContent side='bottom'>{category.id}</TooltipContent>
+                                  </Tooltip>
+      </div>
+
     </div>
   );
 })}
 
 </div>
       </div>
+</div>
+
       
     </div>
 
   );
 };
 export default Stream;
-
-//  <div className='absolute w-full h-full '>
-//         <Tooltip>
-//                                       <TooltipTrigger asChild>
-                                          
-//                                       </TooltipTrigger>
-//                                       <TooltipContent side='bottom'>{category.id}</TooltipContent>
-//                                   </Tooltip>
-//       </div>
-

@@ -20,7 +20,7 @@ const AuthLog: React.FC = () => {
     };
 
     return (
-        <div className="mt-10 dark:bg-gray-700 bg-white rounded-sm sm:mx-auto sm:w-full sm:max-w-[480px]">
+        <div className="mt-10 mb-10 dark:bg-gray-700 bg-white rounded-sm sm:mx-auto sm:w-full sm:max-w-[480px]">
             <div className="px-6 py-12 shadow sm:rounded-lg sm:px-12">
                 <div className="space-y-6">
                     <div>
@@ -31,7 +31,7 @@ const AuthLog: React.FC = () => {
 
                     <div>
                         <div className="mt-2">
-                            <InputPasswordDemo/>
+                            <InputLabelDemo/>
                         </div>
                     </div>
 

@@ -1,50 +1,50 @@
 'use client'
 
 import { useId, useMemo, useState } from 'react'
-
 import { CheckIcon, EyeIcon, EyeOffIcon, XIcon } from 'lucide-react'
-
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-
 import { cn } from '@/lib/utils'
+
+interface InputPasswordStrengthDemoProps extends React.ComponentProps<typeof Input> {
+  label?: string
+  value: string
+  onChange: (e: React.ChangeEvent<HTMLInputElement>) => void
+}
 
 const requirements = [
   { regex: /.{12,}/, text: 'At least 12 characters' },
   { regex: /[a-z]/, text: 'At least 1 lowercase letter' },
   { regex: /[A-Z]/, text: 'At least 1 uppercase letter' },
   { regex: /[0-9]/, text: 'At least 1 number' },
-  {
-    regex: /[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>/?]/,
-    text: 'At least 1 special character'
-  }
+  { regex: /[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>/?]/, text: 'At least 1 special character' }
 ]
 
-const InputPasswordStrengthDemo = () => {
-  const [password, setPassword] = useState('')
-  const [isVisible, setIsVisible] = useState(false)
-
+const InputPasswordStrengthDemo: React.FC<InputPasswordStrengthDemoProps> = ({
+  label = 'Input with password strength',
+  value,
+  onChange,
+  ...props
+}) => {
   const id = useId()
+  const [isVisible, setIsVisible] = useState(false) // ✅ useState imported, no React.useState
 
-  const toggleVisibility = () => setIsVisible(prevState => !prevState)
+  const toggleVisibility = () => setIsVisible(prev => !prev)
 
   const strength = requirements.map(req => ({
-    met: req.regex.test(password),
+    met: req.regex.test(value),
     text: req.text
   }))
 
-  const strengthScore = useMemo(() => {
-    return strength.filter(req => req.met).length
-  }, [strength])
+  const strengthScore = useMemo(() => strength.filter(req => req.met).length, [strength])
 
   const getColor = (score: number) => {
     if (score === 0) return 'bg-border'
     if (score <= 1) return 'bg-destructive'
-    if (score <= 2) return 'bg-orange-500 '
+    if (score <= 2) return 'bg-orange-500'
     if (score <= 3) return 'bg-amber-500'
     if (score === 4) return 'bg-yellow-400'
-
     return 'bg-green-500'
   }
 
@@ -53,21 +53,20 @@ const InputPasswordStrengthDemo = () => {
     if (score <= 2) return 'Weak password'
     if (score <= 3) return 'Medium password'
     if (score === 4) return 'Strong password'
-
     return 'Very strong password'
   }
 
   return (
     <div className='w-full space-y-2'>
-      <Label htmlFor={id}>Input with password strength</Label>
       <div className='relative mb-3'>
         <Input
           id={id}
           type={isVisible ? 'text' : 'password'}
           placeholder='Password'
-          value={password}
-          onChange={e => setPassword(e.target.value)}
+          value={value}
+          onChange={onChange}
           className='pr-9'
+          {...props}
         />
         <Button
           variant='ghost'
@@ -94,7 +93,7 @@ const InputPasswordStrengthDemo = () => {
 
       <p className='text-foreground text-sm font-medium'>{getText(strengthScore)}. Must contain:</p>
 
-      <ul className='mb-4 space-y-1.5'>
+      <ul className='mb-4 space-y-0'>
         {strength.map((req, index) => (
           <li key={index} className='flex items-center gap-2'>
             {req.met ? (
@@ -109,18 +108,6 @@ const InputPasswordStrengthDemo = () => {
           </li>
         ))}
       </ul>
-
-      <p className='text-muted-foreground text-xs'>
-        Inspired by{' '}
-        <a
-          className='hover:text-foreground underline'
-          href='https://flyonui.com/docs/advanced-forms/strong-password/#indicator-and-hints'
-          target='_blank'
-          rel='noopener noreferrer'
-        >
-          FlyonUI
-        </a>
-      </p>
     </div>
   )
 }
