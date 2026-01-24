@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
+import Hls from 'hls.js';
 import BadgeLiveDemo from '@/components/shadcn-studio/badge/cusotm/badge-c01';
 import {
   ArrowsPointingOutIcon,
@@ -8,6 +9,7 @@ import {
 import { Play, Pause, SkipBack, SkipForward, RotateCcw, RotateCw, ScreenShare, PictureInPicture2, Share, Forward } from 'lucide-react';
 import ChannelsPanelDemo from './FullScreenList';
 import { sampleChannels } from './FullScreenList';
+
 type Stream = {
   id: number;
   name: string;
@@ -23,6 +25,7 @@ type VideoPlayerProps = {
 const VideoPlayer: React.FC<VideoPlayerProps> = ({ stream }) => {
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const containerRef = useRef<HTMLDivElement | null>(null);
+  const hlsRef = useRef<Hls | null>(null);
 
   const [isPlaying, setIsPlaying] = useState<boolean>(false);
   const [currentTime, setCurrentTime] = useState<number>(0);
@@ -33,8 +36,93 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ stream }) => {
   const [showVolumeSlider, setShowVolumeSlider] = useState<boolean>(false);
   const [isFullscreen, setIsFullscreen] = useState<boolean>(false);
   const [showChannels, setShowChannels] = useState<boolean>(false);
-
   const [currentStream, setCurrentStream] = useState<number>(0);
+  const [videoUrl, setVideoUrl] = useState<string>('');
+  const [loading, setLoading] = useState<boolean>(false);
+
+  // Fetch the actual stream URL when stream changes
+  useEffect(() => {
+    console.log('Stream changed:', stream);
+    
+    const fetchStreamUrl = async () => {
+      setLoading(true);
+      try {
+        const response = await fetch(`http://159.89.20.100/api/channels/${stream.id}/stream`);
+        if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+        const result = await response.json();
+        console.log('Fetched stream data:', result);
+        setVideoUrl(result.url || result);
+      } catch (err: any) {
+        console.error('Error fetching stream:', err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchStreamUrl();
+  }, [stream.id]);
+
+  // Initialize HLS player when videoUrl changes
+  useEffect(() => {
+    if (!videoUrl || !videoRef.current) return;
+
+    const video = videoRef.current;
+
+    // Clean up previous HLS instance
+    if (hlsRef.current) {
+      hlsRef.current.destroy();
+      hlsRef.current = null;
+    }
+
+    // Check if HLS is supported
+    if (Hls.isSupported()) {
+      const hls = new Hls({
+        enableWorker: true,
+        lowLatencyMode: true,
+      });
+      
+      hlsRef.current = hls;
+      hls.loadSource(videoUrl);
+      hls.attachMedia(video);
+
+      hls.on(Hls.Events.MANIFEST_PARSED, () => {
+        console.log('HLS manifest loaded, ready to play');
+      });
+
+      hls.on(Hls.Events.ERROR, (event, data) => {
+        console.error('HLS error:', data);
+        if (data.fatal) {
+          switch (data.type) {
+            case Hls.ErrorTypes.NETWORK_ERROR:
+              console.error('Fatal network error, trying to recover');
+              hls.startLoad();
+              break;
+            case Hls.ErrorTypes.MEDIA_ERROR:
+              console.error('Fatal media error, trying to recover');
+              hls.recoverMediaError();
+              break;
+            default:
+              console.error('Fatal error, cannot recover');
+              hls.destroy();
+              break;
+          }
+        }
+      });
+    } 
+    // For Safari/iOS which has native HLS support
+    else if (video.canPlayType('application/vnd.apple.mpegurl')) {
+      video.src = videoUrl;
+      console.log('Using native HLS support (Safari/iOS)');
+    }
+
+    // Cleanup on unmount
+    return () => {
+      if (hlsRef.current) {
+        hlsRef.current.destroy();
+        hlsRef.current = null;
+      }
+    };
+  }, [videoUrl]);
 
   useEffect(() => {
     const video = videoRef.current;
@@ -161,10 +249,15 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ stream }) => {
         >
           <video
             ref={videoRef}
-            src={stream.url}
             className="w-full aspect-video"
             onClick={togglePlay}
           />
+
+          {loading && (
+            <div className="absolute inset-0 flex items-center justify-center bg-black/50">
+              <div className="text-white">Loading stream...</div>
+            </div>
+          )}
 
           {/* Channels Button - Top Right Corner in Fullscreen */}
           {isFullscreen && (
@@ -178,69 +271,62 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ stream }) => {
 
           {/* Channels Panel - Only in Fullscreen */}
           {isFullscreen && showChannels && (
-  <ChannelsPanelDemo 
-    onClose={() => setShowChannels(false)}
-    channels={sampleChannels}
-   
-  />
-)}
-
+            <ChannelsPanelDemo 
+              onClose={() => setShowChannels(false)}
+              channels={sampleChannels}
+            />
+          )}
 
           {/* Centered Control Buttons */}
           <div
-            className={`absolute bottom-0 left-0 right-0 h-full flex justify-center items-center bg-gradient-to-t from-black/90 via-black/50 to-transparent px-6 pb-4 pt-20 transition-opacity duration-300 ${showControls ? 'opacity-100' : 'opacity-0'
-              }`}
+            className={`absolute bottom-0 left-0 right-0 h-full flex justify-center items-center bg-gradient-to-t from-black/90 via-black/50 to-transparent px-6 pb-4 pt-20 transition-opacity duration-300 ${showControls ? 'opacity-100' : 'opacity-0'}`}
           >
             <div
-              className={`absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/90 via-black/50 to-transparent px-6 pb-4 pt-20 transition-opacity duration-300 ${showControls ? 'opacity-100' : 'opacity-0'
-                }`}
+              className={`absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/90 via-black/50 to-transparent px-6 pb-4 pt-20 transition-opacity duration-300 ${showControls ? 'opacity-100' : 'opacity-0'}`}
             >
               <div className="flex items-center justify-center gap-4">
                 {/* Left */}
                 <div className="flex items-center gap-3 flex-shrink-0">
-
                   <div
-  className='relative w-6 h-6'
-  onMouseEnter={() => setShowVolumeSlider(true)}
-  onMouseLeave={() => setShowVolumeSlider(false)}
->
-  <button
-    onClick={toggleMute}
-    className="text-white w-6 h-6"
-  >
-    {isMuted ? (
-      <SpeakerXMarkIcon className="w-6 h-6 cursor-pointer" />
-    ) : (
-      <SpeakerWaveIcon className="w-6 h-6 cursor-pointer" />
-    )}
-  </button>
+                    className='relative w-6 h-6'
+                    onMouseEnter={() => setShowVolumeSlider(true)}
+                    onMouseLeave={() => setShowVolumeSlider(false)}
+                  >
+                    <button
+                      onClick={toggleMute}
+                      className="text-white w-6 h-6"
+                    >
+                      {isMuted ? (
+                        <SpeakerXMarkIcon className="w-6 h-6 cursor-pointer" />
+                      ) : (
+                        <SpeakerWaveIcon className="w-6 h-6 cursor-pointer" />
+                      )}
+                    </button>
 
-  {showVolumeSlider && (
-    <>
-      {/* Invisible bridge to prevent slider from disappearing */}
-      <div className='absolute bottom-6 left-1/2 -translate-x-1/2 w-8 h-6' />
-      
-      <div className='absolute bottom-10 left-1/2 -translate-x-1/2'>
-        <div className='h-40 w-6 rounded-sm bg-gray-400/20 backdrop-blur-sm p-1 flex items-center justify-center'>
-           <div 
-    className="absolute w-2 bottom-4   bg-gradient-to-r from-orange-500 to-yellow-500 rounded-full"
-    style={{ height: `${(isMuted ? 0 : volume) * 80}%` }}
-  />
-  <input
-    type="range"
-    min="0"
-    max="1"
-    step="0.01"
-    value={isMuted ? 0 : volume}
-    onChange={handleVolumeChange}
-    className="w-36 h-2 absolute  appearance-none rounded-full cursor-pointer border-none outline-none -rotate-90"
-  />
-        
-        </div>
-      </div>
-    </>
-  )}
-</div>
+                    {showVolumeSlider && (
+                      <>
+                        <div className='absolute bottom-6 left-1/2 -translate-x-1/2 w-8 h-6' />
+                        
+                        <div className='absolute bottom-10 left-1/2 -translate-x-1/2'>
+                          <div className='h-40 w-6 rounded-sm bg-gray-400/20 backdrop-blur-sm p-1 flex items-center justify-center'>
+                            <div 
+                              className="absolute w-2 bottom-4 bg-gradient-to-r from-orange-500 to-yellow-500 rounded-full"
+                              style={{ height: `${(isMuted ? 0 : volume) * 80}%` }}
+                            />
+                            <input
+                              type="range"
+                              min="0"
+                              max="1"
+                              step="0.01"
+                              value={isMuted ? 0 : volume}
+                              onChange={handleVolumeChange}
+                              className="w-36 h-2 absolute appearance-none rounded-full cursor-pointer border-none outline-none -rotate-90"
+                            />
+                          </div>
+                        </div>
+                      </>
+                    )}
+                  </div>
                   <div className="text-white text-sm">
                     {formatTime(currentTime)} / {formatTime(duration)}
                   </div>
@@ -261,7 +347,6 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ stream }) => {
 
                 {/* Right */}
                 <div className="flex items-center gap-3 flex-shrink-0">
-
                   <button onClick={() => skip(-10)} className="text-white cursor-pointer">
                     <Forward className="w-6 h-6" />
                   </button>
@@ -275,24 +360,19 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ stream }) => {
                     onMouseEnter={() => setShowVolumeSlider(true)}
                     className="text-white"
                   >
-
                     <ScreenShare className="w-6 h-6 cursor-pointer" />
-
                   </button>
                   <button onClick={toggleFullscreen} className="text-white relative cursor-pointer">
                     <ArrowsPointingOutIcon className="w-6 h-6" />
-                   
                   </button>
-                    <button className='absolute bottom-12 right-6'>
+                  <button className='absolute bottom-12 right-6'>
                     <BadgeLiveDemo/>
-                   </button>
+                  </button>
                 </div>
-
               </div>
             </div>
             <div className="flex items-center justify-center gap-6">
               <button
-                
                 className="text-white hover:text-orange-400 transition-colors"
                 title="Previous video"
               >
@@ -328,7 +408,6 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ stream }) => {
               </button>
 
               <button
-                
                 className="text-white hover:text-orange-400 transition-colors"
                 title="Next video"
               >
