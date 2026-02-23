@@ -10,6 +10,9 @@ import { Play, Pause, SkipBack, SkipForward, RotateCcw, RotateCw, ScreenShare, P
 import ChannelsPanelDemo from './FullScreenList';
 import { sampleChannels } from './FullScreenList';
 
+// Define API URL from environment variable or fallback
+const API_URL = import.meta.env.VITE_API_URL || 'http://159.89.20.100';
+
 type Stream = {
   id: string
   uuid:string;
@@ -47,7 +50,8 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ stream }) => {
     const fetchStreamUrl = async () => {
       setLoading(true);
       try {
-        const response = await fetch(`http://159.89.20.100/api/channels/${stream.id}/stream`);
+        // Updated to use API_URL variable
+        const response = await fetch(`${API_URL}/api/channels/${stream.id}/stream`);
         if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
         const result = await response.json();
         console.log('Fetched stream data:', result);
