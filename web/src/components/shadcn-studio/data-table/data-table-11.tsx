@@ -3,29 +3,31 @@
 import { Bookmark } from 'lucide-react'
 
 type Channel = {
-  logo: string | undefined
-  id: number
-  name: string
-  url: string
-  categories: string[]
-  thumbnail: string
-}
-
+  id: string;
+  uuid: string;
+  name: string;
+  logo: string;
+  number: number;
+  url: string;
+  categories: string[];
+};
 type DataTableDemoProps = {
-  filteredChannels?: Channel[] | null
-  onChannelSelect?: (channel: Channel) => void
+  filteredChannels: Channel[]
+  onChannelSelect: (channel: Channel) => void
+  selectedChannel?: Channel | null
 }
-
 const DataTableDemo = ({
   filteredChannels,
-  onChannelSelect
+  onChannelSelect,
+  selectedChannel,
 }: DataTableDemoProps) => {
   const safeChannels: Channel[] = Array.isArray(filteredChannels)
     ? filteredChannels
     : []
 
+
   return (
-    <div className='flex-1 flex flex-col h-[calc(100vh-266px)] overflow-hidden'>
+    <div className='flex-1 flex flex-col h-[calc(100vh-266px)] overflow-hidden bg-gray-500/50'>
       <div className='flex-1 rounded-lg border overflow-y-scroll min-h-0'>
         <div className='divide-y'>
           {safeChannels.length > 0 ? (
@@ -33,7 +35,12 @@ const DataTableDemo = ({
               <div
                 key={channel.id}
                 onClick={() => onChannelSelect?.(channel)}
-                className='flex items-center gap-3 px-4 py-2.5 hover:bg-accent/50 transition-colors cursor-pointer'
+                className={`flex items-center gap-3 px-4 py-2.5 cursor-pointer transition-colors
+  ${selectedChannel?.id === channel.id
+    ? 'bg-blue-200 text-black dark:bg-blue-200/30'
+    : 'hover:bg-accent/50'
+  }
+`}
               >
                 {/* Logo */}
                 <div className='w-8 h-8 rounded bg-white flex items-center justify-center text-white font-bold text-sm shrink-0'>
@@ -48,7 +55,7 @@ const DataTableDemo = ({
                 </div>
 
                 {/* Channel name */}
-                <div className='flex-1 text-sm font-medium truncate'>
+                <div className='flex-1 text-sm ml-[40px] font-medium truncate'>
                   {channel.name.slice(0, 10)}
                   {channel.name.length > 10 && '...'}
                 </div>

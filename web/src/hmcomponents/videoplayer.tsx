@@ -11,11 +11,11 @@ import ChannelsPanelDemo from './FullScreenList';
 import { sampleChannels } from './FullScreenList';
 
 type Stream = {
-  id: number;
+  id: string
+  uuid:string;
   name: string;
   url: string;
-  categories: string[];
-  thumbnail: string;
+  logo:String;
 };
 
 type VideoPlayerProps = {
@@ -249,7 +249,7 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ stream }) => {
         >
           <video
             ref={videoRef}
-            className="w-full aspect-video"
+            className=" aspect-video"
             onClick={togglePlay}
           />
 

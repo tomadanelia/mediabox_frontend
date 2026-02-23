@@ -75,7 +75,7 @@ const ChannelScheduleCL = ({ timeProgramm }: Props) => {
                 key={idx}
                 className='flex items-center gap-3 px-4 py-2.5 hover:bg-accent/50 transition-colors'
               >
-                <span className='text-sm text-muted-foreground font-medium w-20 shrink-0'>
+                <span className='text-sm text-muted-foreground font-medium w-10 shrink-0'>
                   {show.time}
                 </span>
                 <span className='flex-1 text-sm truncate'>{show.title}</span>

@@ -4,7 +4,7 @@ import { SettingsIcon, XIcon, LinkIcon } from 'lucide-react'
 
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar'
+import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import {
   DropdownMenu,
@@ -58,11 +58,10 @@ const NotificationDropdown = ({ trigger, defaultOpen, align = 'end' }: Props) =>
           <TabsContent value='inbox'>
             <DropdownMenuItem className='gap-3 px-2 py-3 text-base'>
               <Avatar className='size-9.5'>
-                <AvatarImage src='https://cdn.shadcnstudio.com/ss-assets/avatar/avatar-19.png' />
-                <AvatarFallback>MB</AvatarFallback>
+                <AvatarFallback>TD</AvatarFallback>
               </Avatar>
               <div className='flex w-full flex-col items-start'>
-                <span className='text-base font-medium'>Mark Bush</span>
+                <span className='text-base font-medium'>Toma Danelia</span>
                 <div className='flex items-center gap-2.5'>
                   <span className='text-muted-foreground text-sm'>12 Minutes ago</span>
                   <div className='bg-muted size-1.5 rounded-full' />
@@ -77,11 +76,10 @@ const NotificationDropdown = ({ trigger, defaultOpen, align = 'end' }: Props) =>
             <DropdownMenuSeparator />
             <DropdownMenuItem className='gap-3 px-2 py-3 text-base'>
               <Avatar className='size-9.5'>
-                <AvatarImage src='https://cdn.shadcnstudio.com/ss-assets/avatar/avatar-5.png' />
-                <AvatarFallback>AB</AvatarFallback>
+                <AvatarFallback>AR</AvatarFallback>
               </Avatar>
               <div className='flex w-full flex-col items-start'>
-                <span className='text-base font-medium'>Aaron Black</span>
+                <span className='text-base font-medium'>Alex Rivera</span>
                 <div className='flex items-center gap-2.5'>
                   <span className='text-muted-foreground text-sm'>27 Minutes ago</span>
                   <div className='bg-muted size-1.5 rounded-full' />
@@ -96,11 +94,10 @@ const NotificationDropdown = ({ trigger, defaultOpen, align = 'end' }: Props) =>
             <DropdownMenuSeparator />
             <DropdownMenuItem className='items-start gap-3 px-2 py-3 text-base'>
               <Avatar className='size-9.5'>
-                <AvatarImage src='https://cdn.shadcnstudio.com/ss-assets/avatar/avatar-2.png' />
-                <AvatarFallback>A</AvatarFallback>
+                <AvatarFallback>SK</AvatarFallback>
               </Avatar>
               <div className='flex w-full flex-col items-start'>
-                <span className='text-base font-medium'>Anna has applied to create an ad for your campaign</span>
+                <span className='text-base font-medium'>Sara Kim has applied to create an ad for your campaign</span>
                 <div className='flex items-center gap-2.5'>
                   <span className='text-muted-foreground text-sm'>2 hours ago</span>
                   <div className='bg-muted size-1.5 rounded-full' />
@@ -117,11 +114,10 @@ const NotificationDropdown = ({ trigger, defaultOpen, align = 'end' }: Props) =>
             <DropdownMenuSeparator />
             <DropdownMenuItem className='items-start gap-3 px-2 py-3 text-base'>
               <Avatar className='size-9.5'>
-                <AvatarImage src='https://cdn.shadcnstudio.com/ss-assets/avatar/avatar-3.png' />
-                <AvatarFallback>J</AvatarFallback>
+                <AvatarFallback>LM</AvatarFallback>
               </Avatar>
               <div className='flex w-full flex-col items-start'>
-                <span className='text-base font-medium'>Jason attached the file</span>
+                <span className='text-base font-medium'>Lucas Mendes attached the file</span>
                 <div className='flex items-center gap-2.5'>
                   <span className='text-muted-foreground text-sm'>6 hours ago</span>
                   <div className='bg-muted size-1.5 rounded-full' />
@@ -138,11 +134,10 @@ const NotificationDropdown = ({ trigger, defaultOpen, align = 'end' }: Props) =>
           <TabsContent value='general'>
             <DropdownMenuItem className='gap-3 px-2 py-3 text-base'>
               <Avatar className='size-9.5'>
-                <AvatarImage src='https://cdn.shadcnstudio.com/ss-assets/avatar/avatar-7.png' />
-                <AvatarFallback>FC</AvatarFallback>
+                <AvatarFallback>PS</AvatarFallback>
               </Avatar>
               <div className='flex w-full flex-col items-start'>
-                <span className='text-base font-medium'>Fred Campbell</span>
+                <span className='text-base font-medium'>Priya Sharma</span>
                 <div className='flex items-center gap-2.5'>
                   <span className='text-muted-foreground text-sm'>39 Minutes ago</span>
                   <div className='bg-muted size-1.5 rounded-full' />
@@ -157,11 +152,10 @@ const NotificationDropdown = ({ trigger, defaultOpen, align = 'end' }: Props) =>
             <DropdownMenuSeparator />
             <DropdownMenuItem className='items-start gap-3 px-2 py-3 text-base'>
               <Avatar className='size-9.5'>
-                <AvatarImage src='https://cdn.shadcnstudio.com/ss-assets/avatar/avatar-15.png' />
-                <AvatarFallback>S</AvatarFallback>
+                <AvatarFallback>MJ</AvatarFallback>
               </Avatar>
               <div className='flex w-full flex-col items-start'>
-                <span className='text-base font-medium'>Scott attached the file</span>
+                <span className='text-base font-medium'>Mike Johnson attached the file</span>
                 <div className='flex items-center gap-2.5'>
                   <span className='text-muted-foreground text-sm'>3 hours ago</span>
                   <div className='bg-muted size-1.5 rounded-full' />
@@ -176,11 +170,10 @@ const NotificationDropdown = ({ trigger, defaultOpen, align = 'end' }: Props) =>
             <DropdownMenuSeparator />
             <DropdownMenuItem className='gap-3 px-2 py-3 text-base'>
               <Avatar className='size-9.5'>
-                <AvatarImage src='https://cdn.shadcnstudio.com/ss-assets/avatar/avatar-11.png' />
-                <AvatarFallback>HL</AvatarFallback>
+                <AvatarFallback>NK</AvatarFallback>
               </Avatar>
               <div className='flex w-full flex-col items-start'>
-                <span className='text-base font-medium'>Harold Larson</span>
+                <span className='text-base font-medium'>Nate Kim</span>
                 <div className='flex items-center gap-2.5'>
                   <span className='text-muted-foreground text-sm'>5 hours ago</span>
                   <div className='bg-muted size-1.5 rounded-full' />
@@ -195,11 +188,10 @@ const NotificationDropdown = ({ trigger, defaultOpen, align = 'end' }: Props) =>
             <DropdownMenuSeparator />
             <DropdownMenuItem className='items-start gap-3 px-2 py-3 text-base'>
               <Avatar className='size-9.5'>
-                <AvatarImage src='https://cdn.shadcnstudio.com/ss-assets/avatar/avatar-6.png' />
-                <AvatarFallback>R</AvatarFallback>
+                <AvatarFallback>EV</AvatarFallback>
               </Avatar>
               <div className='flex w-full flex-col items-start'>
-                <span className='text-base font-medium'>Rosie has applied to create an ad for your campaign</span>
+                <span className='text-base font-medium'>Elena Vasquez has applied to create an ad for your campaign</span>
                 <div className='flex items-center gap-2.5'>
                   <span className='text-muted-foreground text-sm'>8 hours ago</span>
                   <div className='bg-muted size-1.5 rounded-full' />

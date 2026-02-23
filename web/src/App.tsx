@@ -3,10 +3,12 @@ import { Routes, Route } from "react-router-dom"
 import Home from "../pages/home/home"
 import Stream from "../pages/stream/stream"
 import Plans from "../pages/plans/plans"
+import UserProfile from "../pages/profile/usprofile"
 import Navbar from "./components/shadcn-studio/blocks/navbar-component-07/navbar-component-07"
 import useUIStore from "./store/ui-store"
 import AuthReg from "../pages/authmain/register/authreg"
 import AuthLog from "../pages/authmain/authlogpapa/mauthlog"
+import AdminDashboard from "../pages/admin/admin"
 import type { UIStore } from "./store/ui-store"
 
 const App: React.FC = () => {
@@ -31,6 +33,8 @@ const App: React.FC = () => {
           <Route path="/" element={<Home />} />
           <Route path="/TV" element={<Stream />} />
           <Route path="/packets" element={<Plans />} />
+          <Route path="/profile" element={<UserProfile />} />
+          <Route path="/admin" element={<AdminDashboard />} />
           <Route path="/authentication">
             <Route path="login" element={<AuthLog/>} />
             <Route path="register" element={<AuthReg/>} />
