@@ -1,1003 +1,633 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 
-/* ───────────────────────────────────────────────
-   TYPES
-─────────────────────────────────────────────── */
-type AdminSection =
-  | "Overview"
-  | "Users"
-  | "Channels"
-  | "Categories"
-  | "Support"
-  | "Settings";
+type AdminSection = "Overview" | "Users" | "Channels" | "Categories" | "Support" | "Settings";
 
 interface User {
-  id: string;
-  name: string;
-  email: string;
+  id: string; name: string; email: string;
   plan: "Free" | "Premium" | "Enterprise";
   status: "Active" | "Suspended" | "Pending";
-  joined: string;
-  watchTime: string;
+  joined: string; watchTime: string;
 }
 
 type Channel = {
-  id: string;
-  uuid: string;
-  name: string;
-  logo: string;
-  number: number;
-  url: string;
-  categories: string[];
+  id: string; uuid: string; name: string;
+  logo: string; number: number; url: string; category: any[];
 };
 
 interface Category {
-  id: string;
-  name: string;
-  channels: number;
-  color: string;
-  visible: boolean;
+  id: string; name_en: string; name_ka: string;
+  icon_url: string; channels_count?: number;
 }
 
-interface SupportTicket {
-  id: string;
-  user: string;
-  email: string;
-  subject: string;
-  message: string;
-  status: "Open" | "In Progress" | "Resolved";
-  priority: "Low" | "Medium" | "High";
-  date: string;
+/* ── tiny icon components ── */
+const IconDots = () => (
+  <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
+    <circle cx="3" cy="8" r="1.5"/><circle cx="8" cy="8" r="1.5"/><circle cx="13" cy="8" r="1.5"/>
+  </svg>
+);
+const IconEdit = () => (
+  <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M11.5 2.5l2 2-9 9H2.5v-2l9-9z"/>
+  </svg>
+);
+const IconTrash = () => (
+  <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M2 4h12M6 4V2h4v2M5 4l.5 9h5l.5-9"/>
+  </svg>
+);
+const IconChannels = () => (
+  <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+    <rect x="1" y="3" width="14" height="10" rx="1.5"/>
+    <path d="M5 7h6M5 10h4"/>
+  </svg>
+);
+const IconSpinner = () => (
+  <svg className="animate-spin" width="14" height="14" viewBox="0 0 14 14" fill="none">
+    <circle cx="7" cy="7" r="6" stroke="currentColor" strokeOpacity="0.25" strokeWidth="2"/>
+    <path d="M7 1a6 6 0 016 6" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+  </svg>
+);
+const IconCheck = () => (
+  <svg width="13" height="13" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M2 7l3.5 3.5L12 3"/>
+  </svg>
+);
+
+function CategoryMenu({
+  onManage, onEdit, onDelete,
+}: { onManage: () => void; onEdit: () => void; onDelete: () => void }) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, []);
+
+  return (
+    <div ref={ref} className="relative flex-shrink-0">
+      <button
+        onClick={() => setOpen(o => !o)}
+        className={`cursor-pointer w-7 h-7 flex items-center justify-center rounded-lg transition-colors ${open ? "bg-zinc-700 text-zinc-100" : "text-zinc-500 hover:bg-zinc-800 hover:text-zinc-300"}`}
+      >
+        <IconDots />
+      </button>
+      {open && (
+        <div className="absolute right-0 top-9 z-20 w-44 bg-zinc-800 border border-zinc-700 rounded-xl shadow-2xl overflow-hidden py-1">
+          <button
+            onClick={() => { setOpen(false); onManage(); }}
+            className="cursor-pointer w-full flex items-center gap-2.5 px-3 py-2 text-xs text-zinc-300 hover:bg-zinc-700 transition-colors"
+          >
+            <IconChannels /><span>შემავალი არხები</span>
+          </button>
+          <button
+            onClick={() => { setOpen(false); onEdit(); }}
+            className="cursor-pointer w-full flex items-center gap-2.5 px-3 py-2 text-xs text-zinc-300 hover:bg-zinc-700 transition-colors"
+          >
+            <IconEdit /><span>რედაქტირება</span>
+          </button>
+          <div className="my-1 border-t border-zinc-700/60" />
+          <button
+            onClick={() => { setOpen(false); onDelete(); }}
+            className="cursor-pointer w-full flex items-center gap-2.5 px-3 py-2 text-xs text-red-400 hover:bg-red-500/10 transition-colors"
+          >
+            <IconTrash /><span>კატეგორიის წაშლა</span>
+          </button>
+        </div>
+      )}
+    </div>
+  );
 }
 
-/* ───────────────────────────────────────────────
-   MOCK DATA (non-channel sections)
-─────────────────────────────────────────────── */
-const mockUsers: User[] = [
-  { id: "u1", name: "Toma Danelia",      email: "tomadanelia16@gmail.com",    plan: "Premium",    status: "Active",    joined: "Feb 16, 2026", watchTime: "21.3h" },
-  { id: "u2", name: "Sandro Muradashvili", email: "sandro.m@example.com",     plan: "Free",       status: "Active",    joined: "Jan 4, 2026",  watchTime: "5.1h"  },
-  { id: "u3", name: "Anzor Datunashvili", email: "anzor.d@example.com",       plan: "Enterprise", status: "Active",    joined: "Dec 1, 2025",  watchTime: "88.7h" },
-  { id: "u4", name: "Mike Johnson",      email: "mikej@example.com",          plan: "Premium",    status: "Suspended", joined: "Nov 20, 2025", watchTime: "12.0h" },
-  { id: "u5", name: "Priya Sharma",      email: "priya.s@example.com",        plan: "Free",       status: "Pending",   joined: "Feb 20, 2026", watchTime: "0.2h"  },
-];
-
-const mockCategories: Category[] = [
-  { id: "cat1", name: "News",        channels: 4, color: "#3b82f6", visible: true  },
-  { id: "cat2", name: "Sports",      channels: 6, color: "#f97316", visible: true  },
-  { id: "cat3", name: "Documentary", channels: 5, color: "#10b981", visible: true  },
-  { id: "cat4", name: "Drama",       channels: 8, color: "#a78bfa", visible: true  },
-  { id: "cat5", name: "Kids",        channels: 3, color: "#f43f5e", visible: true  },
-  { id: "cat6", name: "Music",       channels: 5, color: "#fbbf24", visible: false },
-  { id: "cat7", name: "Comedy",      channels: 2, color: "#06b6d4", visible: true  },
-];
-
-const mockTickets: SupportTicket[] = [
-  { id: "t1", user: "Sandro Muradashvili", email: "sandro.m@example.com",  subject: "Can't play any channels",           message: "Every channel shows a loading spinner and never starts. I've tried on Chrome and Firefox. My subscription is active. Please help asap.",          priority: "High",   status: "Open",        date: "Feb 22, 2026" },
-  { id: "t2", user: "Priya Sharma",        email: "priya.s@example.com",   subject: "Wrong charge on my account",        message: "I was charged $14.99 twice this month. I only have one account. Please refund the duplicate charge.",                                           priority: "High",   status: "In Progress", date: "Feb 21, 2026" },
-  { id: "t3", user: "Anzor Datunashvili",  email: "anzor.d@example.com",   subject: "Missing channel — BBC World",       message: "I used to watch BBC World on this platform but it disappeared about 2 weeks ago. Is it coming back?",                                           priority: "Medium", status: "Open",        date: "Feb 20, 2026" },
-  { id: "t4", user: "Toma Danelia",        email: "tomadanelia16@gmail.com",subject: "Request: offline download feature", message: "Would love the ability to download episodes for offline viewing during flights. This is available on Netflix. Please consider adding it.",   priority: "Low",    status: "Resolved",    date: "Feb 18, 2026" },
-  { id: "t5", user: "Mike Johnson",        email: "mikej@example.com",     subject: "Account suspended unfairly",         message: "My account was suspended but I haven't violated any terms. I was in the middle of watching a show. Please review my account immediately.",   priority: "High",   status: "Open",        date: "Feb 17, 2026" },
-];
-
-/* ───────────────────────────────────────────────
-   HELPERS
-─────────────────────────────────────────────── */
-const openTickets = mockTickets.filter((t) => t.status === "Open").length;
-
-const NAV: { section: AdminSection; icon: string; badge?: number }[] = [
-  { section: "Overview",   icon: "▦" },
-  { section: "Users",      icon: "◉", badge: mockUsers.length },
-  { section: "Channels",   icon: "▶" },
-  { section: "Categories", icon: "⊞" },
-  { section: "Support",    icon: "✉", badge: openTickets },
-  { section: "Settings",   icon: "⚙" },
-];
-
-const CATEGORY_COLORS = [
-  "#3b82f6","#f97316","#10b981","#a78bfa",
-  "#f43f5e","#fbbf24","#06b6d4","#ec4899",
-];
-
-/* ───────────────────────────────────────────────
-   MAIN COMPONENT
-─────────────────────────────────────────────── */
+/* ════════════════════════════════════════════════
+   MAIN
+════════════════════════════════════════════════ */
 export default function AdminDashboard() {
   const [section, setSection] = useState<AdminSection>("Overview");
-  const [sidebarOpen, setSidebarOpen] = useState(false);
 
   /* ── Channel state ── */
-  const [channels, setChannels]           = useState<Channel[]>([]);
+  const [channels, setChannels] = useState<Channel[]>([]);
   const [channelsLoading, setChannelsLoading] = useState(false);
-  const [channelsError, setChannelsError]     = useState<string | null>(null);
-  const [channelSearch, setChannelSearch]     = useState("");
-  const [selectedChannel, setSelectedChannel] = useState<Channel | null>(null);
-
-  /* Category assignment modal */
-  const [assignModal, setAssignModal]         = useState(false);
-  const [assignTarget, setAssignTarget]       = useState<Channel | null>(null);
-  const [assignCategoryId, setAssignCategoryId] = useState("");
-  const [assignLoading, setAssignLoading]     = useState(false);
-  const [assignError, setAssignError]         = useState<string | null>(null);
-  const [assignSuccess, setAssignSuccess]     = useState(false);
-
-  /* ── Users state ── */
-  const [users, setUsers]         = useState(mockUsers);
-  const [userSearch, setUserSearch] = useState("");
-  const [selectedUser, setSelectedUser] = useState<User | null>(null);
+  const [channelSearch, setChannelSearch] = useState("");
+  const [selectedChannelUuids, setSelectedChannelUuids] = useState<string[]>([]);
 
   /* ── Categories state ── */
-  const [categories, setCategories]       = useState(mockCategories);
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [catsLoading, setCatsLoading] = useState(false);
   const [showAddCategory, setShowAddCategory] = useState(false);
-  const [newCatName, setNewCatName]           = useState("");
-  const [editingCat, setEditingCat]           = useState<string | null>(null);
+  const [newCat, setNewCat] = useState({ name_en: "", name_ka: "", icon_url: "" });
 
-  /* ── Support state ── */
-  const [tickets, setTickets]             = useState(mockTickets);
-  const [selectedTicket, setSelectedTicket] = useState<SupportTicket | null>(null);
-  const [replyText, setReplyText]           = useState("");
-  const [ticketFilter, setTicketFilter]     = useState<"All" | SupportTicket["status"]>("All");
+  /* ── Manage modal ── */
+  const [manageModal, setManageModal] = useState(false);
+  const [activeCategory, setActiveCategory] = useState<Category | null>(null);
+  const [categoryChannelList, setCategoryChannelList] = useState<any>(null);
 
-  /* ── Fetch channels ── */
+  /* ── Edit modal ── */
+  const [editModal, setEditModal] = useState(false);
+  const [editCat, setEditCat] = useState<Category | null>(null);
+  const [editForm, setEditForm] = useState({ name_en: "", name_ka: "", icon_url: "" });
+  const [editSaving, setEditSaving] = useState(false);
+
+  /* ── Delete confirm ── */
+  const [deleteModal, setDeleteModal] = useState(false);
+  const [deleteCat, setDeleteCat] = useState<Category | null>(null);
+  const [deleteLoading, setDeleteLoading] = useState(false);
+
+  /* ── Bulk assign modal ── */
+  const [bulkAssignModal, setBulkAssignModal] = useState(false);
+  const [selectedCategoryId, setSelectedCategoryId] = useState<string>("");
+  const [bulkAssigning, setBulkAssigning] = useState(false);
+
+  /* ── API ── */
   const fetchChannels = async () => {
     setChannelsLoading(true);
-    setChannelsError(null);
     try {
-      const response = await fetch("http://159.89.20.100/api/channels");
-      if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
-      const result = await response.json();
-      // Normalize: ensure categories is always an array regardless of API shape
-      const normalized = (Array.isArray(result) ? result : result.data ?? []).map(
-        (ch: any) => ({ ...ch, categories: Array.isArray(ch.categories) ? ch.categories : [] })
-      );
-      setChannels(normalized);
-    } catch (err: any) {
-      setChannelsError(err.message);
-    } finally {
-      setChannelsLoading(false);
-    }
+      const res = await fetch("http://159.89.20.100/api/channels");
+      const data = await res.json();
+      setChannels(Array.isArray(data) ? data : data.data ?? []);
+    } catch (e) { console.error(e); }
+    finally { setChannelsLoading(false); }
+  };
+
+  const fetchCategories = async () => {
+    setCatsLoading(true);
+    try {
+      const res = await fetch("http://159.89.20.100/api/channels/categories");
+      setCategories(await res.json());
+    } catch (e) { console.error(e); }
+    finally { setCatsLoading(false); }
+  };
+
+  const handleAddCategory = async () => {
+    if (!newCat.name_en || !newCat.name_ka) return;
+    try {
+      const res = await fetch("http://159.89.20.100/api/admin/categories", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Accept: "application/json" },
+        body: JSON.stringify(newCat),
+      });
+      if (res.ok) { setShowAddCategory(false); setNewCat({ name_en: "", name_ka: "", icon_url: "" }); fetchCategories(); }
+      else { const e = await res.json().catch(() => null); alert(`Failed: ${e?.message}`); }
+    } catch (e) { console.error(e); }
+  };
+
+  const handleEditCategory = async () => {
+    if (!editCat) return;
+    setEditSaving(true);
+    try {
+      const res = await fetch(`http://159.89.20.100/api/admin/categories/${editCat.id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json", Accept: "application/json" },
+        body: JSON.stringify(editForm),
+      });
+      if (res.ok) { setEditModal(false); fetchCategories(); }
+      else { const e = await res.json().catch(() => null); alert(`Failed: ${e?.message}`); }
+    } catch (e) { console.error(e); }
+    finally { setEditSaving(false); }
+  };
+
+  const handleDeleteCategory = async () => {
+    if (!deleteCat) return;
+    setDeleteLoading(true);
+    try {
+      const res = await fetch(`http://159.89.20.100/api/admin/categories/${deleteCat.id}`, { method: "DELETE" });
+      if (res.ok) { setDeleteModal(false); fetchCategories(); }
+      else { const e = await res.json().catch(() => null); alert(`Failed: ${e?.message}`); }
+    } catch (e) { console.error(e); }
+    finally { setDeleteLoading(false); }
+  };
+
+  const openManageCategory = async (cat: Category) => {
+    setActiveCategory(cat);
+    setCategoryChannelList(null);
+    setManageModal(true);
+    try {
+      const res = await fetch(`http://159.89.20.100/api/admin/categories/${cat.id}`);
+      const data = await res.json();
+      setCategoryChannelList(Array.isArray(data) ? data : data.channels ?? []);
+    } catch { setCategoryChannelList([]); }
+  };
+
+  const openEditModal = (cat: Category) => {
+    setEditCat(cat);
+    setEditForm({ name_en: cat.name_en, name_ka: cat.name_ka, icon_url: cat.icon_url ?? "" });
+    setEditModal(true);
+  };
+
+  const openDeleteModal = (cat: Category) => {
+    setDeleteCat(cat);
+    setDeleteModal(true);
+  };
+
+  const confirmBulkAssign = async () => {
+    if (!selectedCategoryId || !selectedChannelUuids.length) return;
+    setBulkAssigning(true);
+    try {
+      const res = await fetch(`http://159.89.20.100/api/admin/categories/${selectedCategoryId}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ channel_ids: selectedChannelUuids }),
+      });
+      if (res.ok) { setBulkAssignModal(false); setSelectedChannelUuids([]); fetchChannels(); }
+      else { const e = await res.json().catch(() => null); alert(`Failed: ${e?.message}`); }
+    } catch (e) { console.error(e); }
+    finally { setBulkAssigning(false); }
   };
 
   useEffect(() => {
-    if (section === "Channels" || section === "Overview") {
-      fetchChannels();
-    }
+    fetchCategories();
+    if (section === "Channels" || section === "Overview") fetchChannels();
   }, [section]);
 
-  /* ── Assign channel to category ── */
-  const openAssignModal = (channel: Channel) => {
-    setAssignTarget(channel);
-    setAssignCategoryId(categories[0]?.id ?? "");
-    setAssignError(null);
-    setAssignSuccess(false);
-    setAssignModal(true);
-  };
-
-  const submitAssign = async () => {
-    if (!assignTarget || !assignCategoryId) return;
-    setAssignLoading(true);
-    setAssignError(null);
-    setAssignSuccess(false);
-    try {
-      const response = await fetch(
-        `http://159.89.20.100/api/channels/${assignTarget.id}/categories/${assignCategoryId}`,
-        { method: "POST" }
-      );
-      if (!response.ok) throw new Error(`Failed: ${response.status}`);
-      // Optimistically update local channel categories
-      setChannels((prev) =>
-        prev.map((c) =>
-          c.id === assignTarget.id
-            ? { ...c, categories: [...new Set([...(c.categories ?? []), assignCategoryId])] }
-            : c
-        )
-      );
-      setAssignSuccess(true);
-      setTimeout(() => setAssignModal(false), 1200);
-    } catch (err: any) {
-      setAssignError(err.message);
-    } finally {
-      setAssignLoading(false);
-    }
-  };
-
-  /* ── Filtered data ── */
-  const filteredChannels = channels.filter((c) =>
+  const filteredChannels = channels.filter(c =>
     c.name.toLowerCase().includes(channelSearch.toLowerCase())
   );
-
-  const filteredUsers = users.filter(
-    (u) =>
-      u.name.toLowerCase().includes(userSearch.toLowerCase()) ||
-      u.email.toLowerCase().includes(userSearch.toLowerCase())
-  );
-
-  const filteredTickets =
-    ticketFilter === "All" ? tickets : tickets.filter((t) => t.status === ticketFilter);
-
-  /* ── Other handlers ── */
-  const toggleUserStatus = (id: string) => {
-    setUsers((prev) =>
-      prev.map((u) =>
-        u.id === id ? { ...u, status: u.status === "Active" ? "Suspended" : "Active" } : u
-      )
-    );
-    if (selectedUser?.id === id)
-      setSelectedUser((prev) =>
-        prev ? { ...prev, status: prev.status === "Active" ? "Suspended" : "Active" } : prev
-      );
-  };
-
-  const toggleCategoryVisibility = (id: string) =>
-    setCategories((prev) =>
-      prev.map((c) => (c.id === id ? { ...c, visible: !c.visible } : c))
-    );
-
-  const deleteCategory = (id: string) =>
-    setCategories((prev) => prev.filter((c) => c.id !== id));
-
-  const addCategory = () => {
-    if (!newCatName.trim()) return;
-    setCategories((prev) => [
-      ...prev,
-      {
-        id: `cat${Date.now()}`,
-        name: newCatName,
-        channels: 0,
-        color: CATEGORY_COLORS[prev.length % CATEGORY_COLORS.length],
-        visible: true,
-      },
-    ]);
-    setNewCatName("");
-    setShowAddCategory(false);
-  };
-
-  const resolveTicket = (id: string) => {
-    setTickets((prev) =>
-      prev.map((t) => (t.id === id ? { ...t, status: "Resolved" } : t))
-    );
-    if (selectedTicket?.id === id)
-      setSelectedTicket((prev) => (prev ? { ...prev, status: "Resolved" } : prev));
-  };
-
-  const sendReply = () => {
-    if (!replyText.trim() || !selectedTicket) return;
-    resolveTicket(selectedTicket.id);
-    setReplyText("");
-  };
-
-  /* ── Category name lookup ── */
-  const getCategoryName = (id: string) =>
-    categories.find((c) => c.id === id)?.name ?? id;
+  const toggleSelectChannel = (uuid: string) =>
+    setSelectedChannelUuids(prev => prev.includes(uuid) ? prev.filter(id => id !== uuid) : [...prev, uuid]);
 
   return (
     <div className="flex h-screen bg-zinc-950 text-zinc-300 text-sm font-sans overflow-hidden">
 
-      {/* Mobile overlay */}
-      {sidebarOpen && (
-        <div className="fixed inset-0 bg-black/60 z-20 lg:hidden" onClick={() => setSidebarOpen(false)} />
-      )}
-
-      {/* ── SIDEBAR ── */}
-      <aside className={`
-        fixed top-0 left-0 h-full z-30 w-56 flex flex-col
-        bg-zinc-900 border-r border-zinc-800 transition-transform duration-300
-        lg:static lg:sticky lg:top-0 lg:flex-shrink-0 lg:translate-x-0
-        ${sidebarOpen ? "translate-x-0" : "-translate-x-full"}
-      `}>
-        <div className="flex items-center gap-2.5 px-5 py-4 border-b border-zinc-800">
-          <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-violet-500 to-fuchsia-600 flex items-center justify-center text-white text-xs font-bold">A</div>
-          <div>
-            <p className="text-xs font-semibold text-zinc-100 leading-none">StreamAdmin</p>
-            <p className="text-[0.6rem] text-zinc-600 mt-0.5">Control Panel</p>
-          </div>
-        </div>
-
-        <nav className="flex-1 p-3 flex flex-col gap-0.5">
-          {NAV.map(({ section: s, icon, badge }) => (
+      {/* SIDEBAR */}
+      <aside className="hidden lg:flex flex-col w-56 bg-zinc-900 border-r border-zinc-800 flex-shrink-0">
+        <div className="p-5 border-b border-zinc-800 font-bold text-zinc-100 tracking-tight">StreamAdmin</div>
+        <nav className="p-3 flex flex-col gap-1">
+          {(["Overview", "Channels", "Categories", "Users"] as AdminSection[]).map(s => (
             <button
-              key={s}
-              onClick={() => { setSection(s); setSidebarOpen(false); }}
-              className={`
-                flex items-center justify-between px-3 py-2.5 rounded-xl text-sm transition-all duration-150 text-left w-full
-                ${section === s
-                  ? "bg-violet-500/15 text-violet-300 font-medium"
-                  : "text-zinc-500 hover:bg-zinc-800 hover:text-zinc-300"}
-              `}
-            >
-              <span className="flex items-center gap-2.5">
-                <span className="text-base opacity-70">{icon}</span>
-                {s}
-              </span>
-              {badge !== undefined && (
-                <span className={`text-[0.6rem] font-bold px-1.5 py-0.5 rounded-full ${
-                  section === s ? "bg-violet-500/30 text-violet-300" : "bg-zinc-800 text-zinc-500"
-                }`}>{badge}</span>
-              )}
-            </button>
+              key={s} onClick={() => setSection(s)}
+              className={`cursor-pointer px-3 py-2 rounded-xl text-left text-sm transition-colors ${section === s ? "bg-violet-500/15 text-violet-300 font-medium" : "text-zinc-500 hover:bg-zinc-800 hover:text-zinc-300"}`}
+            >{s}</button>
           ))}
         </nav>
-
-        <div className="p-3 border-t border-zinc-800">
-          <div className="flex items-center gap-2.5 px-3 py-2.5 rounded-xl bg-zinc-800/60">
-            <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-zinc-600 to-zinc-500 flex items-center justify-center text-xs font-bold text-zinc-200">SA</div>
-            <div className="min-w-0">
-              <p className="text-xs font-medium text-zinc-300 truncate">Super Admin</p>
-              <p className="text-[0.6rem] text-zinc-600 truncate">admin@stream.io</p>
-            </div>
-          </div>
-        </div>
       </aside>
 
-      {/* ── MAIN ── */}
       <div className="flex-1 flex flex-col min-w-0 overflow-y-auto">
-        <header className="flex items-center justify-between px-5 py-3 border-b border-zinc-800 bg-zinc-950 sticky top-0 z-10">
-          <div className="flex items-center gap-3">
-            <button className="lg:hidden text-zinc-500 hover:text-zinc-200 text-lg" onClick={() => setSidebarOpen(true)}>☰</button>
-            <div>
-              <h2 className="text-sm font-semibold text-zinc-100">{section}</h2>
-              <p className="text-[0.65rem] text-zinc-600 hidden sm:block">
-                {section === "Overview"   && "Platform at a glance"}
-                {section === "Users"      && `${users.length} total users`}
-                {section === "Channels"   && (channelsLoading ? "Loading…" : `${channels.length} channels`)}
-                {section === "Categories" && `${categories.length} categories`}
-                {section === "Support"    && `${openTickets} open tickets`}
-                {section === "Settings"   && "Platform configuration"}
-              </p>
+
+        {/* HEADER */}
+        <header className="px-5 py-3 border-b border-zinc-800 bg-zinc-950/80 backdrop-blur flex justify-between items-center sticky top-0 z-10">
+          <h2 className="font-semibold text-zinc-100">{section}</h2>
+          {selectedChannelUuids.length > 0 && section === "Channels" && (
+            <div className="flex items-center gap-3">
+              <span className="text-xs text-zinc-400">
+                <span className="text-violet-400 font-semibold">{selectedChannelUuids.length}</span> არჩეული
+              </span>
+              <button
+                onClick={() => { setSelectedCategoryId(""); setBulkAssignModal(true); }}
+                className="cursor-pointer bg-violet-600 hover:bg-violet-500 transition-colors text-white text-xs font-medium px-4 py-1.5 rounded-lg flex items-center gap-1.5"
+              >
+                <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M6 1v10M1 6h10" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/></svg>
+                დამატება კატეგორიაში
+              </button>
+              <button onClick={() => setSelectedChannelUuids([])} className="cursor-pointer text-xs text-zinc-500 hover:text-zinc-300 px-2 py-1.5 rounded-lg hover:bg-zinc-800 transition-colors">გასუფთავება</button>
             </div>
-          </div>
-          <div className="flex items-center gap-2">
-            <div className="relative">
-              <span className="w-2 h-2 rounded-full bg-rose-400 absolute -top-0.5 -right-0.5 border border-zinc-950" />
-              <button className="w-8 h-8 rounded-xl bg-zinc-800 hover:bg-zinc-700 flex items-center justify-center text-zinc-400 text-sm transition-colors">🔔</button>
-            </div>
-          </div>
+          )}
         </header>
 
-        <main className="flex-1 p-5 md:p-6 overflow-x-hidden space-y-5">
+        <main className="p-6 space-y-5">
 
-          {/* ────────── OVERVIEW ────────── */}
-          {section === "Overview" && (
-            <div className="space-y-5">
-              <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-                <KpiCard label="Total Users"   value={users.length.toString()}    sub="+3 this week"                         color="violet"  icon="◉" />
-                <KpiCard label="Channels"      value={channelsLoading ? "…" : channels.length.toString()} sub="registered"  color="emerald" icon="▶" />
-                <KpiCard label="Categories"    value={categories.length.toString()} sub={`${categories.filter(c=>c.visible).length} visible`} color="sky" icon="⊞" />
-                <KpiCard label="Open Tickets"  value={openTickets.toString()}      sub="need response"                        color="rose"    icon="✉" />
-              </div>
-
-              <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
-                <Panel title="Recent Users" action={{ label: "View all", onClick: () => setSection("Users") }}>
-                  {users.slice(0, 4).map((u) => (
-                    <div key={u.id} className="flex items-center gap-3 py-2.5 border-b border-zinc-800/50 last:border-0">
-                      <div className="w-8 h-8 rounded-xl bg-zinc-800 flex items-center justify-center text-xs font-semibold text-zinc-300 flex-shrink-0">
-                        {u.name.split(" ").map((n) => n[0]).join("")}
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium text-zinc-200 truncate">{u.name}</p>
-                        <p className="text-xs text-zinc-600 truncate">{u.email}</p>
-                      </div>
-                      <StatusBadge status={u.status} />
-                    </div>
-                  ))}
-                </Panel>
-
-                <Panel title="Open Support Tickets" action={{ label: "View all", onClick: () => setSection("Support") }}>
-                  <div className="grid grid-cols-1 gap-2">
-                    {tickets.filter(t => t.status === "Open").slice(0, 3).map((t) => (
-                      <div key={t.id}
-                        className="p-3 rounded-xl bg-zinc-800/40 border border-zinc-800 hover:border-zinc-700 cursor-pointer transition-colors"
-                        onClick={() => { setSelectedTicket(t); setSection("Support"); }}>
-                        <div className="flex items-start justify-between gap-2 mb-1">
-                          <p className="text-xs font-medium text-zinc-200 leading-snug">{t.subject}</p>
-                          <PriorityBadge priority={t.priority} />
-                        </div>
-                        <p className="text-[0.68rem] text-zinc-600">{t.user} · {t.date}</p>
-                      </div>
-                    ))}
-                  </div>
-                </Panel>
-              </div>
-            </div>
-          )}
-
-          {/* ────────── CHANNELS ────────── */}
+          {/* ── CHANNELS ── */}
           {section === "Channels" && (
             <div className="space-y-4">
-              {/* Toolbar */}
-              <div className="flex items-center gap-3 flex-wrap">
-                <input
-                  type="text"
-                  placeholder="Search channels…"
-                  value={channelSearch}
-                  onChange={(e) => setChannelSearch(e.target.value)}
-                  className="flex-1 min-w-0 bg-zinc-900 border border-zinc-800 rounded-xl px-3 py-2 text-sm text-zinc-300 placeholder-zinc-600 focus:outline-none focus:border-violet-500/50 transition-colors"
-                />
-                <button
-                  onClick={fetchChannels}
-                  disabled={channelsLoading}
-                  className="flex-shrink-0 flex items-center gap-2 px-4 py-2 rounded-xl bg-zinc-800 border border-zinc-700 text-zinc-400 text-sm hover:text-zinc-200 hover:border-zinc-600 transition-colors disabled:opacity-40"
-                >
-                  {channelsLoading ? (
-                    <span className="w-3.5 h-3.5 border-2 border-zinc-600 border-t-zinc-300 rounded-full animate-spin" />
-                  ) : "↻"} Refresh
-                </button>
-              </div>
-
-              {/* Error state */}
-              {channelsError && (
-                <div className="p-4 rounded-xl bg-rose-500/8 border border-rose-500/20 text-rose-400 text-sm flex items-center gap-2">
-                  <span>⚠</span> {channelsError}
-                  <button onClick={fetchChannels} className="ml-auto text-xs underline hover:no-underline">Retry</button>
-                </div>
-              )}
-
-              {/* Loading skeleton */}
-              {channelsLoading && !channelsError && (
-                <div className="rounded-2xl bg-zinc-900 border border-zinc-800 overflow-hidden">
-                  <div className="px-5 py-3.5 border-b border-zinc-800">
-                    <div className="h-3 w-24 bg-zinc-800 rounded animate-pulse" />
-                  </div>
-                  <div className="px-5 py-3 space-y-4">
-                    {Array.from({ length: 6 }).map((_, i) => (
-                      <div key={i} className="flex items-center gap-4 animate-pulse">
-                        <div className="w-8 h-8 rounded-xl bg-zinc-800" />
-                        <div className="flex-1 space-y-1.5">
-                          <div className="h-3 bg-zinc-800 rounded w-36" />
-                          <div className="h-2.5 bg-zinc-800/60 rounded w-20" />
-                        </div>
-                        <div className="h-5 w-16 bg-zinc-800 rounded-md" />
-                        <div className="h-7 w-24 bg-zinc-800 rounded-lg" />
-                      </div>
+              <input
+                type="text" placeholder="Search channels…" value={channelSearch}
+                onChange={e => setChannelSearch(e.target.value)}
+                className="w-full bg-zinc-900 border border-zinc-800 rounded-xl px-4 py-2 focus:outline-none focus:border-zinc-600 transition-colors"
+              />
+              <div className="bg-zinc-900 border border-zinc-800 rounded-2xl overflow-hidden">
+                <table className="w-full text-left">
+                  <thead className="bg-zinc-800/50 text-[0.6rem] uppercase tracking-widest text-zinc-500">
+                    <tr>
+                      <th className="p-4 w-10">
+                        <input type="checkbox" className="cursor-pointer accent-violet-500"
+                          checked={filteredChannels.length > 0 && filteredChannels.every(c => selectedChannelUuids.includes(c.uuid))}
+                          onChange={e => e.target.checked ? setSelectedChannelUuids(filteredChannels.map(c => c.uuid)) : setSelectedChannelUuids([])}
+                        />
+                      </th>
+                      <th className="p-4">არხი</th>
+                      <th className="p-4">ID</th>
+                      <th className="p-4">კატეგორია</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {filteredChannels.map(c => (
+                      <tr key={c.id} className={`border-t border-zinc-800 hover:bg-zinc-800/30 transition-colors ${selectedChannelUuids.includes(c.uuid) ? "bg-violet-500/5" : ""}`}>
+                        <td className="p-4">
+                          <input type="checkbox" className="cursor-pointer accent-violet-500"
+                            checked={selectedChannelUuids.includes(c.uuid)}
+                            onChange={() => toggleSelectChannel(c.uuid)}
+                          />
+                        </td>
+                        <td className="p-4">
+                          <div className="flex items-center gap-3">
+                            <img src={c.logo} className="w-8 h-8 rounded bg-zinc-800 object-contain" />
+                            <span className="text-zinc-200">{c.name}</span>
+                          </div>
+                        </td>
+                        <td className="p-4 font-mono text-[0.65rem] text-zinc-500">{c.uuid}</td>
+                        <td className="p-4">
+                          <span className="inline-block bg-violet-600/20 text-violet-300 px-2 py-1 rounded-md text-xs font-medium">{c.category}</span>
+                        </td>
+                      </tr>
                     ))}
-                  </div>
-                </div>
-              )}
-
-              {/* Channels table */}
-              {!channelsLoading && !channelsError && (
-                <Panel title={`${filteredChannels.length} channels`}>
-                  <div className="overflow-auto max-h-[calc(100vh-220px)]">
-                    <table className="w-full min-w-[600px]">
-                      <thead className="sticky top-0 z-10 bg-zinc-900">
-                        <tr className="border-b border-zinc-800">
-                          {["#", "Channel", "Categories", "URL", "Assign Category"].map((h) => (
-                            <th key={h} className="pb-3 pt-1 text-left text-[0.6rem] font-semibold text-zinc-700 uppercase tracking-widest pr-4">{h}</th>
-                          ))}
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {filteredChannels.map((c) => (
-                          <tr
-                            key={c.id}
-                            className={`border-b border-zinc-800/40 hover:bg-zinc-800/25 transition-colors cursor-pointer ${selectedChannel?.id === c.id ? "bg-violet-500/5" : ""}`}
-                            onClick={() => setSelectedChannel(c)}
-                          >
-                            {/* Channel number */}
-                            <td className="py-3 pr-4 font-mono text-xs text-zinc-600 w-8">{c.number}</td>
-
-                            {/* Name + logo */}
-                            <td className="py-3 pr-4">
-                              <div className="flex items-center gap-2.5">
-                                {c.logo ? (
-                                  <img
-                                    src={c.logo}
-                                    alt={c.name}
-                                    className="w-8 h-8 rounded-lg object-contain bg-zinc-800 border border-zinc-700 p-0.5 flex-shrink-0"
-                                    onError={(e) => {
-                                      (e.target as HTMLImageElement).style.display = "none";
-                                    }}
-                                  />
-                                ) : (
-                                  <div className="w-8 h-8 rounded-lg bg-zinc-800 border border-zinc-700 flex items-center justify-center text-xs text-zinc-500 flex-shrink-0">▶</div>
-                                )}
-                                <div className="min-w-0">
-                                  <p className="text-sm font-medium text-zinc-200 truncate max-w-[140px]">{c.name}</p>
-                                  <p className="text-[0.62rem] text-zinc-700 font-mono truncate max-w-[140px]">{c.uuid}</p>
-                                </div>
-                              </div>
-                            </td>
-
-                            {/* Categories */}
-                            <td className="py-3 pr-4">
-                              <div className="flex flex-wrap gap-1 max-w-[160px]">
-                                {(c.categories ?? []).length > 0 ? (
-                                  (c.categories ?? []).slice(0, 3).map((catId) => (
-                                    <span
-                                      key={catId}
-                                      className="px-1.5 py-0.5 rounded-md text-[0.6rem] font-medium bg-zinc-800 border border-zinc-700 text-zinc-400"
-                                    >
-                                      {getCategoryName(catId)}
-                                    </span>
-                                  ))
-                                ) : (
-                                  <span className="text-[0.65rem] text-zinc-700 italic">No category</span>
-                                )}
-                                {(c.categories ?? []).length > 3 && (
-                                  <span className="text-[0.6rem] text-zinc-600">+{c.categories.length - 3}</span>
-                                )}
-                              </div>
-                            </td>
-
-                            {/* URL */}
-                            <td className="py-3 pr-4">
-                              <span className="text-[0.65rem] text-zinc-600 font-mono truncate block max-w-[120px]" title={c.url}>
-                                {c.url ? c.url.replace(/^https?:\/\//, "").slice(0, 28) + (c.url.length > 28 ? "…" : "") : "—"}
-                              </span>
-                            </td>
-
-                            {/* Assign button */}
-                            <td className="py-3" onClick={(e) => e.stopPropagation()}>
-                              <button
-                                onClick={() => openAssignModal(c)}
-                                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-violet-500/10 border border-violet-500/25 text-violet-400 text-xs font-medium hover:bg-violet-500/20 hover:border-violet-500/40 transition-colors"
-                              >
-                                + Category
-                              </button>
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-
-                    {filteredChannels.length === 0 && !channelsLoading && (
-                      <div className="py-12 text-center">
-                        <p className="text-2xl mb-2 opacity-20">▶</p>
-                        <p className="text-sm text-zinc-600">No channels found</p>
-                      </div>
-                    )}
-                  </div>
-                </Panel>
-              )}
+                  </tbody>
+                </table>
+              </div>
             </div>
           )}
 
-          {/* ────────── USERS ────────── */}
-          {section === "Users" && (
-            <div className="flex gap-4">
-              <div className="flex-1 min-w-0 space-y-3">
-                <div className="flex items-center gap-3 flex-wrap">
-                  <input
-                    type="text"
-                    placeholder="Search users…"
-                    value={userSearch}
-                    onChange={(e) => setUserSearch(e.target.value)}
-                    className="flex-1 min-w-0 bg-zinc-900 border border-zinc-800 rounded-xl px-3 py-2 text-sm text-zinc-300 placeholder-zinc-600 focus:outline-none focus:border-violet-500/50 transition-colors"
-                  />
-                  <div className="flex gap-2 flex-shrink-0">
-                    {[
-                      { label: "Active",    count: users.filter(u => u.status === "Active").length,    color: "text-emerald-400" },
-                      { label: "Suspended", count: users.filter(u => u.status === "Suspended").length, color: "text-rose-400"    },
-                      { label: "Pending",   count: users.filter(u => u.status === "Pending").length,   color: "text-amber-400"   },
-                    ].map(({ label, count, color }) => (
-                      <div key={label} className="px-3 py-1.5 rounded-xl bg-zinc-900 border border-zinc-800 text-xs">
-                        <span className={`font-semibold ${color}`}>{count}</span>
-                        <span className="text-zinc-600 ml-1">{label}</span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-
-                <Panel title="">
-                  <div className="overflow-x-auto">
-                    <table className="w-full min-w-[560px]">
-                      <thead>
-                        <tr className="border-b border-zinc-800">
-                          {["User", "Plan", "Status", "Watch Time", "Joined", "Action"].map(h => (
-                            <th key={h} className="pb-3 text-left text-[0.6rem] font-semibold text-zinc-700 uppercase tracking-widest pr-4">{h}</th>
-                          ))}
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {filteredUsers.map((u) => (
-                          <tr
-                            key={u.id}
-                            className={`border-b border-zinc-800/40 hover:bg-zinc-800/30 cursor-pointer transition-colors ${selectedUser?.id === u.id ? "bg-violet-500/5" : ""}`}
-                            onClick={() => setSelectedUser(u)}
-                          >
-                            <td className="py-3 pr-4">
-                              <div className="flex items-center gap-2.5">
-                                <div className="w-7 h-7 rounded-lg bg-zinc-800 flex items-center justify-center text-[0.65rem] font-semibold text-zinc-300 flex-shrink-0">
-                                  {u.name.split(" ").map(n => n[0]).join("")}
-                                </div>
-                                <div className="min-w-0">
-                                  <p className="text-xs font-medium text-zinc-200 truncate">{u.name}</p>
-                                  <p className="text-[0.65rem] text-zinc-600 truncate">{u.email}</p>
-                                </div>
-                              </div>
-                            </td>
-                            <td className="py-3 pr-4"><PlanBadge plan={u.plan} /></td>
-                            <td className="py-3 pr-4"><StatusBadge status={u.status} /></td>
-                            <td className="py-3 pr-4 font-mono text-xs text-zinc-400">{u.watchTime}</td>
-                            <td className="py-3 pr-4 text-xs text-zinc-600">{u.joined}</td>
-                            <td className="py-3">
-                              <button
-                                onClick={(e) => { e.stopPropagation(); toggleUserStatus(u.id); }}
-                                className={`text-[0.65rem] font-medium px-2.5 py-1 rounded-lg border transition-colors ${
-                                  u.status === "Active"
-                                    ? "border-rose-500/30 text-rose-400 hover:bg-rose-500/10"
-                                    : "border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/10"
-                                }`}
-                              >
-                                {u.status === "Active" ? "Suspend" : "Restore"}
-                              </button>
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                </Panel>
-              </div>
-
-              {selectedUser && (
-                <div className="w-64 flex-shrink-0">
-                  <div className="rounded-2xl bg-zinc-900 border border-zinc-800 overflow-hidden">
-                    <div className="p-4 border-b border-zinc-800 flex items-center justify-between">
-                      <span className="text-[0.65rem] font-semibold text-zinc-600 uppercase tracking-widest">User Detail</span>
-                      <button onClick={() => setSelectedUser(null)} className="text-zinc-600 hover:text-zinc-300 transition-colors">✕</button>
-                    </div>
-                    <div className="p-4 space-y-3">
-                      <div className="flex flex-col items-center gap-2 py-2">
-                        <div className="w-14 h-14 rounded-2xl bg-zinc-800 flex items-center justify-center text-lg font-semibold text-zinc-300">
-                          {selectedUser.name.split(" ").map(n => n[0]).join("")}
-                        </div>
-                        <p className="text-sm font-semibold text-zinc-200">{selectedUser.name}</p>
-                        <StatusBadge status={selectedUser.status} />
-                      </div>
-                      {[
-                        { label: "Email",      value: selectedUser.email      },
-                        { label: "Plan",       value: selectedUser.plan       },
-                        { label: "Watch time", value: selectedUser.watchTime  },
-                        { label: "Joined",     value: selectedUser.joined     },
-                      ].map(({ label, value }) => (
-                        <div key={label} className="flex justify-between items-center py-1.5 border-b border-zinc-800/60 last:border-0">
-                          <span className="text-[0.65rem] text-zinc-600 uppercase tracking-widest">{label}</span>
-                          <span className="text-xs text-zinc-300 text-right max-w-[60%] break-all">{value}</span>
-                        </div>
-                      ))}
-                      <button
-                        onClick={() => toggleUserStatus(selectedUser.id)}
-                        className={`w-full mt-1 py-2 rounded-xl text-xs font-medium border transition-colors ${
-                          selectedUser.status === "Active"
-                            ? "border-rose-500/30 text-rose-400 hover:bg-rose-500/10"
-                            : "border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/10"
-                        }`}
-                      >
-                        {selectedUser.status === "Active" ? "Suspend Account" : "Restore Account"}
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              )}
-            </div>
-          )}
-
-          {/* ────────── CATEGORIES ────────── */}
+          {/* ── CATEGORIES ── */}
           {section === "Categories" && (
-            <div className="space-y-4">
-              <div className="flex items-center justify-between">
-                <p className="text-xs text-zinc-600">{categories.length} categories · {categories.filter(c => c.visible).length} visible</p>
+            <div className="space-y-5">
+              <div className="flex justify-between items-center">
+                <p className="text-zinc-400 text-xs">სულ {categories.length} კატეგორია</p>
                 <button
                   onClick={() => setShowAddCategory(true)}
-                  className="flex items-center gap-2 px-4 py-2 rounded-xl bg-violet-500/15 border border-violet-500/30 text-violet-300 text-sm font-medium hover:bg-violet-500/25 transition-colors"
+                  className="cursor-pointer bg-violet-600 hover:bg-violet-500 transition-colors text-white px-4 py-2 rounded-xl text-xs font-medium flex items-center gap-1.5"
                 >
-                  + Add Category
+                  <svg width="11" height="11" viewBox="0 0 11 11" fill="none"><path d="M5.5 1v9M1 5.5h9" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/></svg>
+                  კატეგორიის დამატება
                 </button>
               </div>
 
               {showAddCategory && (
-                <div className="rounded-2xl bg-zinc-900 border border-zinc-800 overflow-hidden">
-                  <div className="flex items-center gap-2 px-5 py-3.5 border-b border-zinc-800">
-                    <span className="text-[0.6rem] font-semibold text-zinc-700 font-mono tracking-widest">NEW</span>
-                    <h2 className="text-xs font-medium text-zinc-500 tracking-widest uppercase">New Category</h2>
+                <div className="bg-zinc-900 p-5 rounded-2xl border border-zinc-700 space-y-3 shadow-lg">
+                  <p className="text-xs font-semibold text-zinc-400 uppercase tracking-widest mb-1">New Category</p>
+                  <div className="grid grid-cols-2 gap-3">
+                    <input placeholder="Name (EN)" className="bg-zinc-800 border border-zinc-700 p-2.5 rounded-xl text-sm focus:outline-none focus:border-zinc-500 transition-colors" value={newCat.name_en} onChange={e => setNewCat({ ...newCat, name_en: e.target.value })} />
+                    <input placeholder="Name (KA)" className="bg-zinc-800 border border-zinc-700 p-2.5 rounded-xl text-sm focus:outline-none focus:border-zinc-500 transition-colors" value={newCat.name_ka} onChange={e => setNewCat({ ...newCat, name_ka: e.target.value })} />
                   </div>
-                  <div className="px-5 py-4 flex items-center gap-3">
-                    <input
-                      autoFocus
-                      placeholder="Category name…"
-                      value={newCatName}
-                      onChange={(e) => setNewCatName(e.target.value)}
-                      onKeyDown={(e) => e.key === "Enter" && addCategory()}
-                      className="flex-1 bg-zinc-800 border border-zinc-700 rounded-xl px-3 py-2 text-sm text-zinc-300 placeholder-zinc-600 focus:outline-none focus:border-violet-500/40 transition-colors"
+                  <input placeholder="Icon URL (optional)" className="w-full bg-zinc-800 border border-zinc-700 p-2.5 rounded-xl text-sm focus:outline-none focus:border-zinc-500 transition-colors" value={newCat.icon_url} onChange={e => setNewCat({ ...newCat, icon_url: e.target.value })} />
+                  <div className="flex gap-2 pt-1">
+                    <button onClick={handleAddCategory} className="cursor-pointer bg-violet-600 hover:bg-violet-500 px-5 py-2 rounded-xl text-xs font-medium transition-colors">შენახვა</button>
+                    <button onClick={() => setShowAddCategory(false)} className="cursor-pointer bg-zinc-800 hover:bg-zinc-700 px-4 py-2 rounded-xl text-xs transition-colors">გაუქმება</button>
+                  </div>
+                </div>
+              )}
+
+              {/* Category grid */}
+              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
+                {categories.map(cat => (
+                  <div key={cat.id} className="group bg-zinc-900 border border-zinc-800 hover:border-zinc-700 transition-colors rounded-2xl p-4 flex items-center gap-4">
+                    {/* Icon */}
+                    <div className="w-11 h-11 rounded-xl bg-zinc-800 flex items-center justify-center flex-shrink-0 overflow-hidden">
+                      {cat.icon_url
+                        ? <img src={cat.icon_url} className="w-7 h-7 object-contain" />
+                        : <span className="text-xl">📁</span>
+                      }
+                    </div>
+                    {/* Names */}
+                    <div className="flex-1 min-w-0">
+                      <p className="font-semibold text-zinc-100 truncate leading-tight">{cat.name_en}</p>
+                      <p className="text-[0.65rem] text-zinc-500 truncate mt-0.5">{cat.name_ka}</p>
+                    </div>
+                    {/* Action menu */}
+                    <CategoryMenu
+                      onManage={() => openManageCategory(cat)}
+                      onEdit={() => openEditModal(cat)}
+                      onDelete={() => openDeleteModal(cat)}
                     />
-                    <button
-                      onClick={addCategory}
-                      className="px-4 py-2 rounded-xl bg-violet-500/10 border border-violet-500/25 text-violet-400 text-xs font-medium hover:bg-violet-500/20 hover:border-violet-500/40 transition-colors flex-shrink-0"
-                    >
-                      Add
-                    </button>
-                    <button
-                      onClick={() => { setShowAddCategory(false); setNewCatName(""); }}
-                      className="px-4 py-2 rounded-xl bg-zinc-800 border border-zinc-700 text-zinc-500 text-xs hover:text-zinc-300 hover:border-zinc-600 transition-colors flex-shrink-0"
-                    >
-                      Cancel
-                    </button>
-                  </div>
-                </div>
-              )}
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
-                {categories.map((cat) => (
-                  <div key={cat.id} className={`p-4 rounded-2xl border transition-all ${cat.visible ? "bg-zinc-900 border-zinc-800 hover:border-zinc-700" : "bg-zinc-900/40 border-zinc-800/40 opacity-50"}`}>
-                    <div className="flex items-start justify-between mb-3">
-                      <div className="flex items-center gap-2">
-                        <span className="w-3 h-3 rounded-full flex-shrink-0" style={{ background: cat.color }} />
-                        {editingCat === cat.id ? (
-                          <input
-                            autoFocus
-                            defaultValue={cat.name}
-                            onBlur={(e) => {
-                              setCategories(prev => prev.map(c => c.id === cat.id ? { ...c, name: e.target.value || c.name } : c));
-                              setEditingCat(null);
-                            }}
-                            onKeyDown={(e) => { if (e.key === "Enter") (e.target as HTMLInputElement).blur(); }}
-                            className="bg-zinc-800 border border-violet-500/40 rounded-lg px-2 py-0.5 text-sm text-zinc-200 focus:outline-none w-28"
-                          />
-                        ) : (
-                          <span className="text-sm font-medium text-zinc-200">{cat.name}</span>
-                        )}
-                      </div>
-                      <div className="flex items-center gap-1">
-                        <button onClick={() => setEditingCat(cat.id)} className="w-6 h-6 rounded-lg hover:bg-zinc-700 flex items-center justify-center text-zinc-600 hover:text-zinc-300 text-xs transition-colors">✎</button>
-                        <button onClick={() => deleteCategory(cat.id)} className="w-6 h-6 rounded-lg hover:bg-rose-500/10 flex items-center justify-center text-zinc-700 hover:text-rose-400 text-xs transition-colors">✕</button>
-                      </div>
-                    </div>
-                    <p className="text-xs text-zinc-600 mb-3">{cat.channels} channels</p>
-                    <button
-                      onClick={() => toggleCategoryVisibility(cat.id)}
-                      className={`w-full py-1.5 rounded-xl text-[0.68rem] font-medium border transition-colors ${cat.visible ? "border-zinc-700 text-zinc-500 hover:text-zinc-300 hover:border-zinc-600" : "border-emerald-500/30 text-emerald-500 hover:bg-emerald-500/10"}`}
-                    >
-                      {cat.visible ? "Hide from users" : "Make visible"}
-                    </button>
                   </div>
                 ))}
               </div>
-            </div>
-          )}
-
-          {/* ────────── SUPPORT ────────── */}
-          {section === "Support" && (
-            <div className="flex gap-4">
-              <div className="w-72 flex-shrink-0 space-y-3">
-                <div className="flex gap-1 p-1 bg-zinc-900 border border-zinc-800 rounded-xl">
-                  {(["All", "Open", "In Progress", "Resolved"] as const).map((f) => (
-                    <button
-                      key={f}
-                      onClick={() => setTicketFilter(f)}
-                      className={`flex-1 py-1.5 rounded-lg text-[0.63rem] font-medium transition-all ${ticketFilter === f ? "bg-zinc-800 text-zinc-200" : "text-zinc-600 hover:text-zinc-400"}`}
-                    >
-                      {f === "All" ? `All (${tickets.length})` : f}
-                    </button>
-                  ))}
-                </div>
-                <div className="space-y-2">
-                  {filteredTickets.map((t) => (
-                    <div
-                      key={t.id}
-                      onClick={() => setSelectedTicket(t)}
-                      className={`p-3 rounded-xl border cursor-pointer transition-all ${selectedTicket?.id === t.id ? "border-violet-500/40 bg-violet-500/5" : "border-zinc-800 bg-zinc-900 hover:border-zinc-700"}`}
-                    >
-                      <div className="flex items-start justify-between gap-1.5 mb-1.5">
-                        <p className="text-xs font-medium text-zinc-200 leading-snug line-clamp-2">{t.subject}</p>
-                        <PriorityBadge priority={t.priority} />
-                      </div>
-                      <div className="flex items-center justify-between">
-                        <p className="text-[0.63rem] text-zinc-600">{t.user}</p>
-                        <TicketStatusBadge status={t.status} />
-                      </div>
-                      <p className="text-[0.6rem] text-zinc-700 mt-1">{t.date}</p>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              {selectedTicket ? (
-                <div className="flex-1 min-w-0">
-                  <div className="rounded-2xl bg-zinc-900 border border-zinc-800 overflow-hidden">
-                    <div className="px-5 py-4 border-b border-zinc-800 flex items-start justify-between gap-3">
-                      <div>
-                        <h3 className="text-sm font-semibold text-zinc-100 mb-1">{selectedTicket.subject}</h3>
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <span className="text-xs text-zinc-500">{selectedTicket.user}</span>
-                          <span className="text-zinc-700">·</span>
-                          <span className="text-xs text-zinc-500">{selectedTicket.email}</span>
-                          <span className="text-zinc-700">·</span>
-                          <span className="text-xs text-zinc-600">{selectedTicket.date}</span>
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-2 flex-shrink-0">
-                        <PriorityBadge priority={selectedTicket.priority} />
-                        <TicketStatusBadge status={selectedTicket.status} />
-                      </div>
-                    </div>
-                    <div className="px-5 py-4 border-b border-zinc-800">
-                      <div className="flex items-start gap-3">
-                        <div className="w-8 h-8 rounded-xl bg-zinc-800 flex items-center justify-center text-xs font-semibold text-zinc-400 flex-shrink-0">
-                          {selectedTicket.user.split(" ").map(n => n[0]).join("")}
-                        </div>
-                        <div className="flex-1">
-                          <p className="text-xs font-medium text-zinc-400 mb-2">{selectedTicket.user} <span className="text-zinc-700 font-normal">wrote:</span></p>
-                          <p className="text-sm text-zinc-300 leading-relaxed bg-zinc-800/40 rounded-xl p-3.5 border border-zinc-800">{selectedTicket.message}</p>
-                        </div>
-                      </div>
-                    </div>
-                    {selectedTicket.status !== "Resolved" ? (
-                      <div className="px-5 py-4">
-                        <p className="text-xs font-medium text-zinc-500 mb-2.5 uppercase tracking-widest">Reply</p>
-                        <textarea
-                          rows={4}
-                          placeholder="Write your response…"
-                          value={replyText}
-                          onChange={(e) => setReplyText(e.target.value)}
-                          className="w-full bg-zinc-800 border border-zinc-700 rounded-xl px-3.5 py-3 text-sm text-zinc-300 placeholder-zinc-600 focus:outline-none focus:border-violet-500/40 resize-none transition-colors"
-                        />
-                        <div className="flex items-center gap-2 mt-3">
-                          <button onClick={sendReply} className="px-5 py-2 rounded-xl bg-violet-500/15 border border-violet-500/30 text-violet-300 text-sm font-medium hover:bg-violet-500/25 transition-colors">Send & Resolve</button>
-                          <button onClick={() => resolveTicket(selectedTicket.id)} className="px-5 py-2 rounded-xl bg-zinc-800 border border-zinc-700 text-zinc-400 text-sm hover:text-zinc-200 transition-colors">Mark Resolved</button>
-                        </div>
-                      </div>
-                    ) : (
-                      <div className="px-5 py-4 flex items-center gap-2 text-emerald-400">
-                        <span>✓</span>
-                        <span className="text-sm">This ticket has been resolved.</span>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              ) : (
-                <div className="flex-1 flex items-center justify-center">
-                  <div className="text-center space-y-2">
-                    <p className="text-3xl opacity-20">✉</p>
-                    <p className="text-sm text-zinc-600">Select a ticket to view</p>
-                  </div>
-                </div>
-              )}
-            </div>
-          )}
-
-          {/* ────────── SETTINGS ────────── */}
-          {section === "Settings" && (
-            <div className="grid grid-cols-1 xl:grid-cols-2 gap-4 max-w-3xl">
-              <Panel title="Platform Settings" action={undefined}>
-                {[
-                  { label: "Platform name",       defaultValue: "StreamApp"        },
-                  { label: "Support email",        defaultValue: "support@stream.io"},
-                  { label: "Max streams per user", defaultValue: "3"               },
-                ].map(({ label, defaultValue }) => (
-                  <div key={label} className="py-3 border-b border-zinc-800 last:border-0">
-                    <label className="block text-[0.65rem] text-zinc-600 uppercase tracking-widest mb-1.5">{label}</label>
-                    <input defaultValue={defaultValue} className="w-full bg-zinc-800 border border-zinc-700 rounded-xl px-3 py-2 text-sm text-zinc-300 focus:outline-none focus:border-violet-500/40 transition-colors" />
-                  </div>
-                ))}
-                <button className="mt-3 w-full py-2 rounded-xl bg-violet-500/15 border border-violet-500/30 text-violet-300 text-sm font-medium hover:bg-violet-500/25 transition-colors">Save Changes</button>
-              </Panel>
-
-              <Panel title="Feature Flags" action={undefined}>
-                {[
-                  { label: "Allow free signups",     defaultOn: true  },
-                  { label: "Email notifications",    defaultOn: true  },
-                  { label: "Multi-device streaming", defaultOn: true  },
-                  { label: "Offline downloads",      defaultOn: false },
-                  { label: "4K streaming",           defaultOn: true  },
-                ].map(({ label, defaultOn }) => {
-                  const [on, setOn] = useState(defaultOn);
-                  return (
-                    <div key={label} className="flex items-center justify-between py-3 border-b border-zinc-800 last:border-0">
-                      <span className="text-sm text-zinc-300">{label}</span>
-                      <button
-                        onClick={() => setOn(!on)}
-                        className={`relative w-10 h-5 rounded-full transition-colors ${on ? "bg-violet-500/50" : "bg-zinc-700"}`}
-                      >
-                        <span className={`absolute top-0.5 w-4 h-4 rounded-full bg-white shadow transition-transform ${on ? "translate-x-5" : "translate-x-0.5"}`} />
-                      </button>
-                    </div>
-                  );
-                })}
-              </Panel>
             </div>
           )}
 
         </main>
       </div>
 
-      {/* ────────── ASSIGN CATEGORY MODAL ────────── */}
-      {assignModal && assignTarget && (
-        <div className="fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-4">
-          <div className="w-full max-w-sm rounded-2xl bg-zinc-900 border border-zinc-800 overflow-hidden shadow-2xl shadow-black/60">
+      {/* ══════════════════════════════════════════
+          MANAGE CHANNELS MODAL  (redesigned)
+      ══════════════════════════════════════════ */}
+      {manageModal && activeCategory && (
+        <div className="fixed inset-0 bg-black/75 z-50 flex items-center justify-center p-4" onClick={e => { if (e.target === e.currentTarget) setManageModal(false); }}>
+          <div className="bg-zinc-900 border border-zinc-800 rounded-2xl w-full max-w-lg flex flex-col max-h-[80vh] shadow-2xl overflow-hidden">
+
             {/* Header */}
-            <div className="flex items-center justify-between px-5 py-4 border-b border-zinc-800">
-              <div>
-                <h3 className="text-sm font-semibold text-zinc-100">Assign Category</h3>
-                <p className="text-xs text-zinc-600 mt-0.5 truncate max-w-[240px]">{assignTarget.name}</p>
+            <div className="p-5 border-b border-zinc-800 flex items-center gap-4">
+              <div className="w-11 h-11 rounded-xl bg-zinc-800 flex items-center justify-center flex-shrink-0 overflow-hidden">
+                {activeCategory.icon_url
+                  ? <img src={activeCategory.icon_url} className="w-7 h-7 object-contain" />
+                  : <span className="text-xl">📁</span>
+                }
               </div>
-              <button onClick={() => setAssignModal(false)} className="text-zinc-600 hover:text-zinc-300 transition-colors text-base">✕</button>
+              <div className="flex-1 min-w-0">
+                <h3 className="font-bold text-zinc-100 text-base leading-tight">{activeCategory.name_en}</h3>
+                <p className="text-[0.65rem] text-zinc-500 mt-0.5">
+                  {categoryChannelList === null
+                    ? "Loading channels…"
+                    : <><span className="text-violet-400 font-semibold">{categoryChannelList.length}</span> channels in this category</>
+                  }
+                </p>
+              </div>
+              <button onClick={() => setManageModal(false)} className="cursor-pointer w-8 h-8 flex items-center justify-center rounded-lg text-zinc-500 hover:text-zinc-200 hover:bg-zinc-800 transition-colors text-lg leading-none">✕</button>
             </div>
 
-            {/* Body */}
-            <div className="px-5 py-4 space-y-4">
-              {/* Channel info */}
-              <div className="flex items-center gap-3 p-3 rounded-xl bg-zinc-800/40 border border-zinc-800">
-                {assignTarget.logo ? (
-                  <img src={assignTarget.logo} alt={assignTarget.name} className="w-9 h-9 rounded-lg object-contain bg-zinc-800 border border-zinc-700 p-0.5 flex-shrink-0" />
-                ) : (
-                  <div className="w-9 h-9 rounded-lg bg-zinc-800 border border-zinc-700 flex items-center justify-center text-zinc-500 flex-shrink-0">▶</div>
-                )}
-                <div className="min-w-0">
-                  <p className="text-sm font-medium text-zinc-200 truncate">{assignTarget.name}</p>
-                  <p className="text-[0.62rem] text-zinc-600 font-mono">ID: {assignTarget.id}</p>
+            {/* Channel list */}
+            <div className="flex-1 overflow-y-auto">
+              {categoryChannelList === null && (
+                <div className="flex items-center justify-center gap-2 py-16 text-zinc-500 text-sm">
+                  <IconSpinner /><span>Loading…</span>
                 </div>
-              </div>
+              )}
 
-              {/* Category select */}
+              {categoryChannelList !== null && categoryChannelList.length === 0 && (
+                <div className="flex flex-col items-center justify-center py-16 gap-3 text-zinc-600">
+                  <svg width="40" height="40" viewBox="0 0 40 40" fill="none">
+                    <rect x="3" y="9" width="34" height="24" rx="3.5" stroke="currentColor" strokeWidth="1.5"/>
+                    <path d="M11 20h18M11 26h12" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+                    <circle cx="30" cy="14" r="4" fill="#27272a" stroke="currentColor" strokeWidth="1.5"/>
+                    <path d="M30 12v4M28 14h4" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/>
+                  </svg>
+                  <p className="text-sm font-medium">No channels yet</p>
+                  <p className="text-xs text-zinc-700 text-center max-w-48">გადადი არხებზე-აირჩიე რამოდენიმე დაამატე ამ კატეგორიაში</p>
+                </div>
+              )}
+
+              {categoryChannelList !== null && categoryChannelList.length > 0 && (
+                <div className="p-3 space-y-1">
+                  {categoryChannelList.map((ch: any, idx: number) => (
+                    <div
+                      key={ch.id ?? idx}
+                      className="flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-zinc-800/50 transition-colors"
+                    >
+                      {/* Index */}
+                      <span className="text-[0.6rem] text-zinc-700 w-5 text-right flex-shrink-0 font-mono tabular-nums">{idx + 1}</span>
+
+                      {/* Logo */}
+                      <div className="w-8 h-8 rounded-lg bg-zinc-800 flex items-center justify-center flex-shrink-0 overflow-hidden border border-zinc-700/50">
+                        {(ch.icon_url || ch.logo)
+                          ? <img src={ch.icon_url ?? ch.logo} className="w-6 h-6 object-contain" onError={e => (e.currentTarget.style.display = "none")} />
+                          : <span className="text-xs text-zinc-600">📺</span>
+                        }
+                      </div>
+
+                      {/* Name + id */}
+                      <div className="flex-1 min-w-0">
+                        <p className="text-zinc-200 text-sm font-medium truncate leading-tight">{ch.name_en ?? ch.name}</p>
+                        {ch.id && <p className="text-[0.58rem] text-zinc-600 font-mono truncate mt-0.5">{ch.id}</p>}
+                      </div>
+
+                      {/* Channel number badge */}
+                      {ch.number != null && (
+                        <span className="text-[0.6rem] font-mono text-zinc-500 bg-zinc-800 border border-zinc-700/50 px-2 py-0.5 rounded-md flex-shrink-0">
+                          #{ch.number}
+                        </span>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Footer hint */}
+            <div className="px-5 py-3 border-t border-zinc-800 flex items-center gap-2 text-[0.65rem] text-zinc-600">
+              <svg width="11" height="11" viewBox="0 0 11 11" fill="none">
+                <circle cx="5.5" cy="5.5" r="4.5" stroke="currentColor" strokeWidth="1.2"/>
+                <path d="M5.5 5v3M5.5 3.5v.5" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/>
+              </svg>
+              არხების დამატების ინსტრუქცია: არხების ჩანართში → აირჩიეთ არხები → დააჭირეთ "დამატება კატეგორიაში"
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ══════════════════════════════════════════
+          EDIT CATEGORY MODAL
+      ══════════════════════════════════════════ */}
+      {editModal && editCat && (
+        <div className="fixed inset-0 bg-black/75 z-50 flex items-center justify-center p-4" onClick={e => { if (e.target === e.currentTarget) setEditModal(false); }}>
+          <div className="bg-zinc-900 border border-zinc-800 rounded-2xl w-full max-w-sm shadow-2xl overflow-hidden">
+            <div className="p-5 border-b border-zinc-800 flex justify-between items-center">
               <div>
-                <label className="block text-[0.65rem] text-zinc-600 uppercase tracking-widest mb-2">Select Category</label>
-                <div className="grid grid-cols-2 gap-2">
-                  {categories.map((cat) => {
-                    const isActive = assignCategoryId === cat.id;
-                    return (
-                      <button
-                        key={cat.id}
-                        onClick={() => setAssignCategoryId(cat.id)}
-                        className={`flex items-center gap-2.5 px-3 py-2.5 rounded-xl border text-left transition-all ${
-                          isActive
-                            ? "border-violet-500/40 bg-violet-500/10 text-zinc-100"
-                            : "border-zinc-800 bg-zinc-800/40 text-zinc-400 hover:border-zinc-700 hover:text-zinc-200"
-                        }`}
-                      >
-                        <span
-                          className={`w-2 h-2 rounded-full flex-shrink-0 transition-all ${isActive ? "scale-125" : ""}`}
-                          style={{ background: cat.color }}
-                        />
-                        <span className="text-xs font-medium truncate">{cat.name}</span>
-                        {isActive && (
-                          <span className="ml-auto text-violet-400 text-xs flex-shrink-0">✓</span>
-                        )}
-                      </button>
-                    );
-                  })}
-                </div>
+                <h3 className="font-bold text-zinc-100">Edit Category</h3>
+                <p className="text-[0.65rem] text-zinc-500 mt-0.5 font-mono">ID: {editCat.id}</p>
               </div>
-
-              {/* Current categories */}
-              {(assignTarget.categories ?? []).length > 0 && (
-                <div>
-                  <p className="text-[0.65rem] text-zinc-600 uppercase tracking-widest mb-1.5">Current categories</p>
-                  <div className="flex flex-wrap gap-1.5">
-                    {(assignTarget.categories ?? []).map((catId) => (
-                      <span key={catId} className="px-2 py-0.5 rounded-md text-[0.65rem] bg-zinc-800 border border-zinc-700 text-zinc-400">
-                        {getCategoryName(catId)}
-                      </span>
-                    ))}
+              <button onClick={() => setEditModal(false)} className="cursor-pointer w-8 h-8 flex items-center justify-center rounded-lg text-zinc-500 hover:text-zinc-200 hover:bg-zinc-800 transition-colors">✕</button>
+            </div>
+            <div className="p-5 space-y-4">
+              <div>
+                <label className="text-[0.65rem] text-zinc-500 uppercase tracking-widest block mb-1.5">Name (English)</label>
+                <input
+                  className="w-full bg-zinc-800 border border-zinc-700 p-2.5 rounded-xl text-sm focus:outline-none focus:border-zinc-500 transition-colors"
+                  value={editForm.name_en}
+                  onChange={e => setEditForm({ ...editForm, name_en: e.target.value })}
+                />
+              </div>
+              <div>
+                <label className="text-[0.65rem] text-zinc-500 uppercase tracking-widest block mb-1.5">Name (Georgian)</label>
+                <input
+                  className="w-full bg-zinc-800 border border-zinc-700 p-2.5 rounded-xl text-sm focus:outline-none focus:border-zinc-500 transition-colors"
+                  value={editForm.name_ka}
+                  onChange={e => setEditForm({ ...editForm, name_ka: e.target.value })}
+                />
+              </div>
+              <div>
+                <label className="text-[0.65rem] text-zinc-500 uppercase tracking-widest block mb-1.5">Icon URL</label>
+                <div className="flex gap-2 items-center">
+                  <input
+                    className="flex-1 bg-zinc-800 border border-zinc-700 p-2.5 rounded-xl text-sm focus:outline-none focus:border-zinc-500 transition-colors"
+                    value={editForm.icon_url}
+                    onChange={e => setEditForm({ ...editForm, icon_url: e.target.value })}
+                    placeholder="https://…"
+                  />
+                  <div className="w-10 h-10 rounded-xl bg-zinc-800 border border-zinc-700 flex items-center justify-center flex-shrink-0 overflow-hidden">
+                    {editForm.icon_url
+                      ? <img src={editForm.icon_url} className="w-7 h-7 object-contain" onError={e => (e.currentTarget.style.display = "none")} />
+                      : <span className="text-lg">📁</span>
+                    }
                   </div>
                 </div>
-              )}
-
-              {/* Error */}
-              {assignError && (
-                <p className="text-xs text-rose-400 bg-rose-500/8 border border-rose-500/20 rounded-xl px-3 py-2">⚠ {assignError}</p>
-              )}
-
-              {/* Success */}
-              {assignSuccess && (
-                <p className="text-xs text-emerald-400 bg-emerald-500/8 border border-emerald-500/20 rounded-xl px-3 py-2">✓ Category assigned successfully</p>
-              )}
+              </div>
             </div>
-
-            {/* Footer */}
-            <div className="flex items-center gap-2 px-5 pb-5">
+            <div className="px-5 pb-5 flex gap-2 justify-end">
+              <button onClick={() => setEditModal(false)} className="cursor-pointer px-4 py-2 rounded-xl text-xs bg-zinc-800 hover:bg-zinc-700 text-zinc-300 transition-colors">Cancel</button>
               <button
-                onClick={submitAssign}
-                disabled={assignLoading || assignSuccess || !assignCategoryId}
-                className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl bg-violet-500/15 border border-violet-500/30 text-violet-300 text-sm font-medium hover:bg-violet-500/25 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                onClick={handleEditCategory}
+                disabled={editSaving || !editForm.name_en || !editForm.name_ka}
+                className="cursor-pointer px-5 py-2 rounded-xl text-xs bg-violet-600 hover:bg-violet-500 disabled:opacity-40 disabled:cursor-not-allowed text-white font-medium transition-colors flex items-center gap-2"
               >
-                {assignLoading && <span className="w-3.5 h-3.5 border-2 border-violet-400/40 border-t-violet-300 rounded-full animate-spin" />}
-                {assignLoading ? "Assigning…" : "Assign"}
+                {editSaving ? <><IconSpinner />Saving…</> : <><IconCheck />Save Changes</>}
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ══════════════════════════════════════════
+          DELETE CONFIRM MODAL
+      ══════════════════════════════════════════ */}
+      {deleteModal && deleteCat && (
+        <div className="fixed inset-0 bg-black/75 z-50 flex items-center justify-center p-4" onClick={e => { if (e.target === e.currentTarget) setDeleteModal(false); }}>
+          <div className="bg-zinc-900 border border-zinc-800 rounded-2xl w-full max-w-sm shadow-2xl overflow-hidden">
+            <div className="p-6 flex flex-col items-center text-center gap-4">
+              <div className="w-14 h-14 rounded-2xl bg-red-500/10 border border-red-500/20 flex items-center justify-center">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#f87171" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6"/>
+                  <path d="M10 11v4M14 11v4"/>
+                </svg>
+              </div>
+              <div>
+                <h3 className="font-bold text-zinc-100 text-base">Delete Category?</h3>
+                <p className="text-xs text-zinc-500 mt-2 leading-relaxed">
+                  <span className="text-zinc-300 font-medium">"{deleteCat.name_en}"</span> will be permanently removed.<br/>This action cannot be undone.
+                </p>
+              </div>
+            </div>
+            <div className="px-5 pb-5 flex gap-2">
+              <button onClick={() => setDeleteModal(false)} className="cursor-pointer flex-1 py-2.5 rounded-xl text-sm bg-zinc-800 hover:bg-zinc-700 text-zinc-300 transition-colors">Cancel</button>
               <button
-                onClick={() => setAssignModal(false)}
-                className="px-4 py-2.5 rounded-xl bg-zinc-800 border border-zinc-700 text-zinc-400 text-sm hover:text-zinc-200 transition-colors"
+                onClick={handleDeleteCategory}
+                disabled={deleteLoading}
+                className="cursor-pointer flex-1 py-2.5 rounded-xl text-sm bg-red-600 hover:bg-red-500 disabled:opacity-40 disabled:cursor-not-allowed text-white font-medium transition-colors flex items-center justify-center gap-2"
               >
-                Cancel
+                {deleteLoading ? <><IconSpinner />Deleting…</> : "Delete"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ══════════════════════════════════════════
+          BULK ASSIGN MODAL
+      ══════════════════════════════════════════ */}
+      {bulkAssignModal && (
+        <div className="fixed inset-0 bg-black/75 z-50 flex items-center justify-center p-4" onClick={e => { if (e.target === e.currentTarget) setBulkAssignModal(false); }}>
+          <div className="bg-zinc-900 border border-zinc-800 rounded-2xl w-full max-w-md shadow-2xl overflow-hidden flex flex-col">
+            <div className="p-5 border-b border-zinc-800 flex justify-between items-start">
+              <div>
+                <h3 className="font-bold text-zinc-100 text-base">დამატება კატეგორიაში</h3>
+                <p className="text-xs text-zinc-500 mt-0.5">
+                  მონიშნული <span className="text-violet-400 font-semibold">{selectedChannelUuids.length}</span> არხის დამატება
+                </p>
+              </div>
+              <button onClick={() => setBulkAssignModal(false)} className="cursor-pointer w-8 h-8 flex items-center justify-center rounded-lg text-zinc-500 hover:text-zinc-200 hover:bg-zinc-800 transition-colors">✕</button>
+            </div>
+            <div className="p-4 space-y-2 max-h-72 overflow-y-auto">
+              {categories.map(cat => (
+                <label key={cat.id} className={`flex items-center gap-3 p-3 rounded-xl border cursor-pointer transition-all ${selectedCategoryId === cat.id ? "border-violet-500 bg-violet-500/10" : "border-zinc-800 bg-zinc-800/30 hover:border-zinc-700 hover:bg-zinc-800/60"}`}>
+                  <input type="radio" name="bulkCat" value={cat.id} checked={selectedCategoryId === cat.id} onChange={() => setSelectedCategoryId(cat.id)} className="accent-violet-500" />
+                  <div className="w-7 h-7 rounded-lg bg-zinc-800 flex items-center justify-center flex-shrink-0">
+                    {cat.icon_url ? <img src={cat.icon_url} className="w-5 h-5 object-contain" /> : <span className="text-sm">📁</span>}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-zinc-100 font-medium text-sm truncate">{cat.name_en}</p>
+                    <p className="text-[0.6rem] text-zinc-500 truncate">{cat.name_ka}</p>
+                  </div>
+                  {selectedCategoryId === cat.id && <span className="text-violet-400 flex-shrink-0"><IconCheck /></span>}
+                </label>
+              ))}
+            </div>
+            <div className="p-4 border-t border-zinc-800 flex gap-2 justify-end">
+              <button onClick={() => setBulkAssignModal(false)} className="cursor-pointer px-4 py-2 rounded-xl text-xs bg-zinc-800 hover:bg-zinc-700 text-zinc-300 transition-colors">Cancel</button>
+              <button
+                onClick={confirmBulkAssign}
+                disabled={!selectedCategoryId || bulkAssigning}
+                className="cursor-pointer px-5 py-2 rounded-xl text-xs bg-violet-600 hover:bg-violet-500 disabled:opacity-40 disabled:cursor-not-allowed text-white font-medium transition-colors flex items-center gap-2"
+              >
+                {bulkAssigning ? <><IconSpinner />Assigning…</> : "OK — Assign"}
               </button>
             </div>
           </div>
@@ -1006,88 +636,4 @@ export default function AdminDashboard() {
 
     </div>
   );
-}
-
-/* ───────────────────────────────────────────────
-   REUSABLE UI
-─────────────────────────────────────────────── */
-function KpiCard({ label, value, sub, color, icon }: {
-  label: string; value: string; sub: string;
-  color: "violet" | "emerald" | "sky" | "rose"; icon: string;
-}) {
-  const colors = {
-    violet:  { bg: "bg-violet-500/10",  border: "border-violet-500/20", text: "text-violet-400",  icon: "bg-violet-500/20"  },
-    emerald: { bg: "bg-emerald-500/10", border: "border-emerald-500/20",text: "text-emerald-400", icon: "bg-emerald-500/20" },
-    sky:     { bg: "bg-sky-500/10",     border: "border-sky-500/20",    text: "text-sky-400",     icon: "bg-sky-500/20"     },
-    rose:    { bg: "bg-rose-500/10",    border: "border-rose-500/20",   text: "text-rose-400",    icon: "bg-rose-500/20"    },
-  };
-  const c = colors[color];
-  return (
-    <div className={`rounded-2xl ${c.bg} border ${c.border} p-4 flex items-start gap-3`}>
-      <div className={`w-9 h-9 rounded-xl ${c.icon} flex items-center justify-center text-base flex-shrink-0`}>{icon}</div>
-      <div>
-        <p className={`text-xl font-bold ${c.text}`}>{value}</p>
-        <p className="text-xs font-medium text-zinc-300">{label}</p>
-        <p className="text-[0.63rem] text-zinc-600 mt-0.5">{sub}</p>
-      </div>
-    </div>
-  );
-}
-
-function Panel({ title, action, children }: {
-  title: string;
-  action?: { label: string; onClick: () => void } | undefined;
-  children: React.ReactNode;
-}) {
-  return (
-    <div className="rounded-2xl bg-zinc-900 border border-zinc-800 overflow-hidden">
-      {title && (
-        <div className="flex items-center justify-between px-5 py-3.5 border-b border-zinc-800">
-          <h3 className="text-xs font-semibold text-zinc-500 uppercase tracking-widest">{title}</h3>
-          {action && (
-            <button onClick={action.onClick} className="text-[0.65rem] text-violet-400 hover:text-violet-300 transition-colors font-medium">
-              {action.label} →
-            </button>
-          )}
-        </div>
-      )}
-      <div className="px-5 py-3">{children}</div>
-    </div>
-  );
-}
-
-function StatusBadge({ status }: { status: User["status"] }) {
-  const map = {
-    Active:    "bg-emerald-500/10 border-emerald-500/20 text-emerald-400",
-    Suspended: "bg-rose-500/10 border-rose-500/20 text-rose-400",
-    Pending:   "bg-amber-500/10 border-amber-500/20 text-amber-400",
-  };
-  return <span className={`inline-flex px-2 py-0.5 rounded-md text-[0.63rem] font-medium border ${map[status]}`}>{status}</span>;
-}
-
-function PlanBadge({ plan }: { plan: User["plan"] }) {
-  const map = {
-    Free:       "bg-zinc-800 border-zinc-700 text-zinc-500",
-    Premium:    "bg-violet-500/10 border-violet-500/20 text-violet-400",
-    Enterprise: "bg-amber-500/10 border-amber-500/20 text-amber-400",
-  };
-  return <span className={`inline-flex px-2 py-0.5 rounded-md text-[0.63rem] font-medium border ${map[plan]}`}>{plan}</span>;
-}
-
-function PriorityBadge({ priority }: { priority: SupportTicket["priority"] }) {
-  const map = {
-    Low:    "bg-zinc-800 border-zinc-700 text-zinc-500",
-    Medium: "bg-amber-500/10 border-amber-500/20 text-amber-400",
-    High:   "bg-rose-500/10 border-rose-500/20 text-rose-400",
-  };
-  return (
-    <span className={`inline-flex px-1.5 py-0.5 rounded text-[0.58rem] font-semibold uppercase tracking-wide border flex-shrink-0 ${map[priority]}`}>
-      {priority}
-    </span>
-  );
-}
-
-function TicketStatusBadge({ status }: { status: SupportTicket["status"] }) {
-  const map = { Open: "text-rose-400", "In Progress": "text-amber-400", Resolved: "text-emerald-400" };
-  return <span className={`text-[0.6rem] font-medium ${map[status]}`}>{status}</span>;
 }
