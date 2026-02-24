@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, use } from 'react';
 import Hls from 'hls.js';
 import BadgeLiveDemo from '@/components/shadcn-studio/badge/cusotm/badge-c01';
 import {
@@ -39,7 +39,8 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ stream }) => {
   const [currentStream, setCurrentStream] = useState<number>(0);
   const [videoUrl, setVideoUrl] = useState<string>('');
   const [loading, setLoading] = useState<boolean>(false);
-
+  const [islive,setislive] = useState<boolean>(false)
+  const [rewind,setrewind] = useState<number>(0)
   // Fetch the actual stream URL when stream changes
   useEffect(() => {
     console.log('Stream changed:', stream);

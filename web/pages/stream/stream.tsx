@@ -39,7 +39,6 @@ import {
 } from "lucide-react"
 import { GeorgiaLogo } from '@/components/svg_telecom_production/svglib';
 
-// Add a button to toggle the calendar visibility
 
 
 export const Stream: React.FC = () => {
@@ -78,7 +77,7 @@ export const Stream: React.FC = () => {
     logo: 'https://img.mediabox.ge/22.png',
     number: 1,
     url: "",
-    categories: [] // now correctly typed as string[]
+    categories: []
   }
 ];
   
