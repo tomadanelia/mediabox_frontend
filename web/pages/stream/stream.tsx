@@ -1,3 +1,5 @@
+
+
 import React, { useState, useRef, useEffect } from 'react';
 import VideoPlayer from '@/hmcomponents/videoplayer';
 import DataTableDemo from '@/components/shadcn-studio/data-table/data-table-11';
@@ -37,8 +39,8 @@ import {
 } from "lucide-react"
 import { GeorgiaLogo } from '@/components/svg_telecom_production/svglib';
 
-// Define API URL from environment variable or fallback
-const API_URL = import.meta.env.VITE_API_URL || 'http://159.89.20.100';
+// Add a button to toggle the calendar visibility
+
 
 export const Stream: React.FC = () => {
   const [isCalendarVisible, setIsCalendarVisible] = useState(false);
@@ -100,8 +102,7 @@ export const Stream: React.FC = () => {
       setLoading(true)
       setError(null)
       try {
-        // Updated to use API_URL variable
-        const response = await fetch(`${API_URL}/api/channels`)
+        const response = await fetch("http://159.89.20.100/api/channels")
         if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`)
         const result = await response.json()
         setData(result)
@@ -123,9 +124,8 @@ export const Stream: React.FC = () => {
       setLoading(true)
       setError(null)
       try {
-        // Updated to use API_URL variable
         const response = await fetch(
-          `${API_URL}/api/channels/${selectedChannel.id}/programs?date=2026/02/23`,
+          `http://159.89.20.100/api/channels/${selectedChannel.id}/programs?date=2026/02/23`,
           { signal: controller.signal }
         )
         if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`)

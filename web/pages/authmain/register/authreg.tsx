@@ -5,9 +5,6 @@ import InputPasswordStrengthDemo from '@/components/shadcn-studio/input/input-46
 import CheckboxDemo from '@/components/shadcn-studio/checkbox/checkbox-01'
 import InputPasswordDemo from '@/components/shadcn-studio/input/input-26'
 
-// Define API URL from environment variable or fallback
-const API_URL = import.meta.env.VITE_API_URL || 'http://159.89.20.100';
-
 const AuthReg: React.FC = () => {
   const [form, setForm] = useState({
     username: '',
@@ -27,8 +24,7 @@ const AuthReg: React.FC = () => {
     setLoading(true)
 
     try {
-      // Updated to use API_URL variable
-      const res = await fetch(`${API_URL}/api/auth/register`, {
+      const res = await fetch('http://159.89.20.100/api/auth/register', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(form),
