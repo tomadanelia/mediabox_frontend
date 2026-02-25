@@ -458,7 +458,11 @@ export default function AdminDashboard() {
     if (!disablePlan) return;
     setDisableLoading(true);
     try {
-      const res = await fetch(`http://159.89.20.100/api/plans/${disablePlan.id}/disable`);
+      const res = await fetch(`http://159.89.20.100/api/admin/plans/${disablePlan.id}/disable`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Accept: "application/json" },
+        body: JSON.stringify(newCat),
+      });
       if (res.ok) { setDisableModal(false); fetchPlans(); }
       else { const e = await res.json().catch(() => null); alert(`Failed: ${e?.message}`); }
     } catch (e) { console.error(e); }
@@ -468,7 +472,11 @@ const handleEnablePlan = async () => {
   if (!disablePlan) return;
   setDisableLoading(true);
   try {
-    const res = await fetch(`http://159.89.20.100/api/plans/${disablePlan.id}/enable`);
+    const res = await fetch(`http://159.89.20.100/api/admin/plans/${disablePlan.id}/enable`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Accept: "application/json" },
+        body: JSON.stringify(newCat),
+      });
     if (res.ok) { setDisableModal(false); fetchPlans(); }
     else { const e = await res.json().catch(() => null); alert(`Failed: ${e?.message}`); }
   } catch (e) { console.error(e); }
@@ -483,7 +491,7 @@ const handleDeletePlan = async () => {
   if (!deletePlanTarget) return;
   setDeletePlanLoading(true);
   try {
-    const res = await fetch(`http://159.89.20.100/api/plans/${deletePlanTarget.id}`, { method: "DELETE" });
+    const res = await fetch(`http://159.89.20.100/api/admin/plans/${deletePlanTarget.id}`, { method: "DELETE" });
     if (res.ok) { setDeletePlanModal(false); fetchPlans(); }
     else { const e = await res.json().catch(() => null); alert(`Failed: ${e?.message}`); }
   } catch (e) { console.error(e); }
@@ -946,12 +954,12 @@ const handleDeletePlan = async () => {
 
               {showAddCategory && (
                 <div className="bg-zinc-900 p-5 rounded-2xl border border-zinc-700 space-y-3 shadow-lg">
-                  <p className="text-xs font-semibold text-zinc-400 uppercase tracking-widest mb-1">New Category</p>
+                  <p className="text-xs font-semibold text-zinc-400 uppercase tracking-widest mb-1">ახალი კატეგორია</p>
                   <div className="grid grid-cols-2 gap-3">
                     <input placeholder="Name (EN)" className="bg-zinc-800 border border-zinc-700 p-2.5 rounded-xl text-sm focus:outline-none focus:border-zinc-500 transition-colors" value={newCat.name_en} onChange={e => setNewCat({ ...newCat, name_en: e.target.value })} />
-                    <input placeholder="Name (KA)" className="bg-zinc-800 border border-zinc-700 p-2.5 rounded-xl text-sm focus:outline-none focus:border-zinc-500 transition-colors" value={newCat.name_ka} onChange={e => setNewCat({ ...newCat, name_ka: e.target.value })} />
+                    <input placeholder="სახელი (ქართულად)" className="bg-zinc-800 border border-zinc-700 p-2.5 rounded-xl text-sm focus:outline-none focus:border-zinc-500 transition-colors" value={newCat.name_ka} onChange={e => setNewCat({ ...newCat, name_ka: e.target.value })} />
                   </div>
-                  <input placeholder="Icon URL (optional)" className="w-full bg-zinc-800 border border-zinc-700 p-2.5 rounded-xl text-sm focus:outline-none focus:border-zinc-500 transition-colors" value={newCat.icon_url} onChange={e => setNewCat({ ...newCat, icon_url: e.target.value })} />
+                  <input placeholder="ლოგოს ლინკი (optional)" className="w-full bg-zinc-800 border border-zinc-700 p-2.5 rounded-xl text-sm focus:outline-none focus:border-zinc-500 transition-colors" value={newCat.icon_url} onChange={e => setNewCat({ ...newCat, icon_url: e.target.value })} />
                   <div className="flex gap-2 pt-1">
                     <button onClick={handleAddCategory} className="cursor-pointer bg-violet-600 hover:bg-violet-500 px-5 py-2 rounded-xl text-xs font-medium transition-colors">შენახვა</button>
                     <button onClick={() => setShowAddCategory(false)} className="cursor-pointer bg-zinc-800 hover:bg-zinc-700 px-4 py-2 rounded-xl text-xs transition-colors">გაუქმება</button>
@@ -1002,19 +1010,19 @@ const handleDeletePlan = async () => {
                   <p className="text-xs font-semibold text-zinc-400 uppercase tracking-widest mb-1">New Plan</p>
                   <div className="grid grid-cols-2 gap-3">
                     <input placeholder="Name (EN)" className="bg-zinc-800 border border-zinc-700 p-2.5 rounded-xl text-sm focus:outline-none focus:border-zinc-500 transition-colors" value={newPlan.name_en} onChange={e => setNewPlan({ ...newPlan, name_en: e.target.value })} />
-                    <input placeholder="Name (KA)" className="bg-zinc-800 border border-zinc-700 p-2.5 rounded-xl text-sm focus:outline-none focus:border-zinc-500 transition-colors" value={newPlan.name_ka} onChange={e => setNewPlan({ ...newPlan, name_ka: e.target.value })} />
+                    <input placeholder="სახელი (ქართულად)" className="bg-zinc-800 border border-zinc-700 p-2.5 rounded-xl text-sm focus:outline-none focus:border-zinc-500 transition-colors" value={newPlan.name_ka} onChange={e => setNewPlan({ ...newPlan, name_ka: e.target.value })} />
                   </div>
                   <div className="grid grid-cols-2 gap-3">
                     <input placeholder="Description (EN)" className="bg-zinc-800 border border-zinc-700 p-2.5 rounded-xl text-sm focus:outline-none focus:border-zinc-500 transition-colors" value={newPlan.description_en} onChange={e => setNewPlan({ ...newPlan, description_en: e.target.value })} />
-                    <input placeholder="Description (KA)" className="bg-zinc-800 border border-zinc-700 p-2.5 rounded-xl text-sm focus:outline-none focus:border-zinc-500 transition-colors" value={newPlan.description_ka} onChange={e => setNewPlan({ ...newPlan, description_ka: e.target.value })} />
+                    <input placeholder="აღწერა (ქართულად)" className="bg-zinc-800 border border-zinc-700 p-2.5 rounded-xl text-sm focus:outline-none focus:border-zinc-500 transition-colors" value={newPlan.description_ka} onChange={e => setNewPlan({ ...newPlan, description_ka: e.target.value })} />
                   </div>
                   <div className="grid grid-cols-2 gap-3">
-                    <input type="number" placeholder="Price" min="0" step="0.01" className="bg-zinc-800 border border-zinc-700 p-2.5 rounded-xl text-sm focus:outline-none focus:border-zinc-500 transition-colors" value={newPlan.price} onChange={e => setNewPlan({ ...newPlan, price: e.target.value })} />
-                    <input type="number" placeholder="Duration (days)" min="1" className="bg-zinc-800 border border-zinc-700 p-2.5 rounded-xl text-sm focus:outline-none focus:border-zinc-500 transition-colors" value={newPlan.duration_days} onChange={e => setNewPlan({ ...newPlan, duration_days: e.target.value })} />
+                    <input type="number" placeholder="ფასი" min="0" step="0.01" className="bg-zinc-800 border border-zinc-700 p-2.5 rounded-xl text-sm focus:outline-none focus:border-zinc-500 transition-colors" value={newPlan.price} onChange={e => setNewPlan({ ...newPlan, price: e.target.value })} />
+                    <input type="number" placeholder="ხანგრძლივობა (დღეებში)" min="1" className="bg-zinc-800 border border-zinc-700 p-2.5 rounded-xl text-sm focus:outline-none focus:border-zinc-500 transition-colors" value={newPlan.duration_days} onChange={e => setNewPlan({ ...newPlan, duration_days: e.target.value })} />
                   </div>
                   <label className="flex items-center gap-2 text-xs text-zinc-400 cursor-pointer select-none">
                     <input type="checkbox" className="accent-emerald-500" checked={newPlan.is_active} onChange={e => setNewPlan({ ...newPlan, is_active: e.target.checked })} />
-                    Active
+                    აქტიური
                   </label>
                   <div className="flex gap-2 pt-1">
                     <button onClick={handleAddPlan} className="cursor-pointer bg-emerald-600 hover:bg-emerald-500 px-5 py-2 rounded-xl text-xs font-medium transition-colors">შენახვა</button>
@@ -1401,7 +1409,7 @@ const isActive =
           <div className="bg-zinc-900 border border-zinc-800 rounded-2xl w-full max-w-sm shadow-2xl overflow-hidden">
             <div className="p-5 border-b border-zinc-800 flex justify-between items-center">
               <div>
-                <h3 className="font-bold text-zinc-100">Edit Category</h3>
+                <h3 className="font-bold text-zinc-100">კატეგორიის რედაქტირება</h3>
                 <p className="text-[0.65rem] text-zinc-500 mt-0.5 font-mono">ID: {editCat.id}</p>
               </div>
               <button onClick={() => setEditModal(false)} className="cursor-pointer w-8 h-8 flex items-center justify-center rounded-lg text-zinc-500 hover:text-zinc-200 hover:bg-zinc-800 transition-colors">✕</button>
@@ -1412,11 +1420,11 @@ const isActive =
                 <input className="w-full bg-zinc-800 border border-zinc-700 p-2.5 rounded-xl text-sm focus:outline-none focus:border-zinc-500 transition-colors" value={editForm.name_en} onChange={e => setEditForm({ ...editForm, name_en: e.target.value })} />
               </div>
               <div>
-                <label className="text-[0.65rem] text-zinc-500 uppercase tracking-widest block mb-1.5">Name (Georgian)</label>
+                <label className="text-[0.65rem] text-zinc-500 uppercase tracking-widest block mb-1.5">სახელი (ქართულად)</label>
                 <input className="w-full bg-zinc-800 border border-zinc-700 p-2.5 rounded-xl text-sm focus:outline-none focus:border-zinc-500 transition-colors" value={editForm.name_ka} onChange={e => setEditForm({ ...editForm, name_ka: e.target.value })} />
               </div>
               <div>
-                <label className="text-[0.65rem] text-zinc-500 uppercase tracking-widest block mb-1.5">Icon URL</label>
+                <label className="text-[0.65rem] text-zinc-500 uppercase tracking-widest block mb-1.5">ლოგოს ლინკი</label>
                 <div className="flex gap-2 items-center">
                   <input className="flex-1 bg-zinc-800 border border-zinc-700 p-2.5 rounded-xl text-sm focus:outline-none focus:border-zinc-500 transition-colors" value={editForm.icon_url} onChange={e => setEditForm({ ...editForm, icon_url: e.target.value })} placeholder="https://…" />
                   <div className="w-10 h-10 rounded-xl bg-zinc-800 border border-zinc-700 flex items-center justify-center shrink-0 overflow-hidden">
@@ -1429,13 +1437,13 @@ const isActive =
               </div>
             </div>
             <div className="px-5 pb-5 flex gap-2 justify-end">
-              <button onClick={() => setEditModal(false)} className="cursor-pointer px-4 py-2 rounded-xl text-xs bg-zinc-800 hover:bg-zinc-700 text-zinc-300 transition-colors">Cancel</button>
+              <button onClick={() => setEditModal(false)} className="cursor-pointer px-4 py-2 rounded-xl text-xs bg-zinc-800 hover:bg-zinc-700 text-zinc-300 transition-colors">გაუქმება</button>
               <button
                 onClick={handleEditCategory}
                 disabled={editSaving || !editForm.name_en || !editForm.name_ka}
                 className="cursor-pointer px-5 py-2 rounded-xl text-xs bg-violet-600 hover:bg-violet-500 disabled:opacity-40 disabled:cursor-not-allowed text-white font-medium transition-colors flex items-center gap-2"
               >
-                {editSaving ? <><IconSpinner />Saving…</> : <><IconCheck />Save Changes</>}
+                {editSaving ? <><IconSpinner />Saving…</> : <><IconCheck />ცვლილებების შენახვა</>}
               </button>
             </div>
           </div>
@@ -1646,7 +1654,7 @@ const isActive =
                   <input className="w-full bg-zinc-800 border border-zinc-700 p-2.5 rounded-xl text-sm focus:outline-none focus:border-zinc-500 transition-colors" value={editPlanForm.name_en} onChange={e => setEditPlanForm({ ...editPlanForm, name_en: e.target.value })} />
                 </div>
                 <div>
-                  <label className="text-[0.65rem] text-zinc-500 uppercase tracking-widest block mb-1.5">Name (KA)</label>
+                  <label className="text-[0.65rem] text-zinc-500 uppercase tracking-widest block mb-1.5">სახელი (ქართულად)</label>
                   <input className="w-full bg-zinc-800 border border-zinc-700 p-2.5 rounded-xl text-sm focus:outline-none focus:border-zinc-500 transition-colors" value={editPlanForm.name_ka} onChange={e => setEditPlanForm({ ...editPlanForm, name_ka: e.target.value })} />
                 </div>
               </div>
@@ -1704,24 +1712,24 @@ const isActive =
               </div>
               <div>
                 <h3 className="font-bold text-zinc-100 text-base">
-                  {Boolean(disablePlan?.is_active) ? "Disable Plan?" : "Enable Plan?"}
+                  {Boolean(disablePlan?.is_active) ? "პაკეტი გამოირთვება" : "პაკეტი გააქტიურდება"}
                 </h3>
                 <p className="text-xs text-zinc-500 mt-2 leading-relaxed">
                   {Boolean(disablePlan?.is_active)
-                    ? <><span className="text-zinc-300 font-medium">"{disablePlan.name_en}"</span> will be disabled and hidden from users.<br/>It can be re-enabled later.</>
-                    : <><span className="text-zinc-300 font-medium">"{disablePlan.name_en}"</span> will be re-enabled and visible to users.</>
+                    ? <><span className="text-zinc-300 font-medium">"{disablePlan.name_en}"</span> გამოირთვება და მომხმარებლები ვეღარ შეძლებენ ნახვას<br/>თავიდან ჩართვა შესაძლებელია</>
+                    : <><span className="text-zinc-300 font-medium">"{disablePlan.name_en}"</span> თავიდან ჩაირთვება და მომხმარებლებისთვის ხილული იქნება.</>
                   }
                 </p>
               </div>
             </div>
             <div className="px-5 pb-5 flex gap-2">
-              <button onClick={() => setDisableModal(false)} className="cursor-pointer flex-1 py-2.5 rounded-xl text-sm bg-zinc-800 hover:bg-zinc-700 text-zinc-300 transition-colors">Cancel</button>
+              <button onClick={() => setDisableModal(false)} className="cursor-pointer flex-1 py-2.5 rounded-xl text-sm bg-zinc-800 hover:bg-zinc-700 text-zinc-300 transition-colors">გაუქმება</button>
               <button
                 onClick={Boolean(disablePlan?.is_active) ? handleDisablePlan : handleEnablePlan}
                 disabled={disableLoading}
                 className="cursor-pointer flex-1 py-2.5 rounded-xl text-sm bg-amber-600 hover:bg-amber-500 disabled:opacity-40 disabled:cursor-not-allowed text-white font-medium transition-colors flex items-center justify-center gap-2"
               >
-                {disableLoading ? <><IconSpinner />{Boolean(disablePlan?.is_active) ? "Disabling…" : "Enabling…"}</> : Boolean(disablePlan?.is_active) ? "Disable" : "Enable"}
+                {disableLoading ? <><IconSpinner />{Boolean(disablePlan?.is_active) ? "ითიშება…" : "ირთვება…"}</> : Boolean(disablePlan?.is_active) ? "გამორთვა" : "ჩართვა"}
               </button>
             </div>
           </div>
@@ -1746,7 +1754,7 @@ const isActive =
               </div>
             </div>
             <div className="px-5 pb-5 flex gap-2">
-              <button onClick={() => setDeletePlanModal(false)} className="cursor-pointer flex-1 py-2.5 rounded-xl text-sm bg-zinc-800 hover:bg-zinc-700 text-zinc-300 transition-colors">Cancel</button>
+              <button onClick={() => setDeletePlanModal(false)} className="cursor-pointer flex-1 py-2.5 rounded-xl text-sm bg-zinc-800 hover:bg-zinc-700 text-zinc-300 transition-colors">გაუქმება</button>
               <button
                 onClick={handleDeletePlan}
                 disabled={deletePlanLoading}
