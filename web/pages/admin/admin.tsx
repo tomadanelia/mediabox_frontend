@@ -78,6 +78,16 @@ const IconDisable = () => (
     <path d="M4.5 4.5l7 7"/>
   </svg>
 );
+const IconChevronLeft = () => (
+  <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M9 11L5 7l4-4"/>
+  </svg>
+);
+const IconChevronRight = () => (
+  <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M5 3l4 4-4 4"/>
+  </svg>
+);
 
 function CategoryMenu({
   onManage, onEdit, onDelete,
@@ -273,6 +283,15 @@ export default function AdminDashboard() {
   const [planChannelsSelectedUuids, setPlanChannelsSelectedUuids] = useState<string[]>([]);
   const [planChannelsSectionSearch, setPlanChannelsSectionSearch] = useState("");
 
+  /* ══════════════════════════════════════
+     USERS state
+  ══════════════════════════════════════ */
+  const [users, setUsers] = useState<any[]>([]);
+  const [usersLoading, setUsersLoading] = useState(false);
+  const [usersMeta, setUsersMeta] = useState({ current_page: 1, last_page: 1, total: 0 });
+  const [usersPage, setUsersPage] = useState(1);
+  const [userSearch, setUserSearch] = useState("");
+
   /* ── API ── */
   const fetchChannels = async () => {
     setChannelsLoading(true);
@@ -301,6 +320,22 @@ export default function AdminDashboard() {
       setPlans(Array.isArray(data) ? data : data.data ?? []);
     } catch (e) { console.error(e); }
     finally { setPlansLoading(false); }
+  };
+
+  /* ── Users API ── */
+  const fetchUsers = async (page = 1) => {
+    setUsersLoading(true);
+    try {
+      const res = await fetch(`http://159.89.20.100/api/admin/users?page=${page}`);
+      const data = await res.json();
+      setUsers(data.data ?? []);
+      setUsersMeta({
+        current_page: data.current_page ?? 1,
+        last_page: data.last_page ?? 1,
+        total: data.total ?? 0,
+      });
+    } catch (e) { console.error(e); }
+    finally { setUsersLoading(false); }
   };
 
   const handleAddCategory = async () => {
@@ -531,11 +566,29 @@ const handleDeletePlan = async () => {
     if (section === "Category-Channels" || section === "Overview" || section === "Plan-Channels") fetchChannels();
   }, [section]);
 
+  /* Fetch users whenever section is Users OR Overview (for total count) OR page changes */
+  useEffect(() => {
+    if (section === "Users") fetchUsers(usersPage);
+    if (section === "Overview") fetchUsers(1);
+  }, [section, usersPage]);
+
+  /* Reset to page 1 when leaving Users section */
+  useEffect(() => {
+    if (section !== "Users") setUsersPage(1);
+  }, [section]);
+
   const filteredChannels = channels.filter(c =>
     c.name.toLowerCase().includes(channelSearch.toLowerCase())
   );
   const filteredPlanChannels = channels.filter(c =>
     c.name.toLowerCase().includes(planChannelsSectionSearch.toLowerCase())
+  );
+
+  /* Client-side filter on already-fetched page */
+  const filteredUsers = users.filter(u =>
+    (u.username ?? "").toLowerCase().includes(userSearch.toLowerCase()) ||
+    (u.email ?? "").toLowerCase().includes(userSearch.toLowerCase()) ||
+    (u.full_name ?? "").toLowerCase().includes(userSearch.toLowerCase())
   );
 
   const toggleSelectChannel = (uuid: string) =>
@@ -547,6 +600,26 @@ const handleDeletePlan = async () => {
   const filteredModalChannels = planChannelList
     ? planChannelList.filter((ch: any) => (ch.name_en ?? ch.name ?? "").toLowerCase().includes(planChannelSearch.toLowerCase()))
     : [];
+
+  /* Pagination helpers */
+  const canPrevPage = usersMeta.current_page > 1;
+  const canNextPage = usersMeta.current_page < usersMeta.last_page;
+
+  const pageNumbers = (() => {
+    const total = usersMeta.last_page;
+    const cur = usersMeta.current_page;
+    const pages: (number | "…")[] = [];
+    if (total <= 7) {
+      for (let i = 1; i <= total; i++) pages.push(i);
+    } else {
+      pages.push(1);
+      if (cur > 3) pages.push("…");
+      for (let i = Math.max(2, cur - 1); i <= Math.min(total - 1, cur + 1); i++) pages.push(i);
+      if (cur < total - 2) pages.push("…");
+      pages.push(total);
+    }
+    return pages;
+  })();
 
   return (
     <div className="flex h-screen bg-zinc-950 text-zinc-300 text-sm font-sans overflow-hidden">
@@ -565,13 +638,13 @@ const handleDeletePlan = async () => {
               : "text-zinc-500 hover:bg-zinc-800 hover:text-zinc-300"
           }`}
         >
-          {adminSectionLabels[s]} {/* Georgian label */}
+          {adminSectionLabels[s]}
         </button>
       ))}
     </nav>
       </aside>
 
-      <div className="flex-1 flex flex-col min-w-0 overflow-y-auto">
+      <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
 
         {/* HEADER */}
         <header className="px-5 py-3 border-b border-zinc-800 bg-zinc-950/80 backdrop-blur flex justify-between items-center sticky top-0 z-10">
@@ -612,7 +685,200 @@ const handleDeletePlan = async () => {
           )}
         </header>
 
-        <main className="p-6 space-y-5">
+        <main className="flex-1 overflow-y-auto p-6 space-y-5">
+
+          {/* ══════════════════════════════════════════
+              OVERVIEW SECTION
+          ══════════════════════════════════════════ */}
+          {section === "Overview" && (() => {
+            const activePlans   = plans.filter(p => Boolean(p.is_active));
+            const inactivePlans = plans.filter(p => !Boolean(p.is_active));
+            const uncategorized = channels.filter(c => !c.category || (Array.isArray(c.category) ? c.category.length === 0 : !c.category));
+            const isLoading     = channelsLoading || catsLoading || plansLoading || usersLoading;
+
+            const stats = [
+              {
+                label: "მომხმარებლები",
+                value: usersMeta.total,
+                sub: "სულ რეგისტრირებული",
+                color: "text-violet-400",
+                bg: "bg-violet-500/10 border-violet-500/20",
+                icon: (
+                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                    <circle cx="9" cy="7" r="4"/><path d="M3 21v-2a4 4 0 014-4h4a4 4 0 014 4v2"/>
+                    <path d="M16 3.13a4 4 0 010 7.75M21 21v-2a4 4 0 00-3-3.87"/>
+                  </svg>
+                ),
+              },
+              {
+                label: "არხები",
+                value: channels.length,
+                sub: `${uncategorized.length} კატეგორიის გარეშე`,
+                subAlert: uncategorized.length > 0,
+                color: "text-sky-400",
+                bg: "bg-sky-500/10 border-sky-500/20",
+                icon: (
+                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                    <rect x="2" y="7" width="20" height="14" rx="2"/>
+                    <path d="M7 7V5a2 2 0 012-2h6a2 2 0 012 2v2"/>
+                    <path d="M8 13h8M8 17h5"/>
+                  </svg>
+                ),
+              },
+              {
+                label: "კატეგორიები",
+                value: categories.length,
+                sub: "სულ კატეგორია",
+                color: "text-amber-400",
+                bg: "bg-amber-500/10 border-amber-500/20",
+                icon: (
+                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M3 7a2 2 0 012-2h3.17a2 2 0 011.42.59L11 7h10a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V7z"/>
+                  </svg>
+                ),
+              },
+              {
+                label: "პაკეტები",
+                value: plans.length,
+                sub: `${activePlans.length} აქტიური · ${inactivePlans.length} გათიშული`,
+                color: "text-emerald-400",
+                bg: "bg-emerald-500/10 border-emerald-500/20",
+                icon: (
+                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M12 2l3 6 6 .75-4.5 4.5 1.1 6.25L12 16.5l-5.6 3 1.1-6.25L3 8.75 9 8z"/>
+                  </svg>
+                ),
+              },
+            ];
+
+            return (
+              <div className="space-y-6">
+                {/* greeting */}
+                <div>
+                  <h1 className="text-xl font-bold text-zinc-100">გამარჯობა 👋</h1>
+                  <p className="text-xs text-zinc-500 mt-1">აქ მოცემულია პანელის მიმოხილვა</p>
+                </div>
+
+                {/* stat cards */}
+                <div className="grid grid-cols-2 xl:grid-cols-4 gap-3">
+                  {stats.map(s => (
+                    <div key={s.label} className="bg-zinc-900 border border-zinc-800 rounded-2xl p-5 flex flex-col gap-3 hover:border-zinc-700 transition-colors">
+                      <div className={`w-11 h-11 rounded-xl border flex items-center justify-center ${s.bg} ${s.color}`}>
+                        {s.icon}
+                      </div>
+                      <div>
+                        {isLoading ? (
+                          <div className="h-7 w-16 bg-zinc-800 rounded-lg animate-pulse mb-1" />
+                        ) : (
+                          <p className={`text-2xl font-bold ${s.color} leading-none`}>{s.value}</p>
+                        )}
+                        <p className="text-xs text-zinc-400 font-medium mt-1">{s.label}</p>
+                        <p className={`text-[0.6rem] mt-0.5 ${(s as any).subAlert ? "text-amber-400" : "text-zinc-600"}`}>{s.sub}</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                {/* two column lower section */}
+                <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
+
+                  {/* Plans breakdown */}
+                  <div className="bg-zinc-900 border border-zinc-800 rounded-2xl overflow-hidden">
+                    <div className="px-5 py-4 border-b border-zinc-800 flex items-center justify-between">
+                      <h3 className="text-sm font-semibold text-zinc-100">პაკეტები</h3>
+                      <span className="text-[0.6rem] text-zinc-500 bg-zinc-800 px-2 py-0.5 rounded-md">{plans.length} სულ</span>
+                    </div>
+                    {plansLoading ? (
+                      <div className="flex items-center justify-center gap-2 py-10 text-zinc-500 text-xs"><IconSpinner /><span>Loading…</span></div>
+                    ) : plans.length === 0 ? (
+                      <div className="flex items-center justify-center py-10 text-zinc-600 text-xs">პაკეტები არ მოიძებნა</div>
+                    ) : (
+                      <div className="divide-y divide-zinc-800">
+                        {plans.map(plan => (
+                          <div key={plan.id} className="px-5 py-3 flex items-center gap-3 hover:bg-zinc-800/30 transition-colors">
+                            <div className="w-8 h-8 rounded-lg bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center shrink-0">
+                              <svg width="14" height="14" viewBox="0 0 20 20" fill="none">
+                                <path d="M10 2l2.4 4.8 5.3.8-3.85 3.75.91 5.3L10 14.1l-4.76 2.55.91-5.3L2.3 7.6l5.3-.8L10 2z" stroke="#34d399" strokeWidth="1.4" strokeLinejoin="round"/>
+                              </svg>
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <p className="text-zinc-200 text-xs font-medium truncate">{plan.name_en}</p>
+                              <p className="text-[0.6rem] text-zinc-600 truncate">{plan.name_ka}</p>
+                            </div>
+                            <div className="flex items-center gap-2 shrink-0">
+                              <span className="text-emerald-400 text-xs font-bold">{plan.price} ₾</span>
+                              <span className="text-zinc-700 text-[0.6rem]">·</span>
+                              <span className="text-zinc-500 text-[0.6rem]">{plan.duration_days}დ</span>
+                              {Boolean(plan.is_active)
+                                ? <span className="text-[0.55rem] bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 px-1.5 py-0.5 rounded-md font-medium">აქტ.</span>
+                                : <span className="text-[0.55rem] bg-zinc-800 text-zinc-600 border border-zinc-700 px-1.5 py-0.5 rounded-md font-medium">გათ.</span>
+                              }
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Categories breakdown */}
+                  <div className="bg-zinc-900 border border-zinc-800 rounded-2xl overflow-hidden">
+                    <div className="px-5 py-4 border-b border-zinc-800 flex items-center justify-between">
+                      <h3 className="text-sm font-semibold text-zinc-100">კატეგორიები</h3>
+                      <span className="text-[0.6rem] text-zinc-500 bg-zinc-800 px-2 py-0.5 rounded-md">{categories.length} სულ</span>
+                    </div>
+                    {catsLoading ? (
+                      <div className="flex items-center justify-center gap-2 py-10 text-zinc-500 text-xs"><IconSpinner /><span>Loading…</span></div>
+                    ) : categories.length === 0 ? (
+                      <div className="flex items-center justify-center py-10 text-zinc-600 text-xs">კატეგორიები არ მოიძებნა</div>
+                    ) : (
+                      <div className="divide-y divide-zinc-800 max-h-72 overflow-y-auto">
+                        {categories.map((cat, idx) => (
+                          <div key={cat.id} className="px-5 py-3 flex items-center gap-3 hover:bg-zinc-800/30 transition-colors">
+                            <span className="text-[0.6rem] text-zinc-700 w-4 shrink-0 font-mono tabular-nums text-right">{idx + 1}</span>
+                            <div className="w-8 h-8 rounded-lg bg-zinc-800 border border-zinc-700/50 flex items-center justify-center shrink-0 overflow-hidden">
+                              {cat.icon_url
+                                ? <img src={cat.icon_url} className="w-5 h-5 object-contain" onError={e => (e.currentTarget.style.display = "none")} />
+                                : <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#a78bfa" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M7 7V5a2 2 0 012-2h6a2 2 0 012 2v2"/></svg>
+                              }
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <p className="text-zinc-200 text-xs font-medium truncate">{cat.name_en}</p>
+                              <p className="text-[0.6rem] text-zinc-600 truncate">{cat.name_ka}</p>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+
+                </div>
+
+                {/* Uncategorized channels warning */}
+                {!channelsLoading && uncategorized.length > 0 && (
+                  <div className="bg-amber-500/5 border border-amber-500/20 rounded-2xl px-5 py-4 flex items-center gap-4">
+                    <div className="w-9 h-9 rounded-xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center shrink-0 text-amber-400">
+                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M12 9v4M12 17h.01"/>
+                        <path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/>
+                      </svg>
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-amber-300 text-xs font-semibold">კატეგორიის გარეშე არხები</p>
+                      <p className="text-amber-500/70 text-[0.65rem] mt-0.5">
+                        <span className="font-bold text-amber-400">{uncategorized.length}</span> არხს კატეგორია არ აქვს მინიჭებული. გადადი <span className="font-medium">"კატეგორიების შევსება"</span> განყოფილებაში.
+                      </p>
+                    </div>
+                    <button
+                      onClick={() => setSection("Category-Channels")}
+                      className="cursor-pointer shrink-0 bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/20 text-amber-400 text-xs font-medium px-3 py-1.5 rounded-lg transition-colors"
+                    >
+                      გადასვლა →
+                    </button>
+                  </div>
+                )}
+              </div>
+            );
+          })()}
 
           {/* ── CHANNELS ── */}
           {section === "Category-Channels" && (
@@ -855,6 +1121,194 @@ const handleDeletePlan = async () => {
                   </table>
                 )}
               </div>
+            </div>
+          )}
+
+          {/* ══════════════════════════════════════════
+              USERS SECTION
+          ══════════════════════════════════════════ */}
+          {section === "Users" && (
+            <div className="space-y-4">
+              {/* Top bar */}
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <p className="text-zinc-400 text-xs">
+                  სულ{" "}
+                  <span className="text-zinc-200 font-semibold">{usersMeta.total}</span>{" "}
+                  მომხმარებელი · გვერდი{" "}
+                  <span className="text-zinc-200 font-semibold">{usersMeta.current_page}</span>{" "}
+                  /{" "}
+                  <span className="text-zinc-200 font-semibold">{usersMeta.last_page}</span>
+                </p>
+                <input
+                  type="text"
+                  placeholder="ძიება სახელი, email…"
+                  value={userSearch}
+                  onChange={e => setUserSearch(e.target.value)}
+                  className="w-full sm:w-64 bg-zinc-900 border border-zinc-800 rounded-xl px-4 py-2 text-sm focus:outline-none focus:border-zinc-600 transition-colors"
+                />
+              </div>
+
+              {/* Table */}
+              <div className="bg-zinc-900 border border-zinc-800 rounded-2xl overflow-hidden">
+                {usersLoading ? (
+                  <div className="flex items-center justify-center gap-2 py-20 text-zinc-500 text-sm">
+                    <IconSpinner /><span>Loading…</span>
+                  </div>
+                ) : filteredUsers.length === 0 ? (
+                  <div className="flex flex-col items-center justify-center py-20 gap-3 text-zinc-600">
+                    <svg width="40" height="40" viewBox="0 0 40 40" fill="none">
+                      <circle cx="20" cy="15" r="7" stroke="currentColor" strokeWidth="1.5"/>
+                      <path d="M6 36c0-7.732 6.268-14 14-14s14 6.268 14 14" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+                    </svg>
+                    <p className="text-sm font-medium">მომხმარებლები ვერ მოიძებნა</p>
+                  </div>
+                ) : (
+                  <table className="w-full text-left">
+                    <thead className="bg-zinc-800/50 text-[0.6rem] uppercase tracking-widest text-zinc-500">
+                      <tr>
+                        <th className="p-4">მომხმარებელი</th>
+                        <th className="p-4">Email</th>
+                        <th className="p-4">როლი</th>
+                        <th className="p-4">პლანი</th>
+                        <th className="p-4">სტატუსი</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {filteredUsers.map(u => {
+                        const account = u.account ?? {};
+                        const planName = account.plan?.name_en ?? account.plan_name ?? null;
+const isActive =
+  account.is_active != null ? Boolean(account.is_active) :
+  account.status    != null ? account.status === "active" :
+  null;                        const expiresAt = account.expires_at ?? account.subscription_end ?? null;
+
+                        return (
+                          <tr key={u.id} className="border-t border-zinc-800 hover:bg-zinc-800/30 transition-colors">
+                            {/* User */}
+                            <td className="p-4">
+                              <div className="flex items-center gap-3">
+                                {u.avatar_url ? (
+                                  <img
+                                    src={u.avatar_url}
+                                    className="w-8 h-8 rounded-full bg-zinc-800 object-cover shrink-0"
+                                    onError={e => (e.currentTarget.style.display = "none")}
+                                  />
+                                ) : (
+                                  <div className="w-8 h-8 rounded-full bg-zinc-700 flex items-center justify-center shrink-0 text-zinc-400 text-xs font-semibold select-none">
+                                    {(u.username ?? u.full_name ?? "?")[0].toUpperCase()}
+                                  </div>
+                                )}
+                                <div className="min-w-0">
+                                  <p className="text-zinc-200 font-medium truncate leading-tight">{u.full_name ?? u.username}</p>
+                                  {u.full_name && u.username && (
+                                    <p className="text-[0.6rem] text-zinc-600 truncate mt-0.5">@{u.username}</p>
+                                  )}
+                                </div>
+                              </div>
+                            </td>
+
+                            {/* Email */}
+                            <td className="p-4 text-zinc-400 text-xs truncate max-w-45">{u.email}</td>
+
+                            {/* Role */}
+                            <td className="p-4">
+                              {u.role === "admin" ? (
+                                <span className="inline-flex items-center text-[0.6rem] font-semibold bg-violet-500/15 text-violet-300 border border-violet-500/25 px-2 py-0.5 rounded-md">
+                                  ადმინი
+                                </span>
+                              ) : (
+                                <span className="inline-flex items-center text-[0.6rem] font-medium bg-zinc-800 text-zinc-500 border border-zinc-700 px-2 py-0.5 rounded-md">
+                                  {u.role ?? "user"}
+                                </span>
+                              )}
+                            </td>
+
+                            {/* Plan */}
+                            <td className="p-4">
+                              {planName ? (
+                                <span className="inline-flex items-center text-[0.6rem] font-medium bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 px-2 py-0.5 rounded-md truncate max-w-25">
+                                  {planName}
+                                </span>
+                              ) : (
+                                <span className="text-[0.6rem] text-zinc-700">—</span>
+                              )}
+                            </td>
+
+                            {/* Status / expiry */}
+                            <td className="p-4">
+                              {isActive === null && !expiresAt ? (
+                                <span className="text-[0.6rem] text-zinc-700">—</span>
+                              ) : isActive ? (
+                                <div>
+                                  <span className="inline-flex items-center gap-1 text-[0.6rem] font-medium bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 px-2 py-0.5 rounded-md">
+                                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 inline-block" />
+                                    აქტიური
+                                  </span>
+                                  {expiresAt && (
+                                    <p className="text-[0.55rem] text-zinc-600 mt-0.5">
+                                      {new Date(expiresAt).toLocaleDateString("ka-GE")}
+                                    </p>
+                                  )}
+                                </div>
+                              ) : (
+                                <span className="inline-flex items-center gap-1 text-[0.6rem] font-medium bg-zinc-800 text-zinc-500 border border-zinc-700 px-2 py-0.5 rounded-md">
+                                  <span className="w-1.5 h-1.5 rounded-full bg-zinc-600 inline-block" />
+                                  გასული
+                                </span>
+                              )}
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                )}
+              </div>
+
+              {/* Pagination */}
+              {usersMeta.last_page > 1 && (
+                <div className="flex items-center justify-center gap-1.5 pt-1">
+                  {/* Prev */}
+                  <button
+                    onClick={() => setUsersPage(p => Math.max(1, p - 1))}
+                    disabled={!canPrevPage || usersLoading}
+                    className="cursor-pointer w-8 h-8 flex items-center justify-center rounded-lg text-zinc-400 hover:bg-zinc-800 hover:text-zinc-200 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                  >
+                    <IconChevronLeft />
+                  </button>
+
+                  {/* Page numbers */}
+                  {pageNumbers.map((p, i) =>
+                    p === "…" ? (
+                      <span key={`ellipsis-${i}`} className="w-8 h-8 flex items-center justify-center text-zinc-600 text-xs select-none">
+                        …
+                      </span>
+                    ) : (
+                      <button
+                        key={p}
+                        onClick={() => setUsersPage(p as number)}
+                        disabled={usersLoading}
+                        className={`cursor-pointer w-8 h-8 flex items-center justify-center rounded-lg text-xs font-medium transition-colors disabled:cursor-not-allowed ${
+                          usersMeta.current_page === p
+                            ? "bg-violet-600 text-white shadow"
+                            : "text-zinc-400 hover:bg-zinc-800 hover:text-zinc-200"
+                        }`}
+                      >
+                        {p}
+                      </button>
+                    )
+                  )}
+
+                  {/* Next */}
+                  <button
+                    onClick={() => setUsersPage(p => Math.min(usersMeta.last_page, p + 1))}
+                    disabled={!canNextPage || usersLoading}
+                    className="cursor-pointer w-8 h-8 flex items-center justify-center rounded-lg text-zinc-400 hover:bg-zinc-800 hover:text-zinc-200 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                  >
+                    <IconChevronRight />
+                  </button>
+                </div>
+              )}
             </div>
           )}
 
@@ -1250,14 +1704,14 @@ const handleDeletePlan = async () => {
               </div>
               <div>
                 <h3 className="font-bold text-zinc-100 text-base">
-  {Boolean(disablePlan?.is_active) ? "Disable Plan?" : "Enable Plan?"}
-</h3>
-<p className="text-xs text-zinc-500 mt-2 leading-relaxed">
-  {Boolean(disablePlan?.is_active)
-    ? <><span className="text-zinc-300 font-medium">"{disablePlan.name_en}"</span> will be disabled and hidden from users.<br/>It can be re-enabled later.</>
-    : <><span className="text-zinc-300 font-medium">"{disablePlan.name_en}"</span> will be re-enabled and visible to users.</>
-  }
-</p>
+                  {Boolean(disablePlan?.is_active) ? "Disable Plan?" : "Enable Plan?"}
+                </h3>
+                <p className="text-xs text-zinc-500 mt-2 leading-relaxed">
+                  {Boolean(disablePlan?.is_active)
+                    ? <><span className="text-zinc-300 font-medium">"{disablePlan.name_en}"</span> will be disabled and hidden from users.<br/>It can be re-enabled later.</>
+                    : <><span className="text-zinc-300 font-medium">"{disablePlan.name_en}"</span> will be re-enabled and visible to users.</>
+                  }
+                </p>
               </div>
             </div>
             <div className="px-5 pb-5 flex gap-2">
@@ -1273,36 +1727,37 @@ const handleDeletePlan = async () => {
           </div>
         </div>
       )}
+
       {deletePlanModal && deletePlanTarget && (
-  <div className="fixed inset-0 bg-black/75 z-50 flex items-center justify-center p-4" onClick={e => { if (e.target === e.currentTarget) setDeletePlanModal(false); }}>
-    <div className="bg-zinc-900 border border-zinc-800 rounded-2xl w-full max-w-sm shadow-2xl overflow-hidden">
-      <div className="p-6 flex flex-col items-center text-center gap-4">
-        <div className={`w-14 h-14 rounded-2xl flex items-center justify-center ${Boolean(disablePlan?.is_active) ? "bg-amber-500/10 border border-amber-500/20" : "bg-emerald-500/10 border border-emerald-500/20"}`}>
-  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke={Boolean(disablePlan?.is_active) ? "#fbbf24" : "#34d399"} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-    <circle cx="12" cy="12" r="9"/>
-    <path d="M7 7l10 10"/>
-  </svg>
-</div>
-        <div>
-          <h3 className="font-bold text-zinc-100 text-base">Delete Plan?</h3>
-          <p className="text-xs text-zinc-500 mt-2 leading-relaxed">
-            <span className="text-zinc-300 font-medium">"{deletePlanTarget.name_en}"</span> will be permanently deleted.<br/>This action cannot be undone.
-          </p>
+        <div className="fixed inset-0 bg-black/75 z-50 flex items-center justify-center p-4" onClick={e => { if (e.target === e.currentTarget) setDeletePlanModal(false); }}>
+          <div className="bg-zinc-900 border border-zinc-800 rounded-2xl w-full max-w-sm shadow-2xl overflow-hidden">
+            <div className="p-6 flex flex-col items-center text-center gap-4">
+              <div className="w-14 h-14 rounded-2xl bg-red-500/10 border border-red-500/20 flex items-center justify-center">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#f87171" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6"/>
+                  <path d="M10 11v4M14 11v4"/>
+                </svg>
+              </div>
+              <div>
+                <h3 className="font-bold text-zinc-100 text-base">Delete Plan?</h3>
+                <p className="text-xs text-zinc-500 mt-2 leading-relaxed">
+                  <span className="text-zinc-300 font-medium">"{deletePlanTarget.name_en}"</span> will be permanently deleted.<br/>This action cannot be undone.
+                </p>
+              </div>
+            </div>
+            <div className="px-5 pb-5 flex gap-2">
+              <button onClick={() => setDeletePlanModal(false)} className="cursor-pointer flex-1 py-2.5 rounded-xl text-sm bg-zinc-800 hover:bg-zinc-700 text-zinc-300 transition-colors">Cancel</button>
+              <button
+                onClick={handleDeletePlan}
+                disabled={deletePlanLoading}
+                className="cursor-pointer flex-1 py-2.5 rounded-xl text-sm bg-red-600 hover:bg-red-500 disabled:opacity-40 disabled:cursor-not-allowed text-white font-medium transition-colors flex items-center justify-center gap-2"
+              >
+                {deletePlanLoading ? <><IconSpinner />Deleting…</> : "Delete"}
+              </button>
+            </div>
+          </div>
         </div>
-      </div>
-      <div className="px-5 pb-5 flex gap-2">
-        <button onClick={() => setDeletePlanModal(false)} className="cursor-pointer flex-1 py-2.5 rounded-xl text-sm bg-zinc-800 hover:bg-zinc-700 text-zinc-300 transition-colors">Cancel</button>
-        <button
-  onClick={Boolean(disablePlan?.is_active) ? handleDisablePlan : handleEnablePlan}
-  disabled={disableLoading}
-  className={`cursor-pointer flex-1 py-2.5 rounded-xl text-sm disabled:opacity-40 disabled:cursor-not-allowed text-white font-medium transition-colors flex items-center justify-center gap-2 ${Boolean(disablePlan?.is_active) ? "bg-amber-600 hover:bg-amber-500" : "bg-emerald-600 hover:bg-emerald-500"}`}
->
-  {disableLoading ? <><IconSpinner />{Boolean(disablePlan?.is_active) ? "Disabling…" : "Enabling…"}</> : Boolean(disablePlan?.is_active) ? "Disable" : "Enable"}
-</button>
-      </div>
-    </div>
-  </div>
-)}
+      )}
 
       {/* ══════════════════════════════════════════
           PLAN-CHANNELS BULK ASSIGN TO PLAN MODAL
