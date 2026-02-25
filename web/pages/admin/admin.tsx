@@ -1,7 +1,16 @@
 import { useState, useEffect, useRef } from "react";
 
-type AdminSection = "Overview" | "Users" | "Channels" | "Categories" | "Plans" | "Plan-Channels" | "Support" | "Settings";
-
+type AdminSection = "Overview" | "Users" | "Category-Channels" | "Categories" | "Plans" | "Plan-Channels" | "Support" | "Settings";
+const adminSectionLabels: Record<AdminSection, string> = {
+  "Overview": "მთავარი",
+  "Users": "მომხმარებლები",
+  "Category-Channels": "კატეგორიების შევსება",
+  "Categories": "კატეგორიები",
+  "Plans": "პაკეტები",
+  "Plan-Channels": "პაკეტების შევსება",
+  "Support": "მხარდაჭერა",
+  "Settings": "პარამეტრები",
+};
 interface User {
   id: string; name: string; email: string;
   plan: "Free" | "Premium" | "Enterprise";
@@ -85,7 +94,7 @@ function CategoryMenu({
   }, []);
 
   return (
-    <div ref={ref} className="relative flex-shrink-0">
+    <div ref={ref} className="relative shrink-0">
       <button
         onClick={() => setOpen(o => !o)}
         className={`cursor-pointer w-7 h-7 flex items-center justify-center rounded-lg transition-colors ${open ? "bg-zinc-700 text-zinc-100" : "text-zinc-500 hover:bg-zinc-800 hover:text-zinc-300"}`}
@@ -120,8 +129,8 @@ function CategoryMenu({
 }
 
 function PlanMenu({
-  onManage, onEdit, onDisable, onDelete,
-}: { onManage: () => void; onEdit: () => void; onDisable: () => void; onDelete: () => void }) {
+  isActive, onManage, onEdit, onDisable, onEnable, onDelete,
+}: { isActive: boolean; onManage: () => void; onEdit: () => void; onDisable: () => void; onEnable: () => void; onDelete: () => void }) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
 
@@ -134,7 +143,7 @@ function PlanMenu({
   }, []);
 
   return (
-    <div ref={ref} className="relative flex-shrink-0">
+    <div ref={ref} className="relative shrink-0">
       <button
         onClick={() => setOpen(o => !o)}
         className={`cursor-pointer w-7 h-7 flex items-center justify-center rounded-lg transition-colors ${open ? "bg-zinc-700 text-zinc-100" : "text-zinc-500 hover:bg-zinc-800 hover:text-zinc-300"}`}
@@ -155,19 +164,28 @@ function PlanMenu({
           >
             <IconEdit /><span>რედაქტირება</span>
           </button>
-          <button
-            onClick={() => { setOpen(false); onDisable(); }}
-            className="cursor-pointer w-full flex items-center gap-2.5 px-3 py-2 text-xs text-amber-400 hover:bg-amber-500/10 transition-colors"
-          >
-            <IconDisable /><span>გამორთვა</span>
-          </button>
-          <div className="my-1 border-t border-zinc-700/60" />
-          <button
-            onClick={() => { setOpen(false); onDelete(); }}
-            className="cursor-pointer w-full flex items-center gap-2.5 px-3 py-2 text-xs text-red-400 hover:bg-red-500/10 transition-colors"
-          >
-            <IconTrash /><span>პლანის წაშლა</span>
-          </button>
+         {isActive ? (
+    <button
+      onClick={() => { setOpen(false); onDisable(); }}
+      className="cursor-pointer w-full flex items-center gap-2.5 px-3 py-2 text-xs text-amber-400 hover:bg-amber-500/10 transition-colors"
+    >
+      <IconDisable /><span>გამორთვა</span>
+    </button>
+  ) : (
+    <button
+      onClick={() => { setOpen(false); onEnable(); }}
+      className="cursor-pointer w-full flex items-center gap-2.5 px-3 py-2 text-xs text-emerald-400 hover:bg-emerald-500/10 transition-colors"
+    >
+      <IconCheck /><span>ჩართვა</span>
+    </button>
+  )}
+  <div className="my-1 border-t border-zinc-700/60" />
+  <button
+    onClick={() => { setOpen(false); onDelete(); }}
+    className="cursor-pointer w-full flex items-center gap-2.5 px-3 py-2 text-xs text-red-400 hover:bg-red-500/10 transition-colors"
+  >
+    <IconTrash /><span>პაკეტის წაშლა</span>
+  </button>
         </div>
       )}
     </div>
@@ -278,7 +296,7 @@ export default function AdminDashboard() {
   const fetchPlans = async () => {
     setPlansLoading(true);
     try {
-      const res = await fetch("http://159.89.20.100/api/plans");
+      const res = await fetch("http://159.89.20.100/api/admin/plans/all");
       const data = await res.json();
       setPlans(Array.isArray(data) ? data : data.data ?? []);
     } catch (e) { console.error(e); }
@@ -411,7 +429,31 @@ export default function AdminDashboard() {
     } catch (e) { console.error(e); }
     finally { setDisableLoading(false); }
   };
+const handleEnablePlan = async () => {
+  if (!disablePlan) return;
+  setDisableLoading(true);
+  try {
+    const res = await fetch(`http://159.89.20.100/api/plans/${disablePlan.id}/enable`);
+    if (res.ok) { setDisableModal(false); fetchPlans(); }
+    else { const e = await res.json().catch(() => null); alert(`Failed: ${e?.message}`); }
+  } catch (e) { console.error(e); }
+  finally { setDisableLoading(false); }
+};
 
+const [deletePlanModal, setDeletePlanModal] = useState(false);
+const [deletePlanTarget, setDeletePlanTarget] = useState<Plan | null>(null);
+const [deletePlanLoading, setDeletePlanLoading] = useState(false);
+
+const handleDeletePlan = async () => {
+  if (!deletePlanTarget) return;
+  setDeletePlanLoading(true);
+  try {
+    const res = await fetch(`http://159.89.20.100/api/plans/${deletePlanTarget.id}`, { method: "DELETE" });
+    if (res.ok) { setDeletePlanModal(false); fetchPlans(); }
+    else { const e = await res.json().catch(() => null); alert(`Failed: ${e?.message}`); }
+  } catch (e) { console.error(e); }
+  finally { setDeletePlanLoading(false); }
+};
   const openPlanManageModal = async (plan: Plan) => {
     setActivePlan(plan);
     setPlanChannelList(null);
@@ -486,7 +528,7 @@ export default function AdminDashboard() {
   useEffect(() => {
     fetchCategories();
     fetchPlans();
-    if (section === "Channels" || section === "Overview" || section === "Plan-Channels") fetchChannels();
+    if (section === "Category-Channels" || section === "Overview" || section === "Plan-Channels") fetchChannels();
   }, [section]);
 
   const filteredChannels = channels.filter(c =>
@@ -510,16 +552,23 @@ export default function AdminDashboard() {
     <div className="flex h-screen bg-zinc-950 text-zinc-300 text-sm font-sans overflow-hidden">
 
       {/* SIDEBAR */}
-      <aside className="hidden lg:flex flex-col w-56 bg-zinc-900 border-r border-zinc-800 flex-shrink-0">
-        <div className="p-5 border-b border-zinc-800 font-bold text-zinc-100 tracking-tight">StreamAdmin</div>
+      <aside className="hidden lg:flex flex-col w-56 bg-zinc-900 border-r border-zinc-800 shrink-0">
+        <div className="p-5 border-b border-zinc-800 font-bold text-zinc-100 tracking-tight">ადმინ პანელი</div>
         <nav className="p-3 flex flex-col gap-1">
-          {(["Overview", "Channels", "Categories", "Plans", "Plan-Channels", "Users"] as AdminSection[]).map(s => (
-            <button
-              key={s} onClick={() => setSection(s)}
-              className={`cursor-pointer px-3 py-2 rounded-xl text-left text-sm transition-colors ${section === s ? "bg-violet-500/15 text-violet-300 font-medium" : "text-zinc-500 hover:bg-zinc-800 hover:text-zinc-300"}`}
-            >{s}</button>
-          ))}
-        </nav>
+      {(["Overview",  "Categories","Category-Channels", "Plans", "Plan-Channels", "Users"] as AdminSection[]).map(s => (
+        <button
+          key={s}
+          onClick={() => setSection(s)}
+          className={`cursor-pointer px-3 py-2 rounded-xl text-left text-sm transition-colors ${
+            section === s 
+              ? "bg-violet-500/15 text-violet-300 font-medium" 
+              : "text-zinc-500 hover:bg-zinc-800 hover:text-zinc-300"
+          }`}
+        >
+          {adminSectionLabels[s]} {/* Georgian label */}
+        </button>
+      ))}
+    </nav>
       </aside>
 
       <div className="flex-1 flex flex-col min-w-0 overflow-y-auto">
@@ -529,7 +578,7 @@ export default function AdminDashboard() {
           <h2 className="font-semibold text-zinc-100">{section}</h2>
 
           {/* Channels section bulk */}
-          {selectedChannelUuids.length > 0 && section === "Channels" && (
+          {selectedChannelUuids.length > 0 && section === "Category-Channels" && (
             <div className="flex items-center gap-3">
               <span className="text-xs text-zinc-400">
                 <span className="text-violet-400 font-semibold">{selectedChannelUuids.length}</span> არჩეული
@@ -566,7 +615,7 @@ export default function AdminDashboard() {
         <main className="p-6 space-y-5">
 
           {/* ── CHANNELS ── */}
-          {section === "Channels" && (
+          {section === "Category-Channels" && (
             <div className="space-y-4">
               <input
                 type="text" placeholder="Search channels…" value={channelSearch}
@@ -647,7 +696,7 @@ export default function AdminDashboard() {
               <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
                 {categories.map(cat => (
                   <div key={cat.id} className="group bg-zinc-900 border border-zinc-800 hover:border-zinc-700 transition-colors rounded-2xl p-4 flex items-center gap-4">
-                    <div className="w-11 h-11 rounded-xl bg-zinc-800 flex items-center justify-center flex-shrink-0 overflow-hidden">
+                    <div className="w-11 h-11 rounded-xl bg-zinc-800 flex items-center justify-center shrink-0 overflow-hidden">
                       {cat.icon_url
                         ? <img src={cat.icon_url} className="w-7 h-7 object-contain" />
                         : <span className="text-xl">📁</span>
@@ -672,13 +721,13 @@ export default function AdminDashboard() {
           {section === "Plans" && (
             <div className="space-y-5">
               <div className="flex justify-between items-center">
-                <p className="text-zinc-400 text-xs">სულ {plans.length} პლანი</p>
+                <p className="text-zinc-400 text-xs">სულ {plans.length} პაკეტი</p>
                 <button
                   onClick={() => setShowAddPlan(true)}
                   className="cursor-pointer bg-emerald-600 hover:bg-emerald-500 transition-colors text-white px-4 py-2 rounded-xl text-xs font-medium flex items-center gap-1.5"
                 >
                   <svg width="11" height="11" viewBox="0 0 11 11" fill="none"><path d="M5.5 1v9M1 5.5h9" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/></svg>
-                  პლანის დამატება
+                  პაკეტის დამატება
                 </button>
               </div>
 
@@ -715,7 +764,7 @@ export default function AdminDashboard() {
                   {plans.map(plan => (
                     <div key={plan.id} className="group bg-zinc-900 border border-zinc-800 hover:border-zinc-700 transition-colors rounded-2xl p-4 flex items-start gap-4">
                       {/* Icon / badge */}
-                      <div className="w-11 h-11 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center flex-shrink-0">
+                      <div className="w-11 h-11 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center shrink-0">
                         <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
                           <path d="M10 2l2.4 4.8 5.3.8-3.85 3.75.91 5.3L10 14.1l-4.76 2.55.91-5.3L2.3 7.6l5.3-.8L10 2z" stroke="#34d399" strokeWidth="1.4" strokeLinejoin="round"/>
                         </svg>
@@ -725,13 +774,13 @@ export default function AdminDashboard() {
                         <div className="flex items-center gap-2 flex-wrap">
                           <p className="font-semibold text-zinc-100 truncate leading-tight">{plan.name_en}</p>
                           {plan.is_active
-                            ? <span className="inline-flex items-center gap-1 text-[0.6rem] bg-emerald-500/15 text-emerald-400 border border-emerald-500/25 px-1.5 py-0.5 rounded-md font-medium">Active</span>
-                            : <span className="inline-flex items-center gap-1 text-[0.6rem] bg-zinc-700/50 text-zinc-500 border border-zinc-700 px-1.5 py-0.5 rounded-md font-medium">Inactive</span>
+                            ? <span className="inline-flex items-center gap-1 text-[0.6rem] bg-emerald-500/15 text-emerald-400 border border-emerald-500/25 px-1.5 py-0.5 rounded-md font-medium">აქტიური</span>
+                            : <span className="inline-flex items-center gap-1 text-[0.6rem] bg-zinc-700/50 text-zinc-500 border border-zinc-700 px-1.5 py-0.5 rounded-md font-medium">გათიშული</span>
                           }
                         </div>
                         <p className="text-[0.65rem] text-zinc-500 truncate mt-0.5">{plan.name_ka}</p>
                         <div className="flex items-center gap-3 mt-2">
-                          <span className="text-emerald-400 font-bold text-sm">${plan.price}</span>
+                          <span className="text-emerald-400 font-bold text-sm">{plan.price} GEL</span>
                           <span className="text-[0.65rem] text-zinc-600">·</span>
                           <span className="text-[0.65rem] text-zinc-500">{plan.duration_days} დღე</span>
                         </div>
@@ -739,12 +788,14 @@ export default function AdminDashboard() {
                           <p className="text-[0.62rem] text-zinc-600 mt-1.5 truncate">{plan.description_en}</p>
                         )}
                       </div>
-                      <PlanMenu
-                        onManage={() => openPlanManageModal(plan)}
-                        onEdit={() => openPlanEditModal(plan)}
-                        onDisable={() => openDisableModal(plan)}
-                        onDelete={() => { /* no delete endpoint for plans based on spec, use disable */ openDisableModal(plan); }}
-                      />
+                     <PlanMenu
+  isActive={Boolean(plan.is_active)}
+  onManage={() => openPlanManageModal(plan)}
+  onEdit={() => openPlanEditModal(plan)}
+  onDisable={() => { setDisablePlan(plan); setDisableModal(true); }}
+  onEnable={() => { setDisablePlan(plan); setDisableModal(true); }}
+  onDelete={() => { setDeletePlanTarget(plan); setDeletePlanModal(true); }}
+/>
                     </div>
                   ))}
                 </div>
@@ -817,7 +868,7 @@ export default function AdminDashboard() {
         <div className="fixed inset-0 bg-black/75 z-50 flex items-center justify-center p-4" onClick={e => { if (e.target === e.currentTarget) setManageModal(false); }}>
           <div className="bg-zinc-900 border border-zinc-800 rounded-2xl w-full max-w-lg flex flex-col max-h-[80vh] shadow-2xl overflow-hidden">
             <div className="p-5 border-b border-zinc-800 flex items-center gap-4">
-              <div className="w-11 h-11 rounded-xl bg-zinc-800 flex items-center justify-center flex-shrink-0 overflow-hidden">
+              <div className="w-11 h-11 rounded-xl bg-zinc-800 flex items-center justify-center shrink-0 overflow-hidden">
                 {activeCategory.icon_url
                   ? <img src={activeCategory.icon_url} className="w-7 h-7 object-contain" />
                   : <span className="text-xl">📁</span>
@@ -855,8 +906,8 @@ export default function AdminDashboard() {
                 <div className="p-3 space-y-1">
                   {categoryChannelList.map((ch: any, idx: number) => (
                     <div key={ch.id ?? idx} className="flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-zinc-800/50 transition-colors">
-                      <span className="text-[0.6rem] text-zinc-700 w-5 text-right flex-shrink-0 font-mono tabular-nums">{idx + 1}</span>
-                      <div className="w-8 h-8 rounded-lg bg-zinc-800 flex items-center justify-center flex-shrink-0 overflow-hidden border border-zinc-700/50">
+                      <span className="text-[0.6rem] text-zinc-700 w-5 text-right shrink-0 font-mono tabular-nums">{idx + 1}</span>
+                      <div className="w-8 h-8 rounded-lg bg-zinc-800 flex items-center justify-center shrink-0 overflow-hidden border border-zinc-700/50">
                         {(ch.icon_url || ch.logo)
                           ? <img src={ch.icon_url ?? ch.logo} className="w-6 h-6 object-contain" onError={e => (e.currentTarget.style.display = "none")} />
                           : <span className="text-xs text-zinc-600">📺</span>
@@ -867,7 +918,7 @@ export default function AdminDashboard() {
                         {ch.id && <p className="text-[0.58rem] text-zinc-600 font-mono truncate mt-0.5">{ch.id}</p>}
                       </div>
                       {ch.number != null && (
-                        <span className="text-[0.6rem] font-mono text-zinc-500 bg-zinc-800 border border-zinc-700/50 px-2 py-0.5 rounded-md flex-shrink-0">
+                        <span className="text-[0.6rem] font-mono text-zinc-500 bg-zinc-800 border border-zinc-700/50 px-2 py-0.5 rounded-md shrink-0">
                           #{ch.number}
                         </span>
                       )}
@@ -914,7 +965,7 @@ export default function AdminDashboard() {
                 <label className="text-[0.65rem] text-zinc-500 uppercase tracking-widest block mb-1.5">Icon URL</label>
                 <div className="flex gap-2 items-center">
                   <input className="flex-1 bg-zinc-800 border border-zinc-700 p-2.5 rounded-xl text-sm focus:outline-none focus:border-zinc-500 transition-colors" value={editForm.icon_url} onChange={e => setEditForm({ ...editForm, icon_url: e.target.value })} placeholder="https://…" />
-                  <div className="w-10 h-10 rounded-xl bg-zinc-800 border border-zinc-700 flex items-center justify-center flex-shrink-0 overflow-hidden">
+                  <div className="w-10 h-10 rounded-xl bg-zinc-800 border border-zinc-700 flex items-center justify-center shrink-0 overflow-hidden">
                     {editForm.icon_url
                       ? <img src={editForm.icon_url} className="w-7 h-7 object-contain" onError={e => (e.currentTarget.style.display = "none")} />
                       : <span className="text-lg">📁</span>
@@ -990,14 +1041,14 @@ export default function AdminDashboard() {
               {categories.map(cat => (
                 <label key={cat.id} className={`flex items-center gap-3 p-3 rounded-xl border cursor-pointer transition-all ${selectedCategoryId === cat.id ? "border-violet-500 bg-violet-500/10" : "border-zinc-800 bg-zinc-800/30 hover:border-zinc-700 hover:bg-zinc-800/60"}`}>
                   <input type="radio" name="bulkCat" value={cat.id} checked={selectedCategoryId === cat.id} onChange={() => setSelectedCategoryId(cat.id)} className="accent-violet-500" />
-                  <div className="w-7 h-7 rounded-lg bg-zinc-800 flex items-center justify-center flex-shrink-0">
+                  <div className="w-7 h-7 rounded-lg bg-zinc-800 flex items-center justify-center shrink-0">
                     {cat.icon_url ? <img src={cat.icon_url} className="w-5 h-5 object-contain" /> : <span className="text-sm">📁</span>}
                   </div>
                   <div className="flex-1 min-w-0">
                     <p className="text-zinc-100 font-medium text-sm truncate">{cat.name_en}</p>
                     <p className="text-[0.6rem] text-zinc-500 truncate">{cat.name_ka}</p>
                   </div>
-                  {selectedCategoryId === cat.id && <span className="text-violet-400 flex-shrink-0"><IconCheck /></span>}
+                  {selectedCategoryId === cat.id && <span className="text-violet-400 shrink-0"><IconCheck /></span>}
                 </label>
               ))}
             </div>
@@ -1022,7 +1073,7 @@ export default function AdminDashboard() {
         <div className="fixed inset-0 bg-black/75 z-50 flex items-center justify-center p-4" onClick={e => { if (e.target === e.currentTarget) setPlanManageModal(false); }}>
           <div className="bg-zinc-900 border border-zinc-800 rounded-2xl w-full max-w-lg flex flex-col max-h-[80vh] shadow-2xl overflow-hidden">
             <div className="p-5 border-b border-zinc-800 flex items-center gap-4">
-              <div className="w-11 h-11 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center flex-shrink-0">
+              <div className="w-11 h-11 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center shrink-0">
                 <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
                   <path d="M10 2l2.4 4.8 5.3.8-3.85 3.75.91 5.3L10 14.1l-4.76 2.55.91-5.3L2.3 7.6l5.3-.8L10 2z" stroke="#34d399" strokeWidth="1.4" strokeLinejoin="round"/>
                 </svg>
@@ -1086,9 +1137,9 @@ export default function AdminDashboard() {
                         onClick={() => setSelectedPlanChannelUuids(prev => isSelected ? prev.filter(id => id !== chId) : [...prev, chId])}
                         className={`flex items-center gap-3 px-3 py-2.5 rounded-xl cursor-pointer transition-colors ${isSelected ? "bg-red-500/10 border border-red-500/20" : "hover:bg-zinc-800/50 border border-transparent"}`}
                       >
-                        <input type="checkbox" className="cursor-pointer accent-red-500 flex-shrink-0" checked={isSelected} onChange={() => {}} />
-                        <span className="text-[0.6rem] text-zinc-700 w-5 text-right flex-shrink-0 font-mono tabular-nums">{idx + 1}</span>
-                        <div className="w-8 h-8 rounded-lg bg-zinc-800 flex items-center justify-center flex-shrink-0 overflow-hidden border border-zinc-700/50">
+                        <input type="checkbox" className="cursor-pointer accent-red-500 shrink-0" checked={isSelected} onChange={() => {}} />
+                        <span className="text-[0.6rem] text-zinc-700 w-5 text-right shrink-0 font-mono tabular-nums">{idx + 1}</span>
+                        <div className="w-8 h-8 rounded-lg bg-zinc-800 flex items-center justify-center shrink-0 overflow-hidden border border-zinc-700/50">
                           {(ch.icon_url || ch.logo)
                             ? <img src={ch.icon_url ?? ch.logo} className="w-6 h-6 object-contain" onError={e => (e.currentTarget.style.display = "none")} />
                             : <span className="text-xs text-zinc-600">📺</span>
@@ -1099,7 +1150,7 @@ export default function AdminDashboard() {
                           {chId && <p className="text-[0.58rem] text-zinc-600 font-mono truncate mt-0.5">{chId}</p>}
                         </div>
                         {ch.number != null && (
-                          <span className="text-[0.6rem] font-mono text-zinc-500 bg-zinc-800 border border-zinc-700/50 px-2 py-0.5 rounded-md flex-shrink-0">
+                          <span className="text-[0.6rem] font-mono text-zinc-500 bg-zinc-800 border border-zinc-700/50 px-2 py-0.5 rounded-md shrink-0">
                             #{ch.number}
                           </span>
                         )}
@@ -1115,7 +1166,7 @@ export default function AdminDashboard() {
                 <circle cx="5.5" cy="5.5" r="4.5" stroke="currentColor" strokeWidth="1.2"/>
                 <path d="M5.5 5v3M5.5 3.5v.5" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/>
               </svg>
-              მონიშნეთ არხები და დააჭირეთ Remove მათ ამ პლანიდან ამოსაღებად
+              მონიშნეთ არხები და დააჭირეთ Remove მათ ამ პაკეტიდან ამოსაღებად
             </div>
           </div>
         </div>
@@ -1198,25 +1249,60 @@ export default function AdminDashboard() {
                 </svg>
               </div>
               <div>
-                <h3 className="font-bold text-zinc-100 text-base">Disable Plan?</h3>
-                <p className="text-xs text-zinc-500 mt-2 leading-relaxed">
-                  <span className="text-zinc-300 font-medium">"{disablePlan.name_en}"</span> will be disabled and hidden from users.<br/>It can be re-enabled later.
-                </p>
+                <h3 className="font-bold text-zinc-100 text-base">
+  {Boolean(disablePlan?.is_active) ? "Disable Plan?" : "Enable Plan?"}
+</h3>
+<p className="text-xs text-zinc-500 mt-2 leading-relaxed">
+  {Boolean(disablePlan?.is_active)
+    ? <><span className="text-zinc-300 font-medium">"{disablePlan.name_en}"</span> will be disabled and hidden from users.<br/>It can be re-enabled later.</>
+    : <><span className="text-zinc-300 font-medium">"{disablePlan.name_en}"</span> will be re-enabled and visible to users.</>
+  }
+</p>
               </div>
             </div>
             <div className="px-5 pb-5 flex gap-2">
               <button onClick={() => setDisableModal(false)} className="cursor-pointer flex-1 py-2.5 rounded-xl text-sm bg-zinc-800 hover:bg-zinc-700 text-zinc-300 transition-colors">Cancel</button>
               <button
-                onClick={handleDisablePlan}
+                onClick={Boolean(disablePlan?.is_active) ? handleDisablePlan : handleEnablePlan}
                 disabled={disableLoading}
                 className="cursor-pointer flex-1 py-2.5 rounded-xl text-sm bg-amber-600 hover:bg-amber-500 disabled:opacity-40 disabled:cursor-not-allowed text-white font-medium transition-colors flex items-center justify-center gap-2"
               >
-                {disableLoading ? <><IconSpinner />Disabling…</> : "Disable"}
+                {disableLoading ? <><IconSpinner />{Boolean(disablePlan?.is_active) ? "Disabling…" : "Enabling…"}</> : Boolean(disablePlan?.is_active) ? "Disable" : "Enable"}
               </button>
             </div>
           </div>
         </div>
       )}
+      {deletePlanModal && deletePlanTarget && (
+  <div className="fixed inset-0 bg-black/75 z-50 flex items-center justify-center p-4" onClick={e => { if (e.target === e.currentTarget) setDeletePlanModal(false); }}>
+    <div className="bg-zinc-900 border border-zinc-800 rounded-2xl w-full max-w-sm shadow-2xl overflow-hidden">
+      <div className="p-6 flex flex-col items-center text-center gap-4">
+        <div className={`w-14 h-14 rounded-2xl flex items-center justify-center ${Boolean(disablePlan?.is_active) ? "bg-amber-500/10 border border-amber-500/20" : "bg-emerald-500/10 border border-emerald-500/20"}`}>
+  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke={Boolean(disablePlan?.is_active) ? "#fbbf24" : "#34d399"} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+    <circle cx="12" cy="12" r="9"/>
+    <path d="M7 7l10 10"/>
+  </svg>
+</div>
+        <div>
+          <h3 className="font-bold text-zinc-100 text-base">Delete Plan?</h3>
+          <p className="text-xs text-zinc-500 mt-2 leading-relaxed">
+            <span className="text-zinc-300 font-medium">"{deletePlanTarget.name_en}"</span> will be permanently deleted.<br/>This action cannot be undone.
+          </p>
+        </div>
+      </div>
+      <div className="px-5 pb-5 flex gap-2">
+        <button onClick={() => setDeletePlanModal(false)} className="cursor-pointer flex-1 py-2.5 rounded-xl text-sm bg-zinc-800 hover:bg-zinc-700 text-zinc-300 transition-colors">Cancel</button>
+        <button
+  onClick={Boolean(disablePlan?.is_active) ? handleDisablePlan : handleEnablePlan}
+  disabled={disableLoading}
+  className={`cursor-pointer flex-1 py-2.5 rounded-xl text-sm disabled:opacity-40 disabled:cursor-not-allowed text-white font-medium transition-colors flex items-center justify-center gap-2 ${Boolean(disablePlan?.is_active) ? "bg-amber-600 hover:bg-amber-500" : "bg-emerald-600 hover:bg-emerald-500"}`}
+>
+  {disableLoading ? <><IconSpinner />{Boolean(disablePlan?.is_active) ? "Disabling…" : "Enabling…"}</> : Boolean(disablePlan?.is_active) ? "Disable" : "Enable"}
+</button>
+      </div>
+    </div>
+  </div>
+)}
 
       {/* ══════════════════════════════════════════
           PLAN-CHANNELS BULK ASSIGN TO PLAN MODAL
@@ -1237,7 +1323,7 @@ export default function AdminDashboard() {
               {plans.map(plan => (
                 <label key={plan.id} className={`flex items-center gap-3 p-3 rounded-xl border cursor-pointer transition-all ${selectedPlanId === plan.id ? "border-emerald-500 bg-emerald-500/10" : "border-zinc-800 bg-zinc-800/30 hover:border-zinc-700 hover:bg-zinc-800/60"}`}>
                   <input type="radio" name="bulkPlan" value={plan.id} checked={selectedPlanId === plan.id} onChange={() => setSelectedPlanId(plan.id)} className="accent-emerald-500" />
-                  <div className="w-7 h-7 rounded-lg bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center flex-shrink-0">
+                  <div className="w-7 h-7 rounded-lg bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center shrink-0">
                     <svg width="13" height="13" viewBox="0 0 20 20" fill="none">
                       <path d="M10 2l2.4 4.8 5.3.8-3.85 3.75.91 5.3L10 14.1l-4.76 2.55.91-5.3L2.3 7.6l5.3-.8L10 2z" stroke="#34d399" strokeWidth="1.6" strokeLinejoin="round"/>
                     </svg>
@@ -1246,7 +1332,7 @@ export default function AdminDashboard() {
                     <p className="text-zinc-100 font-medium text-sm truncate">{plan.name_en}</p>
                     <p className="text-[0.6rem] text-zinc-500 truncate">{plan.name_ka} · ${plan.price} · {plan.duration_days}d</p>
                   </div>
-                  {selectedPlanId === plan.id && <span className="text-emerald-400 flex-shrink-0"><IconCheck /></span>}
+                  {selectedPlanId === plan.id && <span className="text-emerald-400 shrink-0"><IconCheck /></span>}
                 </label>
               ))}
             </div>
