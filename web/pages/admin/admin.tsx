@@ -973,7 +973,9 @@ const handleDeletePlan = async () => {
                     <div className="w-11 h-11 rounded-xl bg-zinc-800 flex items-center justify-center shrink-0 overflow-hidden">
                       {cat.icon_url
                         ? <img src={cat.icon_url} className="w-7 h-7 object-contain" />
-                        : <span className="text-xl">📁</span>
+                        : <span className="text-xl"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M3 7a2 2 0 012-2h3.17a2 2 0 011.42.59L11 7h10a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V7z"/>
+                  </svg></span>
                       }
                     </div>
                     <div className="flex-1 min-w-0">
