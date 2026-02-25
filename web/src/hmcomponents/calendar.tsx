@@ -67,13 +67,10 @@ export default function ChannelCalendar({
   const TODAY    = useMemo(() => startOfDay(new Date()), []);
   const MIN_DATE = useMemo(() => startOfDay(addDays(TODAY, -archiveDays)), [TODAY, archiveDays]);
 
-  // Start view on the month that contains MIN_DATE if archiveDays > ~28,
-  // otherwise just the current month
   const [viewYear,  setViewYear]  = useState(TODAY.getFullYear());
   const [viewMonth, setViewMonth] = useState(TODAY.getMonth());
   const [selected,  setSelected]  = useState<Date | null>(null);
 
-  /* ── Calendar cells for current view ── */
   const cells = useMemo<(Date | null)[]>(() => {
     const firstDOW = getFirstDOW(viewYear, viewMonth);
     const total    = getDaysInMonth(viewYear, viewMonth);

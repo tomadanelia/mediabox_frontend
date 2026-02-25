@@ -1,4 +1,6 @@
-import React, { useState, useRef, useEffect, use } from 'react';
+'use client'
+
+import React, { useState, useRef, useEffect } from 'react';
 import Hls from 'hls.js';
 import BadgeLiveDemo from '@/components/shadcn-studio/badge/cusotm/badge-c01';
 import {
@@ -6,319 +8,379 @@ import {
   SpeakerWaveIcon,
   SpeakerXMarkIcon,
 } from '@heroicons/react/24/solid';
-import { Play, Pause, SkipBack, SkipForward, RotateCcw, RotateCw, ScreenShare, PictureInPicture2, Share, Forward } from 'lucide-react';
+import {
+  Play, Pause, SkipBack, SkipForward,
+  RotateCcw, RotateCw, ScreenShare,
+  PictureInPicture2, Forward, Radio,
+} from 'lucide-react';
 import ChannelsPanelDemo from './FullScreenList';
 import { sampleChannels } from './FullScreenList';
 
-type Stream = {
-  id: string
-  uuid:string;
-  name: string;
-  url: string;
-  logo:String;
-};
+// ─── Types ────────────────────────────────────────────────────────────────────
 
 type VideoPlayerProps = {
-  stream: Stream;
+  streamUrl: string;
+  mode: 'live' | 'archive';
+  archiveTimestamp: number | null;
+  isLoading?: boolean;
+  onRewind: (timestamp: number) => void;
+  onGoLive: () => void;
 };
 
-const VideoPlayer: React.FC<VideoPlayerProps> = ({ stream }) => {
-  const videoRef = useRef<HTMLVideoElement | null>(null);
-  const containerRef = useRef<HTMLDivElement | null>(null);
-  const hlsRef = useRef<Hls | null>(null);
+// ─── Helpers ──────────────────────────────────────────────────────────────────
 
-  const [isPlaying, setIsPlaying] = useState<boolean>(false);
-  const [currentTime, setCurrentTime] = useState<number>(0);
-  const [duration, setDuration] = useState<number>(0);
-  const [volume, setVolume] = useState<number>(1);
-  const [isMuted, setIsMuted] = useState<boolean>(false);
-  const [showControls, setShowControls] = useState<boolean>(true);
-  const [showVolumeSlider, setShowVolumeSlider] = useState<boolean>(false);
-  const [isFullscreen, setIsFullscreen] = useState<boolean>(false);
-  const [showChannels, setShowChannels] = useState<boolean>(false);
-  const [currentStream, setCurrentStream] = useState<number>(0);
-  const [videoUrl, setVideoUrl] = useState<string>('');
-  const [loading, setLoading] = useState<boolean>(false);
-  const [islive,setislive] = useState<boolean>(false)
-  const [rewind,setrewind] = useState<number>(0)
-  // Fetch the actual stream URL when stream changes
+function formatTime(secs: number): string {
+  if (!isFinite(secs) || isNaN(secs)) return '0:00';
+  const h = Math.floor(secs / 3600);
+  const m = Math.floor((secs % 3600) / 60);
+  const s = Math.floor(secs % 60);
+  if (h > 0) return `${h}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+  return `${m}:${String(s).padStart(2, '0')}`;
+}
+
+function formatBehind(secs: number): string {
+  if (secs < 60) return `${Math.floor(secs)}s behind live`;
+  if (secs < 3600) return `${Math.floor(secs / 60)}m behind live`;
+  const h = Math.floor(secs / 3600);
+  const m = Math.floor((secs % 3600) / 60);
+  return `${h}h ${m}m behind live`;
+}
+
+/**
+ * Returns what unix second we are currently "watching":
+ *   Live    → wall-clock now
+ *   Archive → archiveTimestamp + how far into the clip we've played
+ */
+function getWatchingUnix(
+  mode: 'live' | 'archive',
+  liveNow: number,
+  archiveTimestamp: number | null,
+  currentTime: number,
+): number {
+  if (mode === 'archive' && archiveTimestamp !== null) {
+    return archiveTimestamp + Math.floor(currentTime);
+  }
+  return liveNow;
+}
+
+/**
+ * Progress as a fraction of the current calendar day (0–100).
+ * Works for both live and archive — the bar always represents position
+ * within the 24-hour day regardless of HLS chunk boundaries.
+ */
+function getDayProgress(watchingUnixSec: number): number {
+  const d = new Date(watchingUnixSec * 1000);
+  // Midnight of the same local day in unix seconds
+  const midnightUnix = new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime() / 1000;
+  const secondsIntoDay = watchingUnixSec - midnightUnix;
+  return Math.min(100, Math.max(0, (secondsIntoDay / 86400) * 100));
+}
+
+// ─── Component ────────────────────────────────────────────────────────────────
+
+const VideoPlayer: React.FC<VideoPlayerProps> = ({
+  streamUrl,
+  mode,
+  archiveTimestamp,
+  isLoading = false,
+  onRewind,
+  onGoLive,
+}) => {
+  const videoRef      = useRef<HTMLVideoElement | null>(null);
+  const containerRef  = useRef<HTMLDivElement | null>(null);
+  const hlsRef        = useRef<Hls | null>(null);
+
+  const [isPlaying,        setIsPlaying]        = useState(false);
+  const [currentTime,      setCurrentTime]      = useState(0);
+  const [duration,         setDuration]         = useState(0);
+  const [volume,           setVolume]           = useState(1);
+  const [isMuted,          setIsMuted]          = useState(false);
+  const [showControls,     setShowControls]     = useState(true);
+  const [showVolumeSlider, setShowVolumeSlider] = useState(false);
+  const [isFullscreen,     setIsFullscreen]     = useState(false);
+  const [showChannels,     setShowChannels]     = useState(false);
+  const [isBuffering,      setIsBuffering]      = useState(false);
+
+  // Wall-clock ticker — used for behind-live calc and day-progress in live mode
+  const [liveNow, setLiveNow] = useState(Math.floor(Date.now() / 1000));
   useEffect(() => {
-    console.log('Stream changed:', stream);
-    
-    const fetchStreamUrl = async () => {
-      setLoading(true);
-      try {
-        const response = await fetch(`http://159.89.20.100/api/channels/${stream.id}/stream`);
-        if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
-        const result = await response.json();
-        console.log('Fetched stream data:', result);
-        setVideoUrl(result.url || result);
-      } catch (err: any) {
-        console.error('Error fetching stream:', err);
-      } finally {
-        setLoading(false);
-      }
-    };
+    const id = setInterval(() => setLiveNow(Math.floor(Date.now() / 1000)), 1000);
+    return () => clearInterval(id);
+  }, []);
 
-    fetchStreamUrl();
-  }, [stream.id]);
+  // Derived values
+  const watchingUnix    = getWatchingUnix(mode, liveNow, archiveTimestamp, currentTime);
+  const dayProgressPct  = getDayProgress(watchingUnix);
+  const behindLiveSecs  = mode === 'archive' ? Math.max(0, liveNow - watchingUnix) : 0;
 
-  // Initialize HLS player when videoUrl changes
+  // ── Load HLS ─────────────────────────────────────────────────────────────────
+
   useEffect(() => {
-    if (!videoUrl || !videoRef.current) return;
-
     const video = videoRef.current;
+    if (!video || !streamUrl) return;
 
-    // Clean up previous HLS instance
-    if (hlsRef.current) {
-      hlsRef.current.destroy();
-      hlsRef.current = null;
-    }
+    hlsRef.current?.destroy();
+    hlsRef.current = null;
+    setIsBuffering(true);
+    setCurrentTime(0);
+    setDuration(0);
 
-    // Check if HLS is supported
     if (Hls.isSupported()) {
-      const hls = new Hls({
-        enableWorker: true,
-        lowLatencyMode: true,
-      });
-      
+      const hls = new Hls({ enableWorker: true, lowLatencyMode: true });
       hlsRef.current = hls;
-      hls.loadSource(videoUrl);
+      hls.loadSource(streamUrl);
       hls.attachMedia(video);
 
       hls.on(Hls.Events.MANIFEST_PARSED, () => {
-        console.log('HLS manifest loaded, ready to play');
+        setIsBuffering(false);
+        video.play().then(() => setIsPlaying(true)).catch(() => {});
       });
 
-      hls.on(Hls.Events.ERROR, (event, data) => {
-        console.error('HLS error:', data);
+      hls.on(Hls.Events.ERROR, (_e, data) => {
         if (data.fatal) {
           switch (data.type) {
-            case Hls.ErrorTypes.NETWORK_ERROR:
-              console.error('Fatal network error, trying to recover');
-              hls.startLoad();
-              break;
-            case Hls.ErrorTypes.MEDIA_ERROR:
-              console.error('Fatal media error, trying to recover');
-              hls.recoverMediaError();
-              break;
-            default:
-              console.error('Fatal error, cannot recover');
-              hls.destroy();
-              break;
+            case Hls.ErrorTypes.NETWORK_ERROR: hls.startLoad();        break;
+            case Hls.ErrorTypes.MEDIA_ERROR:   hls.recoverMediaError(); break;
+            default:                           hls.destroy();
           }
         }
       });
-    } 
-    // For Safari/iOS which has native HLS support
-    else if (video.canPlayType('application/vnd.apple.mpegurl')) {
-      video.src = videoUrl;
-      console.log('Using native HLS support (Safari/iOS)');
+    } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
+      video.src = streamUrl;
+      setIsBuffering(false);
     }
 
-    // Cleanup on unmount
-    return () => {
-      if (hlsRef.current) {
-        hlsRef.current.destroy();
-        hlsRef.current = null;
-      }
-    };
-  }, [videoUrl]);
+    return () => { hlsRef.current?.destroy(); hlsRef.current = null; };
+  }, [streamUrl]);
+
+  // ── Video events ─────────────────────────────────────────────────────────────
 
   useEffect(() => {
     const video = videoRef.current;
     if (!video) return;
 
-    const updateTime = () => setCurrentTime(video.currentTime);
-    const updateDuration = () => setDuration(video.duration);
+    const onTimeUpdate     = () => setCurrentTime(video.currentTime);
+    const onDurationChange = () => { if (isFinite(video.duration)) setDuration(video.duration); };
+    const onPlay           = () => setIsPlaying(true);
+    const onPause          = () => setIsPlaying(false);
+    const onWaiting        = () => setIsBuffering(true);
+    const onPlaying        = () => setIsBuffering(false);
 
-    video.addEventListener('timeupdate', updateTime);
-    video.addEventListener('loadedmetadata', updateDuration);
+    /**
+     * Archive chunk boundary fix:
+     * HLS timeshift streams are divided into chunks. When the loaded chunk
+     * finishes, the video fires `ended`. If we're in archive mode and real
+     * time has moved on (there is more content available), reload the stream
+     * from where we stopped so playback continues seamlessly.
+     *
+     * We use a ref snapshot of the props instead of closing over them directly
+     * to avoid stale-closure issues inside the event listener.
+     */
+    const onEnded = () => {
+      // Read current prop values via the ref snapshot below
+      if (modeRef.current === 'archive' && archiveTsRef.current !== null) {
+        const resumeAt = archiveTsRef.current + Math.floor(video.currentTime);
+        const nowSec   = Math.floor(Date.now() / 1000);
+        // Only reload if there's actually more content to watch (≥5s buffer)
+        if (nowSec - resumeAt >= 5) {
+          onRewindRef.current(resumeAt);
+        }
+      }
+    };
+
+    video.addEventListener('timeupdate',     onTimeUpdate);
+    video.addEventListener('durationchange', onDurationChange);
+    video.addEventListener('loadedmetadata', onDurationChange);
+    video.addEventListener('play',           onPlay);
+    video.addEventListener('pause',          onPause);
+    video.addEventListener('waiting',        onWaiting);
+    video.addEventListener('playing',        onPlaying);
+    video.addEventListener('ended',          onEnded);
 
     return () => {
-      video.removeEventListener('timeupdate', updateTime);
-      video.removeEventListener('loadedmetadata', updateDuration);
+      video.removeEventListener('timeupdate',     onTimeUpdate);
+      video.removeEventListener('durationchange', onDurationChange);
+      video.removeEventListener('loadedmetadata', onDurationChange);
+      video.removeEventListener('play',           onPlay);
+      video.removeEventListener('pause',          onPause);
+      video.removeEventListener('waiting',        onWaiting);
+      video.removeEventListener('playing',        onPlaying);
+      video.removeEventListener('ended',          onEnded);
     };
-  }, []);
+  }, []); // intentionally empty — we use refs for live prop access
+
+  // Refs to expose latest prop values inside the static event listener above
+  const modeRef       = useRef(mode);
+  const archiveTsRef  = useRef(archiveTimestamp);
+  const onRewindRef   = useRef(onRewind);
+  useEffect(() => { modeRef.current      = mode;             }, [mode]);
+  useEffect(() => { archiveTsRef.current = archiveTimestamp; }, [archiveTimestamp]);
+  useEffect(() => { onRewindRef.current  = onRewind;         }, [onRewind]);
+
+  // ── Fullscreen ───────────────────────────────────────────────────────────────
 
   useEffect(() => {
-    const handleFullscreenChange = () => {
-      setIsFullscreen(!!document.fullscreenElement);
-    };
-
-    document.addEventListener('fullscreenchange', handleFullscreenChange);
-
-    return () => {
-      document.removeEventListener('fullscreenchange', handleFullscreenChange);
-    };
+    const onChange = () => setIsFullscreen(!!document.fullscreenElement);
+    document.addEventListener('fullscreenchange', onChange);
+    return () => document.removeEventListener('fullscreenchange', onChange);
   }, []);
+
+  // ─── Controls ─────────────────────────────────────────────────────────────────
 
   const togglePlay = () => {
     const video = videoRef.current;
     if (!video) return;
-
-    if (video.paused) {
-      video.play();
-      setIsPlaying(true);
-    } else {
-      video.pause();
-      setIsPlaying(false);
-    }
+    video.paused ? video.play() : video.pause();
   };
 
+  /**
+   * Seek by clicking the progress bar.
+   * Maps the click position (fraction of bar width) back to a unix timestamp
+   * for today, then calls onRewind so the parent fetches the archive URL.
+   */
   const handleSeek = (e: React.MouseEvent<HTMLDivElement>) => {
-    if (!videoRef.current) return;
-
     const rect = e.currentTarget.getBoundingClientRect();
-    const percent = (e.clientX - rect.left) / rect.width;
-    const seekTime = percent * duration;
+    const pct  = Math.min(1, Math.max(0, (e.clientX - rect.left) / rect.width));
 
-    videoRef.current.currentTime = seekTime;
-    setCurrentTime(seekTime);
+    // Reconstruct the unix timestamp for that fraction of today
+    const now       = new Date();
+    const midnight  = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime() / 1000;
+    const targetTs  = Math.floor(midnight + pct * 86400);
+    const nowSec    = Math.floor(Date.now() / 1000);
+
+    // Only allow seeking to a point that has already happened
+    if (targetTs >= nowSec) return;
+
+    onRewind(targetTs);
   };
 
   const handleVolumeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (!videoRef.current) return;
-
     const vol = parseFloat(e.target.value);
-    videoRef.current.volume = vol;
+    if (videoRef.current) videoRef.current.volume = vol;
     setVolume(vol);
     setIsMuted(vol === 0);
   };
 
   const toggleMute = () => {
-    if (!videoRef.current) return;
-
-    if (isMuted) {
-      videoRef.current.volume = volume || 0.5;
-      setIsMuted(false);
-    } else {
-      videoRef.current.volume = 0;
-      setIsMuted(true);
-    }
+    const video = videoRef.current;
+    if (!video) return;
+    if (isMuted) { video.volume = volume || 0.5; setIsMuted(false); }
+    else         { video.volume = 0;             setIsMuted(true);  }
   };
 
+  /**
+   * Rewind / fast-forward with accumulation.
+   *
+   * Always computes the new target from `watchingUnix` — the actual unix
+   * second currently on screen — rather than from wall-clock `Date.now()`.
+   * This means pressing -30s three times in a row correctly lands at
+   * watchingUnix - 90s, not always at now - 30s.
+   */
   const skip = (seconds: number) => {
-    if (!videoRef.current) return;
+    const target = watchingUnix + seconds;
+    const nowSec = Math.floor(Date.now() / 1000);
 
-    videoRef.current.currentTime = Math.max(
-      0,
-      Math.min(duration, currentTime + seconds)
-    );
+    if (seconds < 0) {
+      // Going backward — always go to archive at the accumulated point
+      onRewind(Math.max(0, target));
+    } else if (seconds > 0 && mode === 'archive') {
+      if (target >= nowSec) {
+        // Skipping past live edge → go live
+        onGoLive();
+      } else {
+        // Still in archive window → seek to new accumulated point
+        onRewind(target);
+      }
+    }
+    // seconds > 0 while live → no-op (already at live edge)
   };
 
   const toggleFullscreen = () => {
-    if (!document.fullscreenElement) {
-      containerRef.current?.requestFullscreen();
-    } else {
-      document.exitFullscreen();
-    }
+    !document.fullscreenElement
+      ? containerRef.current?.requestFullscreen()
+      : document.exitFullscreen();
   };
 
-  const changeStream = (index: number) => {
-    if (!videoRef.current) return;
-
-    const wasPlaying = !videoRef.current.paused;
-    setCurrentStream(index);
-    setCurrentTime(0);
-
-    setTimeout(() => {
-      if (wasPlaying) {
-        videoRef.current?.play();
-      }
-    }, 100);
-  };
-
-  const formatTime = (time: number): string => {
-    if (isNaN(time)) return '0:00';
-    const minutes = Math.floor(time / 60);
-    const seconds = Math.floor(time % 60);
-    return `${minutes}:${seconds.toString().padStart(2, '0')}`;
-  };
+  // ─── Render ───────────────────────────────────────────────────────────────────
 
   return (
-    <div className="flex w-full relative justify-center p-4 ">
+    <div className="flex w-full relative justify-center p-4">
       <div className="w-full flex flex-row max-w-6xl rounded-sm">
         <div
           ref={containerRef}
-          className="relative bg-black group rounded-[10px] overflow-hidden"
+          className="relative bg-black group rounded-[10px] overflow-hidden w-full"
           onMouseEnter={() => setShowControls(true)}
-          onMouseLeave={() => {
-            setShowControls(false);
-            setShowVolumeSlider(false);
-          }}
+          onMouseLeave={() => { setShowControls(false); setShowVolumeSlider(false); }}
         >
-          <video
-            ref={videoRef}
-            className=" aspect-video"
-            onClick={togglePlay}
-          />
+          <video ref={videoRef} className="w-full aspect-video" onClick={togglePlay} />
 
-          {loading && (
+          {/* Spinner */}
+          {(isLoading || isBuffering) && (
             <div className="absolute inset-0 flex items-center justify-center bg-black/50">
-              <div className="text-white">Loading stream...</div>
+              <div className="text-white">{isLoading ? 'Loading stream…' : 'Buffering…'}</div>
             </div>
           )}
 
-          {/* Channels Button - Top Right Corner in Fullscreen */}
+          {/* Archive: behind-live pill + Go Live */}
+          {mode === 'archive' && (
+            <div className="absolute top-3 left-0 right-0 flex items-center justify-center gap-3 z-20 pointer-events-none">
+              <div className="pointer-events-none bg-black/70 backdrop-blur-sm text-orange-400 text-xs font-semibold px-3 py-1.5 rounded-full border border-orange-500/30">
+                ⏪ {formatBehind(behindLiveSecs)}
+              </div>
+              <button
+                onClick={onGoLive}
+                className="pointer-events-auto flex items-center gap-1.5 bg-red-600 hover:bg-red-500 text-white text-xs font-semibold px-3 py-1.5 rounded-full transition-colors"
+              >
+                <Radio className="w-3.5 h-3.5" />
+                Go Live
+              </button>
+            </div>
+          )}
+
+          {/* Fullscreen channels */}
           {isFullscreen && (
-            <button 
-              onClick={() => setShowChannels(!showChannels)} 
+            <button
+              onClick={() => setShowChannels(!showChannels)}
               className={`absolute top-6 right-6 z-50 text-white hover:text-orange-400 transition-all cursor-pointer px-4 py-2 bg-black/60 backdrop-blur-sm rounded-lg border border-white/20 ${showControls ? 'opacity-100' : 'opacity-0'}`}
             >
               Channels
             </button>
           )}
-
-          {/* Channels Panel - Only in Fullscreen */}
           {isFullscreen && showChannels && (
-            <ChannelsPanelDemo 
-              onClose={() => setShowChannels(false)}
-              channels={sampleChannels}
-            />
+            <ChannelsPanelDemo onClose={() => setShowChannels(false)} channels={sampleChannels} />
           )}
 
-          {/* Centered Control Buttons */}
-          <div
-            className={`absolute bottom-0 left-0 right-0 h-full flex justify-center items-center bg-gradient-to-t from-black/90 via-black/50 to-transparent px-6 pb-4 pt-20 transition-opacity duration-300 ${showControls ? 'opacity-100' : 'opacity-0'}`}
-          >
-            <div
-              className={`absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/90 via-black/50 to-transparent px-6 pb-4 pt-20 transition-opacity duration-300 ${showControls ? 'opacity-100' : 'opacity-0'}`}
-            >
+          {/* Controls overlay */}
+          <div className={`absolute bottom-0 left-0 right-0 h-full flex justify-center items-center bg-gradient-to-t from-black/90 via-black/50 to-transparent px-6 pb-4 pt-20 transition-opacity duration-300 ${showControls ? 'opacity-100' : 'opacity-0'}`}>
+
+            {/* Bottom bar */}
+            <div className={`absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/90 via-black/50 to-transparent px-6 pb-4 pt-20 transition-opacity duration-300 ${showControls ? 'opacity-100' : 'opacity-0'}`}>
               <div className="flex items-center justify-center gap-4">
-                {/* Left */}
+
+                {/* Volume + time */}
                 <div className="flex items-center gap-3 flex-shrink-0">
                   <div
                     className='relative w-6 h-6'
                     onMouseEnter={() => setShowVolumeSlider(true)}
                     onMouseLeave={() => setShowVolumeSlider(false)}
                   >
-                    <button
-                      onClick={toggleMute}
-                      className="text-white w-6 h-6"
-                    >
-                      {isMuted ? (
-                        <SpeakerXMarkIcon className="w-6 h-6 cursor-pointer" />
-                      ) : (
-                        <SpeakerWaveIcon className="w-6 h-6 cursor-pointer" />
-                      )}
+                    <button onClick={toggleMute} className="text-white w-6 h-6">
+                      {isMuted
+                        ? <SpeakerXMarkIcon className="w-6 h-6 cursor-pointer" />
+                        : <SpeakerWaveIcon className="w-6 h-6 cursor-pointer" />
+                      }
                     </button>
-
                     {showVolumeSlider && (
                       <>
                         <div className='absolute bottom-6 left-1/2 -translate-x-1/2 w-8 h-6' />
-                        
                         <div className='absolute bottom-10 left-1/2 -translate-x-1/2'>
                           <div className='h-40 w-6 rounded-sm bg-gray-400/20 backdrop-blur-sm p-1 flex items-center justify-center'>
-                            <div 
+                            <div
                               className="absolute w-2 bottom-4 bg-gradient-to-r from-orange-500 to-yellow-500 rounded-full"
                               style={{ height: `${(isMuted ? 0 : volume) * 80}%` }}
                             />
                             <input
-                              type="range"
-                              min="0"
-                              max="1"
-                              step="0.01"
+                              type="range" min="0" max="1" step="0.01"
                               value={isMuted ? 0 : volume}
                               onChange={handleVolumeChange}
                               className="w-36 h-2 absolute appearance-none rounded-full cursor-pointer border-none outline-none -rotate-90"
@@ -328,90 +390,73 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ stream }) => {
                       </>
                     )}
                   </div>
+
                   <div className="text-white text-sm">
-                    {formatTime(currentTime)} / {formatTime(duration)}
+                    {mode === 'live' ? 'LIVE' : formatTime(currentTime)}
                   </div>
                 </div>
 
-                {/* Progress */}
+                {/* ── Day progress bar ── */}
                 <div className="flex-1 h-6 flex items-center">
                   <div
-                    className="w-full h-1 bg-white/30 rounded-full cursor-pointer"
+                    className="w-full h-1 bg-white/30 rounded-full cursor-pointer relative"
                     onClick={handleSeek}
                   >
+                    {/* Filled portion — red for live, orange→yellow for archive */}
                     <div
-                      className="h-full bg-gradient-to-r from-orange-500 to-yellow-500 rounded-full"
-                      style={{ width: `${(currentTime / duration) * 100}%` }}
+                      className={`h-full rounded-full ${
+                        mode === 'live'
+                          ? 'bg-red-500'
+                          : 'bg-gradient-to-r from-orange-500 to-yellow-500'
+                      }`}
+                      style={{ width: `${dayProgressPct}%` }}
+                    />
+                    {/* Playhead dot */}
+                    <div
+                      className={`absolute top-1/2 -translate-y-1/2 -translate-x-1/2 w-3 h-3 rounded-full shadow ${
+                        mode === 'live' ? 'bg-red-400' : 'bg-orange-400'
+                      }`}
+                      style={{ left: `${dayProgressPct}%` }}
                     />
                   </div>
                 </div>
 
-                {/* Right */}
+                {/* Right controls */}
                 <div className="flex items-center gap-3 flex-shrink-0">
-                  <button onClick={() => skip(-10)} className="text-white cursor-pointer">
+                  <button onClick={() => skip(-30)} className="text-white cursor-pointer" title="Rewind 30s">
                     <Forward className="w-6 h-6" />
                   </button>
-
-                  <button onClick={() => skip(10)} className="text-white cursor-pointer">
+                  <button onClick={() => skip(30)} className="text-white cursor-pointer" title="Forward 30s">
                     <PictureInPicture2 className="w-6 h-6" />
                   </button>
-
-                  <button
-                    onClick={toggleMute}
-                    onMouseEnter={() => setShowVolumeSlider(true)}
-                    className="text-white"
-                  >
+                  <button onClick={toggleMute} onMouseEnter={() => setShowVolumeSlider(true)} className="text-white">
                     <ScreenShare className="w-6 h-6 cursor-pointer" />
                   </button>
                   <button onClick={toggleFullscreen} className="text-white relative cursor-pointer">
                     <ArrowsPointingOutIcon className="w-6 h-6" />
                   </button>
                   <button className='absolute bottom-12 right-6'>
-                    <BadgeLiveDemo/>
+                    <BadgeLiveDemo />
                   </button>
                 </div>
               </div>
             </div>
+
+            {/* Center playback controls */}
             <div className="flex items-center justify-center gap-6">
-              <button
-                className="text-white hover:text-orange-400 transition-colors"
-                title="Previous video"
-              >
+              <button className="text-white hover:text-orange-400 transition-colors">
                 <SkipBack className="w-8 h-8" />
               </button>
-
-              <button
-                onClick={() => skip(-10)}
-                className="text-white hover:text-orange-400 transition-colors"
-                title="Skip back 10s"
-              >
+              <button onClick={() => skip(-10)} className="text-white hover:text-orange-400 transition-colors" title="Rewind 10s">
                 <RotateCcw className="w-7 h-7" />
               </button>
-
-              <button
-                onClick={togglePlay}
-                className="text-white hover:text-orange-400 transition-colors"
-                title={isPlaying ? "Pause" : "Play"}
-              >
-                {isPlaying ? (
-                  <Pause className="w-10 h-10" />
-                ) : (
-                  <Play className="w-10 h-10" />
-                )}
+              <button onClick={togglePlay} className="text-white hover:text-orange-400 transition-colors">
+                {isPlaying ? <Pause className="w-10 h-10" /> : <Play className="w-10 h-10" />}
               </button>
-
-              <button
-                onClick={() => skip(10)}
-                className="text-white hover:text-orange-400 transition-colors"
-                title="Skip forward 10s"
-              >
+              <button onClick={() => skip(10)} className="text-white hover:text-orange-400 transition-colors" title="Forward 10s">
                 <RotateCw className="w-7 h-7" />
               </button>
-
-              <button
-                className="text-white hover:text-orange-400 transition-colors"
-                title="Next video"
-              >
+              <button className="text-white hover:text-orange-400 transition-colors">
                 <SkipForward className="w-8 h-8" />
               </button>
             </div>

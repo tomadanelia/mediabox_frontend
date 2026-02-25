@@ -25,7 +25,6 @@ interface PaymentRecord {
 
 type Tab = "Overview" | "History" | "Screen Time" | "Billing";
 
-/* ─── Data ───────────────────────────────────────────────── */
 const user = {
   id: "f53bdd83-683c-4404-bc92-090381c2820e",
   username: "tom12a",
