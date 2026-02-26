@@ -8,6 +8,7 @@ import Navbar from "./components/shadcn-studio/blocks/navbar-component-07/navbar
 import useUIStore from "./store/ui-store"
 import AuthReg from "../pages/authmain/register/authreg"
 import AuthLog from "../pages/authmain/authlogpapa/mauthlog"
+import AuthVerify from "../pages/authmain/codeVerification"
 import AdminDashboard from "../pages/admin/admin"
 import type { UIStore } from "./store/ui-store"
 
@@ -38,6 +39,7 @@ const App: React.FC = () => {
           <Route path="/authentication">
             <Route path="login" element={<AuthLog/>} />
             <Route path="register" element={<AuthReg/>} />
+            <Route path="verify" element={<AuthVerify />} />
           </Route>
         </Routes>
       </div>

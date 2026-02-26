@@ -96,12 +96,11 @@ const AuthReg: React.FC = () => {
       ...(contactMethod === 'email' ? { email: form.email } : { phone: form.phone }),
     }
 
-    // 2. Register (Add Accept header!)
     const res = await fetch(`${API_BASE_URL}/api/auth/register`, {
       method: 'POST',
       headers: { 
         'Content-Type': 'application/json',
-        'Accept': 'application/json' // <--- THIS IS CRITICAL
+        'Accept': 'application/json' 
       },
       body: JSON.stringify(payload),
       credentials: 'include',
@@ -119,14 +118,12 @@ const AuthReg: React.FC = () => {
     }
 
     if (!res.ok) {
-      // Now you will actually see the validation errors from Laravel
       const errorMsg = data.errors 
         ? Object.values(data.errors).flat().join(', ') 
         : (data.message || 'Registration failed')
       throw new Error(errorMsg)
     }
-
-    alert('Registered successfully ✅')
+   window.location.href = '/authentication/verify'
   } catch (err: any) {
     alert(err.message)
   } finally {
@@ -141,7 +138,7 @@ const AuthReg: React.FC = () => {
         {/* Header */}
         <div className="mb-8 text-center">
           <h1 className="text-2xl font-bold tracking-tight dark:text-white text-gray-900">
-            Create account
+            რეგისტრაცია
           </h1>
         </div>
 
@@ -158,7 +155,7 @@ const AuthReg: React.FC = () => {
                   : 'bg-transparent dark:text-gray-400 text-gray-500 hover:bg-emerald-500/5'
               }`}
             >
-              Email
+              ელ-ფოსტა
             </button>
             <button
               type="button"
@@ -169,14 +166,14 @@ const AuthReg: React.FC = () => {
                   : 'bg-transparent dark:text-gray-400 text-gray-500 hover:bg-emerald-500/5'
               }`}
             >
-              Phone
+              მობილური
             </button>
           </div>
 
           {/* Full Name */}
           <IconInput
             icon={UserIcon}
-            placeholder="Full name"
+            placeholder="სახელი და გვარი"
             autoComplete="name"
 
             name="full_name"
@@ -187,7 +184,7 @@ const AuthReg: React.FC = () => {
           {/* Username */}
           <IconInput
             icon={UserIcon}
-            placeholder="Username"
+            placeholder="მომხმარებლის სახელი"
             autoComplete="username"
 
             name="username"
@@ -199,7 +196,7 @@ const AuthReg: React.FC = () => {
           {contactMethod === 'email' ? (
             <IconInput
               icon={MailIcon}
-              placeholder="Email address"
+              placeholder="ელ-ფოსტა"
               autoComplete="email"
               type="email"
               name="email"
@@ -209,7 +206,7 @@ const AuthReg: React.FC = () => {
           ) : (
             <IconInput
               icon={PhoneIcon}
-              placeholder="Phone number"
+              placeholder="ტელეფონის ნომერი"
               type="tel"
               name="phone"
               value={form.phone}
@@ -219,7 +216,7 @@ const AuthReg: React.FC = () => {
 
           {/* Password */}
           <PasswordInput
-            placeholder="Password"
+            placeholder="პაროლი"
             name="password"
             value={form.password}
             onChange={e => handleChange('password', e.target.value)}
@@ -227,7 +224,7 @@ const AuthReg: React.FC = () => {
 
           {/* Confirm Password */}
           <PasswordInput
-            placeholder="Confirm password"
+            placeholder="გაიმეორეთ პაროლი"
             name="password_confirmation"
             value={form.password_confirmation}
             onChange={e => handleChange('password_confirmation', e.target.value)}
@@ -263,15 +260,15 @@ const AuthReg: React.FC = () => {
                 Creating account...
               </span>
             ) : (
-              'Create account'
+              'რეგისტრაცია'
             )}
           </button>
 
           {/* Sign in link */}
           <p className="text-center text-sm text-muted-foreground pt-1">
-            Already have an account?{' '}
+            უკვე დარეგისტრირებული ხართ?{' '}
             <a href="/authentication/login" className="font-semibold text-emerald-500 hover:text-emerald-400 transition-colors">
-              Sign in
+              შესვლა
             </a>
           </p>
 
