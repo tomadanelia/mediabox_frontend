@@ -1,4 +1,5 @@
 'use client'
+import { API_BASE_URL } from '@/config';
 
 import React, { useState, useEffect } from 'react'
 import { X, Radio, Clock } from 'lucide-react'
@@ -40,7 +41,7 @@ type Props = {
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
-const API = 'http://159.89.20.100/api'
+const API = `${API_BASE_URL}/api`
 
 function toApiDate(d: Date): string {
   const y  = d.getFullYear()

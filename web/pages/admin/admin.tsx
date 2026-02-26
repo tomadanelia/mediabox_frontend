@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-
+import { API_BASE_URL } from '@/config';
 type AdminSection = "Overview" | "Users" | "Category-Channels" | "Categories" | "Plans" | "Plan-Channels" | "Support" | "Settings";
 const adminSectionLabels: Record<AdminSection, string> = {
   "Overview": "მთავარი",
@@ -296,7 +296,7 @@ export default function AdminDashboard() {
   const fetchChannels = async () => {
     setChannelsLoading(true);
     try {
-      const res = await fetch("http://159.89.20.100/api/channels");
+      const res = await fetch(`${API_BASE_URL}/api/channels`);
       const data = await res.json();
       setChannels(Array.isArray(data) ? data : data.data ?? []);
     } catch (e) { console.error(e); }
@@ -306,7 +306,7 @@ export default function AdminDashboard() {
   const fetchCategories = async () => {
     setCatsLoading(true);
     try {
-      const res = await fetch("http://159.89.20.100/api/channels/categories");
+      const res = await fetch(`${API_BASE_URL}/api/channels/categories`);
       setCategories(await res.json());
     } catch (e) { console.error(e); }
     finally { setCatsLoading(false); }
@@ -315,7 +315,7 @@ export default function AdminDashboard() {
   const fetchPlans = async () => {
     setPlansLoading(true);
     try {
-      const res = await fetch("http://159.89.20.100/api/admin/plans/all");
+      const res = await fetch(`${API_BASE_URL}/api/admin/plans/all`);
       const data = await res.json();
       setPlans(Array.isArray(data) ? data : data.data ?? []);
     } catch (e) { console.error(e); }
@@ -326,7 +326,7 @@ export default function AdminDashboard() {
   const fetchUsers = async (page = 1) => {
     setUsersLoading(true);
     try {
-      const res = await fetch(`http://159.89.20.100/api/admin/users?page=${page}`);
+      const res = await fetch(`${API_BASE_URL}/api/admin/users?page=${page}`);
       const data = await res.json();
       setUsers(data.data ?? []);
       setUsersMeta({
@@ -341,7 +341,7 @@ export default function AdminDashboard() {
   const handleAddCategory = async () => {
     if (!newCat.name_en || !newCat.name_ka) return;
     try {
-      const res = await fetch("http://159.89.20.100/api/admin/categories", {
+      const res = await fetch(`${API_BASE_URL}/api/admin/categories`, {
         method: "POST",
         headers: { "Content-Type": "application/json", Accept: "application/json" },
         body: JSON.stringify(newCat),
@@ -355,7 +355,7 @@ export default function AdminDashboard() {
     if (!editCat) return;
     setEditSaving(true);
     try {
-      const res = await fetch(`http://159.89.20.100/api/admin/categories/${editCat.id}`, {
+      const res = await fetch(`${API_BASE_URL}/api/admin/categories/${editCat.id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json", Accept: "application/json" },
         body: JSON.stringify(editForm),
@@ -370,7 +370,7 @@ export default function AdminDashboard() {
     if (!deleteCat) return;
     setDeleteLoading(true);
     try {
-      const res = await fetch(`http://159.89.20.100/api/admin/categories/${deleteCat.id}`, { method: "DELETE" });
+      const res = await fetch(`${API_BASE_URL}/api/admin/categories/${deleteCat.id}`, { method: "DELETE" });
       if (res.ok) { setDeleteModal(false); fetchCategories(); }
       else { const e = await res.json().catch(() => null); alert(`Failed: ${e?.message}`); }
     } catch (e) { console.error(e); }
@@ -382,7 +382,7 @@ export default function AdminDashboard() {
     setCategoryChannelList(null);
     setManageModal(true);
     try {
-      const res = await fetch(`http://159.89.20.100/api/admin/categories/${cat.id}`);
+      const res = await fetch(`${API_BASE_URL}/api/admin/categories/${cat.id}`);
       const data = await res.json();
       setCategoryChannelList(Array.isArray(data) ? data : data.channels ?? []);
     } catch { setCategoryChannelList([]); }
@@ -403,7 +403,7 @@ export default function AdminDashboard() {
     if (!selectedCategoryId || !selectedChannelUuids.length) return;
     setBulkAssigning(true);
     try {
-      const res = await fetch(`http://159.89.20.100/api/admin/categories/${selectedCategoryId}`, {
+      const res = await fetch(`${API_BASE_URL}/api/admin/categories/${selectedCategoryId}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ channel_ids: selectedChannelUuids }),
@@ -418,7 +418,7 @@ export default function AdminDashboard() {
   const handleAddPlan = async () => {
     if (!newPlan.name_en || !newPlan.name_ka || !newPlan.price || !newPlan.duration_days) return;
     try {
-      const res = await fetch("http://159.89.20.100/api/admin/plans", {
+      const res = await fetch(`${API_BASE_URL}/api/admin/plans`, {
         method: "POST",
         headers: { "Content-Type": "application/json", Accept: "application/json" },
         body: JSON.stringify({
@@ -439,7 +439,7 @@ export default function AdminDashboard() {
     if (!editPlan) return;
     setEditPlanSaving(true);
     try {
-      const res = await fetch(`http://159.89.20.100/api/admin/plans/${editPlan.id}`, {
+      const res = await fetch(`${API_BASE_URL}/api/admin/plans/${editPlan.id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json", Accept: "application/json" },
         body: JSON.stringify({
@@ -458,7 +458,7 @@ export default function AdminDashboard() {
     if (!disablePlan) return;
     setDisableLoading(true);
     try {
-      const res = await fetch(`http://159.89.20.100/api/admin/plans/${disablePlan.id}/disable`, {
+      const res = await fetch(`${API_BASE_URL}/api/admin/plans/${disablePlan.id}/disable`, {
         method: "POST",
         headers: { "Content-Type": "application/json", Accept: "application/json" },
         body: JSON.stringify(newCat),
@@ -472,7 +472,7 @@ const handleEnablePlan = async () => {
   if (!disablePlan) return;
   setDisableLoading(true);
   try {
-    const res = await fetch(`http://159.89.20.100/api/admin/plans/${disablePlan.id}/enable`, {
+    const res = await fetch(`${API_BASE_URL}/api/admin/plans/${disablePlan.id}/enable`, {
         method: "POST",
         headers: { "Content-Type": "application/json", Accept: "application/json" },
         body: JSON.stringify(newCat),
@@ -491,7 +491,7 @@ const handleDeletePlan = async () => {
   if (!deletePlanTarget) return;
   setDeletePlanLoading(true);
   try {
-    const res = await fetch(`http://159.89.20.100/api/admin/plans/${deletePlanTarget.id}`, { method: "DELETE" });
+    const res = await fetch(`${API_BASE_URL}/api/admin/plans/${deletePlanTarget.id}`, { method: "DELETE" });
     if (res.ok) { setDeletePlanModal(false); fetchPlans(); }
     else { const e = await res.json().catch(() => null); alert(`Failed: ${e?.message}`); }
   } catch (e) { console.error(e); }
@@ -504,7 +504,7 @@ const handleDeletePlan = async () => {
     setPlanChannelSearch("");
     setPlanManageModal(true);
     try {
-      const res = await fetch(`http://159.89.20.100/api/plans/${plan.id}/channels`);
+      const res = await fetch(`${API_BASE_URL}/api/plans/${plan.id}/channels`);
       const data = await res.json();
       setPlanChannelList(Array.isArray(data) ? data : data.channels ?? data.data ?? []);
     } catch { setPlanChannelList([]); }
@@ -533,7 +533,7 @@ const handleDeletePlan = async () => {
     if (!activePlan || !selectedPlanChannelUuids.length) return;
     setDeletingPlanChannels(true);
     try {
-      const res = await fetch(`http://159.89.20.100/api/admin/plans/${activePlan.id}/channels`, {
+      const res = await fetch(`${API_BASE_URL}/api/admin/plans/${activePlan.id}/channels`, {
         method: "DELETE",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ channel_ids: selectedPlanChannelUuids }),
@@ -541,7 +541,7 @@ const handleDeletePlan = async () => {
       if (res.ok) {
         setSelectedPlanChannelUuids([]);
         // refresh channel list in modal
-        const r2 = await fetch(`http://159.89.20.100/api/plans/${activePlan.id}/channels`);
+        const r2 = await fetch(`${API_BASE_URL}/api/plans/${activePlan.id}/channels`);
         const d2 = await r2.json();
         setPlanChannelList(Array.isArray(d2) ? d2 : d2.channels ?? d2.data ?? []);
       } else { const e = await res.json().catch(() => null); alert(`Failed: ${e?.message}`); }
@@ -554,7 +554,7 @@ const handleDeletePlan = async () => {
     if (!selectedPlanId || !planChannelsSelectedUuids.length) return;
     setBulkAssigningPlan(true);
     try {
-      const res = await fetch(`http://159.89.20.100/api/admin/plans/${selectedPlanId}/channels`, {
+      const res = await fetch(`${API_BASE_URL}/api/admin/plans/${selectedPlanId}/channels`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ channel_ids: planChannelsSelectedUuids }),

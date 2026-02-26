@@ -3,6 +3,7 @@ import { UserIcon, EyeIcon, EyeOffIcon, LogInIcon } from 'lucide-react'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import CheckboxDemo from '../../../src/components/shadcn-studio/checkbox/checkbox-01'
+import { API_BASE_URL } from '@/config';
 
 const IconInput = ({
   icon: Icon,
@@ -68,11 +69,11 @@ const AuthLog: React.FC = () => {
   e.preventDefault()
   setLoading(true)
   try {
-    await fetch('http://159.89.20.100/sanctum/csrf-cookie', {
+    await fetch(`${API_BASE_URL}/sanctum/csrf-cookie`, {
       credentials: 'include',
     })
 
-    const res = await fetch('http://159.89.20.100/api/auth/login', {
+    const res = await fetch(`${API_BASE_URL}/api/auth/login`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(form),

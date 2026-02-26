@@ -1,6 +1,7 @@
 'use client'
 
 import React, { useState, useEffect, useCallback } from 'react';
+import { API_BASE_URL } from '@/config';
 import VideoPlayer from '@/hmcomponents/videoplayer';
 import DataTableDemo from '@/components/shadcn-studio/data-table/data-table-11';
 import Timeline from '@/hmcomponents/timeline';
@@ -42,8 +43,7 @@ export type ProgramItem = {
 };
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
-
-const API_BASE = 'http://159.89.20.100/api';
+const API_BASE = `${API_BASE_URL}/api`;
 
 function toApiDate(date: Date = new Date()): string {
   const y = date.getFullYear();

@@ -1,6 +1,7 @@
 import { LeafIcon } from 'lucide-react'
 import Pricing from '../../src/components/shadcn-studio/blocks/pricing-component-20/pricing-component-20'
 import { useEffect, useState } from 'react'
+import { API_BASE_URL } from '@/config';
 
 const tableFeatures = [
   { feature: 'Channels', plans: ['10+', '50+', '100+', '200+'] },
@@ -16,7 +17,7 @@ const Plans = () => {
   const [plans, setPlans] = useState<any[]>([])
 
   useEffect(() => {
-    fetch('http://159.89.20.100/api/plans')
+    fetch(`${API_BASE_URL}/api/plans`)
       .then(res => res.json())
       .then(data => {
         const formatted = data

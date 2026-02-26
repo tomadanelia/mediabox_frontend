@@ -3,6 +3,7 @@ import { UserIcon, MailIcon, PhoneIcon, EyeIcon, EyeOffIcon } from 'lucide-react
 import { Input } from '../../../src/components/ui/input'
 import { Button } from '../../../src/components/ui/button'
 import CheckboxDemo from '../../../src/components/shadcn-studio/checkbox/checkbox-01'
+import { API_BASE_URL } from '@/config';
 
 const IconInput = ({
   icon: Icon,
@@ -96,7 +97,7 @@ const AuthReg: React.FC = () => {
     }
 
     // 2. Register (Add Accept header!)
-    const res = await fetch('/api/auth/register', {
+    const res = await fetch(`${API_BASE_URL}/api/auth/register`, {
       method: 'POST',
       headers: { 
         'Content-Type': 'application/json',

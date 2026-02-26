@@ -15,7 +15,7 @@ export default defineConfig({
     proxy: {
       // Proxy live HLS streams
       '/stream-free': {
-        target: 'http://159.89.20.100',
+        target: 'https://tv-api.telecomm1.com',
         changeOrigin: true,
         configure(proxy) {
           proxy.on('proxyRes', (proxyRes) => {
@@ -27,7 +27,7 @@ export default defineConfig({
       },
       // Proxy archive HLS streams
       '/archive-free': {
-        target: 'http://159.89.20.100',
+        target: 'https://tv-api.telecomm1.com',
         changeOrigin: true,
         configure(proxy) {
           proxy.on('proxyRes', (proxyRes) => {
