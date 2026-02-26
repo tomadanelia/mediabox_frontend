@@ -9,14 +9,23 @@ import {
   SpeakerXMarkIcon,
 } from '@heroicons/react/24/solid';
 import {
-  Play, Pause, SkipBack, SkipForward,
+  Play, Pause,
   RotateCcw, RotateCw, ScreenShare,
   PictureInPicture2, Forward, Radio,
 } from 'lucide-react';
-import ChannelsPanelDemo from './FullScreenList';
-import { sampleChannels } from './FullScreenList';
+import FullScreenList from './FullScreenList'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
+
+type Channel = {
+  id: string
+  uuid: string
+  name: string
+  logo: string
+  number: number
+  category: string
+  category_id: string
+}
 
 type VideoPlayerProps = {
   streamUrl: string;
@@ -25,19 +34,33 @@ type VideoPlayerProps = {
   isLoading?: boolean;
   onRewind: (timestamp: number) => void;
   onGoLive: () => void;
+  onChannelSelect?: (channel: Channel) => void;
+  currentChannelId?: string;
+  rewindableDays?: number;
+  /** Pass the already-fetched channel list so fullscreen panel needs no extra fetch */
+  channels?: Channel[];
 };
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
-function formatTime(secs: number): string {
-  if (!isFinite(secs) || isNaN(secs)) return '0:00';
-  const h = Math.floor(secs / 3600);
-  const m = Math.floor((secs % 3600) / 60);
-  const s = Math.floor(secs % 60);
-  if (h > 0) return `${h}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
-  return `${m}:${String(s).padStart(2, '0')}`;
+/** Format a unix timestamp as HH:MM:SS local time. */
+function formatClock(unixSec: number): string {
+  return new Date(unixSec * 1000).toLocaleTimeString('en-GB', {
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+    hour12: false,
+  });
 }
 
+/** Format a unix timestamp as HH:MM:SS in local time. */
+function formatClockTime(unixSec: number): string {
+  const d = new Date(unixSec * 1000);
+  const h = String(d.getHours()).padStart(2, '0');
+  const m = String(d.getMinutes()).padStart(2, '0');
+  const s = String(d.getSeconds()).padStart(2, '0');
+  return `${h}:${m}:${s}`;
+}
 function formatBehind(secs: number): string {
   if (secs < 60) return `${Math.floor(secs)}s behind live`;
   if (secs < 3600) return `${Math.floor(secs / 60)}m behind live`;
@@ -85,6 +108,10 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
   isLoading = false,
   onRewind,
   onGoLive,
+  onChannelSelect,
+  currentChannelId,
+  rewindableDays,
+  channels = [],
 }) => {
   const videoRef      = useRef<HTMLVideoElement | null>(null);
   const containerRef  = useRef<HTMLDivElement | null>(null);
@@ -133,7 +160,17 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
 
       hls.on(Hls.Events.MANIFEST_PARSED, () => {
         setIsBuffering(false);
-        video.play().then(() => setIsPlaying(true)).catch(() => {});
+        // Try to play with sound. If the browser blocks autoplay (policy),
+        // mute and retry — user can unmute manually after.
+        video.play()
+          .then(() => setIsPlaying(true))
+          .catch(() => {
+            video.muted = true;
+            setIsMuted(true);
+            video.play()
+              .then(() => setIsPlaying(true))
+              .catch(() => {}); // give up silently if still blocked
+          });
       });
 
       hls.on(Hls.Events.ERROR, (_e, data) => {
@@ -148,6 +185,15 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
     } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
       video.src = streamUrl;
       setIsBuffering(false);
+      video.play()
+        .then(() => setIsPlaying(true))
+        .catch(() => {
+          video.muted = true;
+          setIsMuted(true);
+          video.play()
+            .then(() => setIsPlaying(true))
+            .catch(() => {});
+        });
     }
 
     return () => { hlsRef.current?.destroy(); hlsRef.current = null; };
@@ -264,8 +310,15 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
   const toggleMute = () => {
     const video = videoRef.current;
     if (!video) return;
-    if (isMuted) { video.volume = volume || 0.5; setIsMuted(false); }
-    else         { video.volume = 0;             setIsMuted(true);  }
+    if (isMuted) {
+      video.muted  = false;
+      video.volume = volume || 0.5;
+      setIsMuted(false);
+    } else {
+      video.muted  = true;
+      video.volume = 0;
+      setIsMuted(true);
+    }
   };
 
   /**
@@ -347,7 +400,17 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
             </button>
           )}
           {isFullscreen && showChannels && (
-            <ChannelsPanelDemo onClose={() => setShowChannels(false)} channels={sampleChannels} />
+            <FullScreenList
+              onClose={() => setShowChannels(false)}
+              onSelect={(ev) => {
+                onChannelSelect?.(ev.channel)
+                if (ev.mode === 'archive' && ev.timestamp !== undefined) {
+                  onRewind(ev.timestamp)
+                }
+              }}
+              currentChannelId={currentChannelId}
+              rewindableDays={rewindableDays}
+            />
           )}
 
           {/* Controls overlay */}
@@ -391,8 +454,11 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
                     )}
                   </div>
 
-                  <div className="text-white text-sm">
-                    {mode === 'live' ? 'LIVE' : formatTime(currentTime)}
+                  <div className="flex items-center gap-1.5 text-white text-sm font-mono">
+                    {mode === 'live' && (
+                      <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse shrink-0" />
+                    )}
+                    {formatClock(watchingUnix)}
                   </div>
                 </div>
 
@@ -429,8 +495,8 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
                   <button onClick={() => skip(30)} className="text-white cursor-pointer" title="Forward 30s">
                     <PictureInPicture2 className="w-6 h-6" />
                   </button>
-                  <button onClick={toggleMute} onMouseEnter={() => setShowVolumeSlider(true)} className="text-white">
-                    <ScreenShare className="w-6 h-6 cursor-pointer" />
+                  <button onMouseEnter={() => setShowVolumeSlider(true)} className="text-white cursor-default">
+                    <ScreenShare className="w-6 h-6 opacity-40" />
                   </button>
                   <button onClick={toggleFullscreen} className="text-white relative cursor-pointer">
                     <ArrowsPointingOutIcon className="w-6 h-6" />
@@ -444,9 +510,6 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
 
             {/* Center playback controls */}
             <div className="flex items-center justify-center gap-6">
-              <button className="text-white hover:text-orange-400 transition-colors">
-                <SkipBack className="w-8 h-8" />
-              </button>
               <button onClick={() => skip(-10)} className="text-white hover:text-orange-400 transition-colors" title="Rewind 10s">
                 <RotateCcw className="w-7 h-7" />
               </button>
@@ -455,9 +518,6 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
               </button>
               <button onClick={() => skip(10)} className="text-white hover:text-orange-400 transition-colors" title="Forward 10s">
                 <RotateCw className="w-7 h-7" />
-              </button>
-              <button className="text-white hover:text-orange-400 transition-colors">
-                <SkipForward className="w-8 h-8" />
               </button>
             </div>
           </div>

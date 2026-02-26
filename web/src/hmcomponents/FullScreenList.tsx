@@ -1,767 +1,304 @@
-import React, { useState } from 'react';
-import { X, ChevronLeft, ChevronRight } from 'lucide-react';
+'use client'
 
-type Program = {
-  id: number;
-  title: string;
-  startTime: string;
-  endTime: string;
-  description?: string;
-  isLive?: boolean;
-};
+import React, { useState, useEffect } from 'react'
+import { X, Radio, Clock } from 'lucide-react'
+
+// ─── Types ────────────────────────────────────────────────────────────────────
 
 type Channel = {
-  id: number;
-  name: string;
-  logo?: string;
-  programs: Program[];
-};
+  id: string
+  uuid: string
+  name: string
+  logo: string
+  number: number
+  category: string
+  category_id: string
+}
 
-type ChannelsPanelProps = {
-  onClose: () => void;
-  channels?: Channel[];
-  onChannelSelect?: (channelId: number) => void;
-};
+type Program = {
+  UID: number
+  CHANNEL_ID: number
+  START_TIME: number   // unix seconds
+  END_TIME: number     // unix seconds
+  TITLE: string
+  GANRE: string
+  DESCRIPTION: string
+}
 
-const ChannelsPanelDemo: React.FC<ChannelsPanelProps> = ({ 
-  onClose, 
-  channels = [],
-  onChannelSelect 
+export type TVGuideSelection = {
+  channel: Channel
+  mode: 'live' | 'archive'
+  timestamp?: number
+}
+
+type Props = {
+  onClose: () => void
+  onSelect: (sel: TVGuideSelection) => void
+  currentChannelId?: string
+  rewindableDays?: number
+}
+
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+
+const API = 'http://159.89.20.100/api'
+
+function toApiDate(d: Date): string {
+  const y  = d.getFullYear()
+  const m  = String(d.getMonth() + 1).padStart(2, '0')
+  const dd = String(d.getDate()).padStart(2, '0')
+  return `${y}/${m}/${dd}`
+}
+
+const hhmm = new Intl.DateTimeFormat('en-GB', { hour: '2-digit', minute: '2-digit', hour12: false })
+const fmtTime = (unix: number) => hhmm.format(new Date(unix * 1000))
+
+function dayLabel(d: Date): string {
+  const now  = new Date()
+  const prev = new Date(); prev.setDate(now.getDate() - 1)
+  if (d.toDateString() === now.toDateString())  return 'Today'
+  if (d.toDateString() === prev.toDateString()) return 'Yesterday'
+  return d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })
+}
+
+const Spinner = () => (
+  <div className="flex items-center justify-center py-10">
+    <div className="w-5 h-5 border-2 border-white/20 border-t-orange-400 rounded-full animate-spin" />
+  </div>
+)
+
+// ─── Component ────────────────────────────────────────────────────────────────
+
+const FullScreenList: React.FC<Props> = ({
+  onClose,
+  onSelect,
+  currentChannelId,
+  rewindableDays = 7,
 }) => {
-  const [selectedChannelId, setSelectedChannelId] = useState<number | null>(
-    channels.length > 0 ? channels[0].id : null
-  );
-  const [selectedDate, setSelectedDate] = useState<Date>(new Date());
+  const nowSec = Math.floor(Date.now() / 1000)
 
-  // Generate dates for the next 7 days
-  const generateDates = () => {
-    const dates = [];
-    for (let i = 0; i < 7; i++) {
-      const date = new Date();
-      date.setDate(date.getDate() + i);
-      dates.push(date);
-    }
-    return dates;
-  };
+  // Date strip: rewindableDays past + today
+  const dateStrip = Array.from({ length: rewindableDays + 1 }, (_, i) => {
+    const d = new Date()
+    d.setHours(0, 0, 0, 0)
+    d.setDate(d.getDate() - (rewindableDays - i))
+    return d
+  })
 
-  const dates = generateDates();
+  const [channels,    setChannels]    = useState<Channel[]>([])
+  const [loadingCh,   setLoadingCh]   = useState(true)
+  const [errorCh,     setErrorCh]     = useState<string | null>(null)
 
-  const handleChannelClick = (channelId: number) => {
-    setSelectedChannelId(channelId);
-    if (onChannelSelect) {
-      onChannelSelect(channelId);
-    }
-  };
+  // The channel being previewed in the right panel (NOT necessarily the one streaming)
+  const [previewId,   setPreviewId]   = useState<string>(currentChannelId ?? '')
 
-  const formatDate = (date: Date) => {
-    const today = new Date();
-    const tomorrow = new Date(today);
-    tomorrow.setDate(tomorrow.getDate() + 1);
+  const [programs,    setPrograms]    = useState<Program[]>([])
+  const [loadingPr,   setLoadingPr]   = useState(false)
+  const [selDate,     setSelDate]     = useState<Date>(dateStrip[dateStrip.length - 1])
 
-    if (date.toDateString() === today.toDateString()) {
-      return 'Today';
-    } else if (date.toDateString() === tomorrow.toDateString()) {
-      return 'Tomorrow';
+  // ── Fetch channels once ────────────────────────────────────────────────────
+  useEffect(() => {
+    let dead = false
+    setLoadingCh(true)
+    fetch(`${API}/channels`)
+      .then(r => { if (!r.ok) throw new Error(`HTTP ${r.status}`); return r.json() as Promise<Channel[]> })
+      .then(data => {
+        if (dead) return
+        setChannels(data)
+        setPreviewId(id => id || data[0]?.id || '')
+      })
+      .catch(e => { if (!dead) setErrorCh(String(e)) })
+      .finally(() => { if (!dead) setLoadingCh(false) })
+    return () => { dead = true }
+  }, [])
+
+  // ── Fetch programs when preview channel or date changes ────────────────────
+  useEffect(() => {
+    if (!previewId) return
+    let dead = false
+    setLoadingPr(true)
+    setPrograms([])
+    fetch(`${API}/channels/${previewId}/programs?date=${toApiDate(selDate)}`)
+      .then(r => { if (!r.ok) throw new Error(`HTTP ${r.status}`); return r.json() as Promise<Program[]> })
+      .then(data => { if (!dead) setPrograms(data) })
+      .catch(() => {})
+      .finally(() => { if (!dead) setLoadingPr(false) })
+    return () => { dead = true }
+  }, [previewId, selDate.toDateString()])
+
+  const previewChannel = channels.find(c => c.id === previewId) ?? null
+  const sorted = [...programs].sort((a, b) => a.START_TIME - b.START_TIME)
+  const todaySelected = selDate.toDateString() === new Date().toDateString()
+
+  // ── When user clicks a channel: switch stream immediately + load programs ──
+  const handleChannelClick = (ch: Channel) => {
+    setPreviewId(ch.id)
+    // Switch to live for this channel right away
+    onSelect({ channel: ch, mode: 'live' })
+    // Don't close — let user browse programs too
+  }
+
+  // ── When user clicks a program row ────────────────────────────────────────
+  const handleProgramClick = (p: Program) => {
+    if (!previewChannel) return
+    const isCurrent = nowSec >= p.START_TIME && nowSec < p.END_TIME
+    if (isCurrent && todaySelected) {
+      onSelect({ channel: previewChannel, mode: 'live' })
     } else {
-      return date.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+      onSelect({ channel: previewChannel, mode: 'archive', timestamp: p.START_TIME })
     }
-  };
+    onClose()
+  }
 
-  const selectedChannel = channels.find(ch => ch.id === selectedChannelId);
+  // ─── Render ────────────────────────────────────────────────────────────────
 
   return (
-    <div className="absolute top-0 left-0 w-full h-full bg-black/95 backdrop-blur-md z-50 flex flex-col">
-      {/* Header with Date Selection */}
-      <div className="border-b border-white/10 p-4">
-        <div className="flex justify-between items-center mb-4">
-          <h2 className="text-white text-2xl font-bold">TV Guide</h2>
-          <button 
-            onClick={onClose}
-            className="text-white hover:text-orange-400 transition-colors p-2"
-          >
-            <X className="w-6 h-6" />
+    <div className="absolute inset-0 z-50 flex flex-col backdrop-blur-lg bg-black/70">
+
+      {/* ── Top bar ── */}
+      <div className="shrink-0 px-4 pt-3 pb-2 border-b border-white/10">
+        <div className="flex items-center justify-between mb-2">
+          <span className="text-white font-bold text-sm tracking-wide">TV Guide</span>
+          <button onClick={onClose} className="p-1 text-white/40 hover:text-white transition-colors">
+            <X className="w-4 h-4" />
           </button>
         </div>
-
-        {/* Date Selector */}
-        <div className="flex items-center gap-2 overflow-x-auto pb-2">
-          {dates.map((date, index) => (
+        {/* Date strip */}
+        <div className="flex gap-1.5 overflow-x-auto" style={{ scrollbarWidth: 'none' }}>
+          {dateStrip.map((d, i) => (
             <button
-              key={index}
-              onClick={() => setSelectedDate(date)}
-              className={`px-4 py-2 rounded-lg whitespace-nowrap transition-all ${
-                date.toDateString() === selectedDate.toDateString()
-                  ? 'bg-gradient-to-r from-orange-500 to-yellow-500 text-white font-semibold'
-                  : 'bg-white/10 text-white/70 hover:bg-white/20'
+              key={i}
+              onClick={() => setSelDate(d)}
+              className={`shrink-0 px-2.5 py-1 rounded-md text-[11px] font-semibold whitespace-nowrap transition-all ${
+                d.toDateString() === selDate.toDateString()
+                  ? 'bg-gradient-to-r from-orange-500 to-yellow-400 text-white'
+                  : 'bg-white/10 text-white/50 hover:bg-white/20 hover:text-white'
               }`}
             >
-              {formatDate(date)}
+              {dayLabel(d)}
             </button>
           ))}
         </div>
       </div>
 
-      {/* Main Content Area */}
-      <div className="flex flex-1 overflow-hidden">
-        {/* Channels List - Left Side */}
-        <div className="w-64 border-r border-white/10 overflow-y-auto">
-          <div className="p-2">
-            {channels.length === 0 ? (
-              <div className="text-white/50 text-center py-8">
-                No channels available
-              </div>
-            ) : (
-              channels.map((channel) => (
-                <button
-                  key={channel.id}
-                  onClick={() => handleChannelClick(channel.id)}
-                  className={`w-full flex items-center gap-3 p-3 rounded-lg mb-2 transition-all ${
-                    selectedChannelId === channel.id
-                      ? 'bg-gradient-to-r from-orange-500/20 to-yellow-500/20 border border-orange-500/50'
-                      : 'bg-white/5 hover:bg-white/10'
-                  }`}
-                >
-                  <div className="w-10 h-10 bg-white/10 rounded-full flex items-center justify-center flex-shrink-0">
-                    {channel.logo ? (
-                      <img src={channel.logo} alt={channel.name} className="w-full h-full rounded-full object-cover" />
-                    ) : (
-                      <span className="text-white text-sm font-bold">
-                        {channel.name.substring(0, 2).toUpperCase()}
-                      </span>
-                    )}
-                  </div>
-                  <span className="text-white font-medium text-left">{channel.name}</span>
-                </button>
-              ))
-            )}
-          </div>
-        </div>
+      {/* ── Body: channel list left, programs right ── */}
+      <div className="flex flex-1 min-h-0 overflow-hidden">
 
-        {/* Program List - Right Side */}
-        <div className="flex-1 overflow-y-auto p-4">
-          {selectedChannel ? (
-            <div>
-              <h3 className="text-white text-xl font-semibold mb-4">
-                {selectedChannel.name} - {formatDate(selectedDate)}
-              </h3>
-              
-              {selectedChannel.programs.length === 0 ? (
-                <div className="text-white/50 text-center py-8">
-                  No programs scheduled for this date
-                </div>
-              ) : (
-                <div className="space-y-3">
-                  {selectedChannel.programs.map((program) => (
-                    <div
-                      key={program.id}
-                      className={`p-4 rounded-lg border transition-all ${
-                        program.isLive
-                          ? 'bg-gradient-to-r from-orange-500/10 to-yellow-500/10 border-orange-500/50'
-                          : 'bg-white/5 border-white/10 hover:bg-white/10'
-                      }`}
-                    >
-                      <div className="flex justify-between items-start mb-2">
-                        <h4 className="text-white font-semibold text-lg">{program.title}</h4>
-                        {program.isLive && (
-                          <span className="px-2 py-1 bg-red-500 text-white text-xs font-bold rounded">
-                            LIVE
-                          </span>
-                        )}
-                      </div>
-                      <div className="text-orange-400 text-sm mb-2">
-                        {program.startTime} - {program.endTime}
-                      </div>
-                      {program.description && (
-                        <p className="text-white/70 text-sm">{program.description}</p>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
+        {/* Channel list */}
+        <div className="w-40 shrink-0 border-r border-white/10 overflow-y-auto">
+          {loadingCh ? (
+            <Spinner />
+          ) : errorCh ? (
+            <p className="text-red-400 text-[10px] text-center px-3 pt-6">{errorCh}</p>
           ) : (
-            <div className="text-white/50 text-center py-8">
-              Select a channel to view programs
+            <div className="p-1.5 space-y-0.5">
+              {channels.map(ch => {
+                const isStreaming  = ch.id === currentChannelId
+                const isPreviewing = ch.id === previewId
+                return (
+                  <button
+                    key={ch.id}
+                    onClick={() => handleChannelClick(ch)}
+                    className={`w-full flex items-center gap-2 px-2 py-1.5 rounded-lg text-left border transition-all ${
+                      isStreaming
+                        ? 'bg-gradient-to-r from-orange-500/30 to-yellow-500/20 border-orange-500/50'
+                        : isPreviewing
+                        ? 'bg-white/15 border-white/20'
+                        : 'bg-transparent border-transparent hover:bg-white/10'
+                    }`}
+                  >
+                    <div className="w-7 h-7 rounded bg-white/10 shrink-0 overflow-hidden flex items-center justify-center">
+                      {ch.logo
+                        ? <img src={ch.logo} alt="" className="w-full h-full object-cover"
+                            onError={e => { e.currentTarget.style.display = 'none' }} />
+                        : <span className="text-white text-[9px] font-bold">{ch.name.slice(0, 2).toUpperCase()}</span>
+                      }
+                    </div>
+                    <span className="text-white text-[11px] font-medium truncate flex-1">{ch.name}</span>
+                    {isStreaming && (
+                      <span className="w-1.5 h-1.5 rounded-full bg-red-500 shrink-0 animate-pulse" />
+                    )}
+                  </button>
+                )
+              })}
             </div>
           )}
         </div>
+
+        {/* Program list */}
+        <div className="flex-1 flex flex-col min-h-0">
+
+          {/* Channel sub-header */}
+          {previewChannel && (
+            <div className="shrink-0 flex items-center justify-between px-3 py-2 border-b border-white/10 bg-white/[0.03]">
+              <div className="flex items-center gap-2">
+                <div className="w-6 h-6 rounded bg-white/10 shrink-0 overflow-hidden flex items-center justify-center">
+                  {previewChannel.logo
+                    ? <img src={previewChannel.logo} alt="" className="w-full h-full object-cover" />
+                    : <span className="text-white text-[8px] font-bold">{previewChannel.name.slice(0, 2).toUpperCase()}</span>
+                  }
+                </div>
+                <span className="text-white text-xs font-semibold truncate">{previewChannel.name}</span>
+                <span className="text-white/30 text-[10px]">· {dayLabel(selDate)}</span>
+              </div>
+              <button
+                onClick={() => { onSelect({ channel: previewChannel, mode: 'live' }); onClose() }}
+                className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-red-600 hover:bg-red-500 text-white text-[10px] font-bold transition-colors"
+              >
+                <Radio className="w-3 h-3" />
+                Live
+              </button>
+            </div>
+          )}
+
+          {/* Programs */}
+          <div className="flex-1 overflow-y-auto">
+            {loadingPr ? (
+              <Spinner />
+            ) : sorted.length === 0 ? (
+              <p className="text-white/30 text-[11px] text-center pt-8">No programs for this date</p>
+            ) : (
+              <div className="divide-y divide-white/5">
+                {sorted.map(p => {
+                  const isCurrent = nowSec >= p.START_TIME && nowSec < p.END_TIME
+                  const isPast    = nowSec >= p.END_TIME
+                  const isFuture  = p.START_TIME > nowSec
+                  const clickable = !isFuture
+
+                  return (
+                    <div
+                      key={p.UID}
+                      onClick={() => clickable && handleProgramClick(p)}
+                      className={[
+                        'flex items-center gap-2 px-3 py-2 transition-all select-none',
+                        isCurrent  ? 'bg-orange-500/15 border-l-2 border-orange-400 cursor-pointer hover:bg-orange-500/25' : '',
+                        isPast     ? 'opacity-50 cursor-pointer hover:opacity-90 hover:bg-white/5' : '',
+                        isFuture   ? 'opacity-25 cursor-not-allowed' : '',
+                      ].join(' ')}
+                    >
+                      {/* Time */}
+                      <span className={`text-[10px] font-mono shrink-0 w-8 ${isCurrent ? 'text-orange-400' : 'text-white/35'}`}>
+                        {fmtTime(p.START_TIME)}
+                      </span>
+
+                      {/* Title */}
+                      <span className={`text-[11px] font-medium truncate flex-1 ${isCurrent ? 'text-white' : 'text-white/75'}`}>
+                        {p.TITLE}
+                      </span>
+
+                      {/* Badge */}
+                      {isCurrent && <span className="shrink-0 px-1.5 py-0.5 bg-red-500 text-white text-[8px] font-bold rounded">LIVE</span>}
+                      {isPast     && <Clock className="w-2.5 h-2.5 text-white/20 shrink-0" />}
+                      {isFuture   && <span className="text-white/20 text-[10px] shrink-0">🔒</span>}
+                    </div>
+                  )
+                })}
+              </div>
+            )}
+          </div>
+        </div>
       </div>
     </div>
-  );
-};
+  )
+}
 
-// Sample data for demonstration
-const sampleChannels: Channel[] = [
-  {
-    id: 1,
-    name: 'HBO',
-    programs: [
-      {
-        id: 101,
-        title: 'Morning News',
-        startTime: '6:00 AM',
-        endTime: '8:00 AM',
-        description: 'Start your day with the latest news and updates'
-      },
-      {
-        id: 102,
-        title: 'The Breakfast Show',
-        startTime: '8:00 AM',
-        endTime: '10:00 AM',
-        description: 'Entertainment and lifestyle morning show'
-      },
-      {
-        id: 103,
-        title: 'Game of Thrones Marathon',
-        startTime: '10:00 AM',
-        endTime: '2:00 PM',
-        description: 'Epic fantasy drama series - Season 1 episodes'
-      },
-      {
-        id: 104,
-        title: 'Afternoon Movie: Inception',
-        startTime: '2:00 PM',
-        endTime: '4:30 PM',
-        description: 'Mind-bending thriller by Christopher Nolan'
-      },
-      {
-        id: 105,
-        title: 'The Last of Us',
-        startTime: '4:30 PM',
-        endTime: '5:30 PM',
-        description: 'Post-apocalyptic drama based on the video game'
-      },
-      {
-        id: 106,
-        title: 'Evening News',
-        startTime: '5:30 PM',
-        endTime: '6:30 PM',
-        description: 'Your daily dose of world news'
-      },
-      {
-        id: 107,
-        title: 'House of the Dragon',
-        startTime: '6:30 PM',
-        endTime: '7:30 PM',
-        description: 'Prequel to Game of Thrones',
-        isLive: true
-      },
-      {
-        id: 108,
-        title: 'True Detective',
-        startTime: '7:30 PM',
-        endTime: '8:30 PM',
-        description: 'Crime anthology series'
-      },
-      {
-        id: 109,
-        title: 'Succession',
-        startTime: '8:30 PM',
-        endTime: '9:30 PM',
-        description: 'Drama about a media dynasty'
-      },
-      {
-        id: 110,
-        title: 'Late Night Talk Show',
-        startTime: '9:30 PM',
-        endTime: '11:00 PM',
-        description: 'Comedy and celebrity interviews'
-      }
-    ]
-  },
-  {
-    id: 2,
-    name: 'ESPN',
-    programs: [
-      {
-        id: 201,
-        title: 'SportsCenter AM',
-        startTime: '6:00 AM',
-        endTime: '9:00 AM',
-        description: 'Morning sports highlights and analysis'
-      },
-      {
-        id: 202,
-        title: 'First Take',
-        startTime: '9:00 AM',
-        endTime: '11:00 AM',
-        description: 'Hot sports debate show'
-      },
-      {
-        id: 203,
-        title: 'NFL Live',
-        startTime: '11:00 AM',
-        endTime: '12:00 PM',
-        description: 'Latest NFL news and updates'
-      },
-      {
-        id: 204,
-        title: 'NBA Today',
-        startTime: '12:00 PM',
-        endTime: '1:00 PM',
-        description: 'Basketball news and highlights'
-      },
-      {
-        id: 205,
-        title: 'College Football',
-        startTime: '1:00 PM',
-        endTime: '4:00 PM',
-        description: 'Alabama vs Georgia - SEC Championship'
-      },
-      {
-        id: 206,
-        title: 'Around the Horn',
-        startTime: '4:00 PM',
-        endTime: '4:30 PM',
-        description: 'Panel discussion on sports topics'
-      },
-      {
-        id: 207,
-        title: 'Pardon the Interruption',
-        startTime: '4:30 PM',
-        endTime: '5:00 PM',
-        description: 'Sports debate with Tony and Mike'
-      },
-      {
-        id: 208,
-        title: 'NBA Live: Lakers vs Warriors',
-        startTime: '5:00 PM',
-        endTime: '7:30 PM',
-        description: 'Western Conference showdown',
-        isLive: true
-      },
-      {
-        id: 209,
-        title: 'SportsCenter',
-        startTime: '7:30 PM',
-        endTime: '8:30 PM',
-        description: 'Daily sports news and highlights'
-      },
-      {
-        id: 210,
-        title: 'Monday Night Countdown',
-        startTime: '8:30 PM',
-        endTime: '11:00 PM',
-        description: 'Pre-game show for Monday Night Football'
-      }
-    ]
-  },
-  {
-    id: 3,
-    name: 'CNN',
-    programs: [
-      {
-        id: 301,
-        title: 'Early Start',
-        startTime: '5:00 AM',
-        endTime: '6:00 AM',
-        description: 'News before the day begins'
-      },
-      {
-        id: 302,
-        title: 'New Day',
-        startTime: '6:00 AM',
-        endTime: '9:00 AM',
-        description: 'Morning news program'
-      },
-      {
-        id: 303,
-        title: 'CNN News Central',
-        startTime: '9:00 AM',
-        endTime: '12:00 PM',
-        description: 'Midday news coverage'
-      },
-      {
-        id: 304,
-        title: 'Inside Politics',
-        startTime: '12:00 PM',
-        endTime: '1:00 PM',
-        description: 'Political analysis and discussion'
-      },
-      {
-        id: 305,
-        title: 'CNN Newsroom',
-        startTime: '1:00 PM',
-        endTime: '4:00 PM',
-        description: 'Afternoon news updates'
-      },
-      {
-        id: 306,
-        title: 'The Lead with Jake Tapper',
-        startTime: '4:00 PM',
-        endTime: '5:00 PM',
-        description: 'In-depth news analysis'
-      },
-      {
-        id: 307,
-        title: 'The Situation Room',
-        startTime: '5:00 PM',
-        endTime: '7:00 PM',
-        description: 'Breaking news with Wolf Blitzer',
-        isLive: true
-      },
-      {
-        id: 308,
-        title: 'Erin Burnett OutFront',
-        startTime: '7:00 PM',
-        endTime: '8:00 PM',
-        description: 'Evening news program'
-      },
-      {
-        id: 309,
-        title: 'Anderson Cooper 360',
-        startTime: '8:00 PM',
-        endTime: '9:00 PM',
-        description: 'In-depth news analysis'
-      },
-      {
-        id: 310,
-        title: 'CNN Tonight',
-        startTime: '9:00 PM',
-        endTime: '11:00 PM',
-        description: 'Late evening news coverage'
-      }
-    ]
-  },
-  {
-    id: 4,
-    name: 'Discovery',
-    programs: [
-      {
-        id: 401,
-        title: 'How It\'s Made',
-        startTime: '6:00 AM',
-        endTime: '7:00 AM',
-        description: 'Behind the scenes of everyday products'
-      },
-      {
-        id: 402,
-        title: 'Mythbusters',
-        startTime: '7:00 AM',
-        endTime: '9:00 AM',
-        description: 'Science entertainment program'
-      },
-      {
-        id: 403,
-        title: 'Deadliest Catch',
-        startTime: '9:00 AM',
-        endTime: '11:00 AM',
-        description: 'Life of Alaskan crab fishermen'
-      },
-      {
-        id: 404,
-        title: 'Gold Rush',
-        startTime: '11:00 AM',
-        endTime: '1:00 PM',
-        description: 'Modern-day gold mining adventures'
-      },
-      {
-        id: 405,
-        title: 'Planet Earth III',
-        startTime: '1:00 PM',
-        endTime: '2:00 PM',
-        description: 'Nature documentary narrated by David Attenborough'
-      },
-      {
-        id: 406,
-        title: 'Blue Planet',
-        startTime: '2:00 PM',
-        endTime: '3:00 PM',
-        description: 'Exploring ocean life'
-      },
-      {
-        id: 407,
-        title: 'Shark Week Special',
-        startTime: '3:00 PM',
-        endTime: '5:00 PM',
-        description: 'All about sharks',
-        isLive: true
-      },
-      {
-        id: 408,
-        title: 'Street Outlaws',
-        startTime: '5:00 PM',
-        endTime: '7:00 PM',
-        description: 'Underground street racing'
-      },
-      {
-        id: 409,
-        title: 'Naked and Afraid',
-        startTime: '7:00 PM',
-        endTime: '9:00 PM',
-        description: 'Survival challenge series'
-      },
-      {
-        id: 410,
-        title: 'Ancient Aliens',
-        startTime: '9:00 PM',
-        endTime: '11:00 PM',
-        description: 'Investigating alien theories'
-      }
-    ]
-  },
-  {
-    id: 5,
-    name: 'National Geographic',
-    programs: [
-      {
-        id: 501,
-        title: 'Brain Games',
-        startTime: '6:00 AM',
-        endTime: '7:00 AM',
-        description: 'Interactive experiments about the brain'
-      },
-      {
-        id: 502,
-        title: 'Cosmos: Possible Worlds',
-        startTime: '7:00 AM',
-        endTime: '8:00 AM',
-        description: 'Neil deGrasse Tyson explores the universe'
-      },
-      {
-        id: 503,
-        title: 'Wicked Tuna',
-        startTime: '8:00 AM',
-        endTime: '10:00 AM',
-        description: 'Bluefin tuna fishing in New England'
-      },
-      {
-        id: 504,
-        title: 'Life Below Zero',
-        startTime: '10:00 AM',
-        endTime: '12:00 PM',
-        description: 'Survival in Alaska'
-      },
-      {
-        id: 505,
-        title: 'Gordon Ramsay: Uncharted',
-        startTime: '12:00 PM',
-        endTime: '1:00 PM',
-        description: 'Chef explores global cuisine'
-      },
-      {
-        id: 506,
-        title: 'Drain the Oceans',
-        startTime: '1:00 PM',
-        endTime: '2:00 PM',
-        description: 'Revealing underwater mysteries',
-        isLive: true
-      },
-      {
-        id: 507,
-        title: 'Running Wild with Bear Grylls',
-        startTime: '2:00 PM',
-        endTime: '3:00 PM',
-        description: 'Celebrities in the wild'
-      },
-      {
-        id: 508,
-        title: 'Explorer',
-        startTime: '3:00 PM',
-        endTime: '5:00 PM',
-        description: 'Documentary series on various topics'
-      },
-      {
-        id: 509,
-        title: 'The World According to Jeff Goldblum',
-        startTime: '5:00 PM',
-        endTime: '6:00 PM',
-        description: 'Jeff explores everyday marvels'
-      },
-      {
-        id: 510,
-        title: 'Genius',
-        startTime: '6:00 PM',
-        endTime: '8:00 PM',
-        description: 'Anthology about brilliant minds'
-      }
-    ]
-  },
-  {
-    id: 6,
-    name: 'Comedy Central',
-    programs: [
-      {
-        id: 601,
-        title: 'South Park Reruns',
-        startTime: '6:00 AM',
-        endTime: '10:00 AM',
-        description: 'Classic episodes'
-      },
-      {
-        id: 602,
-        title: 'The Office',
-        startTime: '10:00 AM',
-        endTime: '2:00 PM',
-        description: 'Workplace comedy marathon'
-      },
-      {
-        id: 603,
-        title: 'Parks and Recreation',
-        startTime: '2:00 PM',
-        endTime: '4:00 PM',
-        description: 'Leslie Knope and the Pawnee gang'
-      },
-      {
-        id: 604,
-        title: 'The Daily Show',
-        startTime: '4:00 PM',
-        endTime: '5:00 PM',
-        description: 'Satirical news program',
-        isLive: true
-      },
-      {
-        id: 605,
-        title: 'Stand-Up Comedy Special',
-        startTime: '5:00 PM',
-        endTime: '6:30 PM',
-        description: 'Top comedians perform'
-      },
-      {
-        id: 606,
-        title: 'Workaholics',
-        startTime: '6:30 PM',
-        endTime: '8:00 PM',
-        description: 'Three friends and their shenanigans'
-      },
-      {
-        id: 607,
-        title: 'Chappelle\'s Show',
-        startTime: '8:00 PM',
-        endTime: '9:00 PM',
-        description: 'Classic sketch comedy'
-      },
-      {
-        id: 608,
-        title: 'South Park',
-        startTime: '9:00 PM',
-        endTime: '11:00 PM',
-        description: 'New episodes'
-      }
-    ]
-  },
-  {
-    id: 7,
-    name: 'Food Network',
-    programs: [
-      {
-        id: 701,
-        title: 'Pioneer Woman',
-        startTime: '6:00 AM',
-        endTime: '8:00 AM',
-        description: 'Ree Drummond cooks on her ranch'
-      },
-      {
-        id: 702,
-        title: 'The Kitchen',
-        startTime: '8:00 AM',
-        endTime: '10:00 AM',
-        description: 'Weekend cooking show'
-      },
-      {
-        id: 703,
-        title: 'Diners, Drive-Ins and Dives',
-        startTime: '10:00 AM',
-        endTime: '12:00 PM',
-        description: 'Guy Fieri explores American eateries'
-      },
-      {
-        id: 704,
-        title: 'Chopped',
-        startTime: '12:00 PM',
-        endTime: '2:00 PM',
-        description: 'Cooking competition with mystery baskets'
-      },
-      {
-        id: 705,
-        title: 'Beat Bobby Flay',
-        startTime: '2:00 PM',
-        endTime: '4:00 PM',
-        description: 'Chefs compete to beat Bobby',
-        isLive: true
-      },
-      {
-        id: 706,
-        title: 'Iron Chef America',
-        startTime: '4:00 PM',
-        endTime: '6:00 PM',
-        description: 'Ultimate cooking showdown'
-      },
-      {
-        id: 707,
-        title: 'Guy\'s Grocery Games',
-        startTime: '6:00 PM',
-        endTime: '8:00 PM',
-        description: 'Cooking challenges in a supermarket'
-      },
-      {
-        id: 708,
-        title: 'Cake Wars',
-        startTime: '8:00 PM',
-        endTime: '10:00 PM',
-        description: 'Bakers compete for the best cake'
-      }
-    ]
-  },
-  {
-    id: 8,
-    name: 'MTV',
-    programs: [
-      {
-        id: 801,
-        title: 'Ridiculousness',
-        startTime: '6:00 AM',
-        endTime: '10:00 AM',
-        description: 'Viral video commentary'
-      },
-      {
-        id: 802,
-        title: 'Teen Mom',
-        startTime: '10:00 AM',
-        endTime: '12:00 PM',
-        description: 'Reality show about young mothers'
-      },
-      {
-        id: 803,
-        title: 'Catfish',
-        startTime: '12:00 PM',
-        endTime: '2:00 PM',
-        description: 'Investigating online relationships'
-      },
-      {
-        id: 804,
-        title: 'The Challenge',
-        startTime: '2:00 PM',
-        endTime: '4:00 PM',
-        description: 'Competition reality show',
-        isLive: true
-      },
-      {
-        id: 805,
-        title: 'Jersey Shore: Family Vacation',
-        startTime: '4:00 PM',
-        endTime: '6:00 PM',
-        description: 'The gang is back together'
-      },
-      {
-        id: 806,
-        title: 'Wild \'N Out',
-        startTime: '6:00 PM',
-        endTime: '8:00 PM',
-        description: 'Improv comedy show'
-      },
-      {
-        id: 807,
-        title: 'MTV Movie Awards',
-        startTime: '8:00 PM',
-        endTime: '11:00 PM',
-        description: 'Annual awards show'
-      }
-    ]
-  }
-];
-
-export default ChannelsPanelDemo;
-
-// Sample data export for testing
-export { sampleChannels };
+export default FullScreenList
