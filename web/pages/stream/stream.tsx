@@ -52,28 +52,7 @@ function toApiDate(date: Date = new Date()): string {
   return `${y}/${m}/${d}`;
 }
 
-/**
- * Rewrites an absolute HLS stream URL like:
- *   http://159.89.20.100/archive-free/tv/…/video.m3u8?token=…
- * to a relative path:
- *   /archive-free/tv/…/video.m3u8?token=…
- *
- * This routes the request through Vite's dev proxy (see vite.config.ts),
- * which strips the duplicate `Access-Control-Allow-Origin: *, *` header
- * that the media server returns, fixing the CORS error.
- *
- * In production, configure your reverse-proxy (nginx / Caddy) to forward
- * /stream-free and /archive-free to http://159.89.20.100 and set the
- * CORS header correctly.
- */
-function proxyStreamUrl(absoluteUrl: string): string {
-  try {
-    const u = new URL(absoluteUrl);
-    return u.pathname + u.search; // strip the host, keep path + query tokens
-  } catch {
-    return absoluteUrl;
-  }
-}
+
 
 // ─── Component ────────────────────────────────────────────────────────────────
 
@@ -111,7 +90,7 @@ export const Stream: React.FC = () => {
       const res = await fetch(`${API_BASE}/channels/${channelId}/stream`);
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const data = await res.json();
-      setStreamUrl(proxyStreamUrl(data.url));
+      setStreamUrl(data.url);
       setMode('live');
       setArchiveTimestamp(null);
     } catch (e) {
@@ -122,8 +101,7 @@ export const Stream: React.FC = () => {
   }, []);
 
   const goArchive = useCallback(async (channelId: string, timestamp: number) => {
-    // Clamp: never request a timestamp older than what the server supports.
-    // Use rewindableHours (default 168h) minus a small safety margin (60s).
+
     const oldestValid = Math.floor(Date.now() / 1000) - rewindableHours * 3600 + 60;
     const safeTs = Math.max(timestamp, oldestValid);
 
@@ -132,7 +110,7 @@ export const Stream: React.FC = () => {
       const res = await fetch(`${API_BASE}/channels/${channelId}/archive?timestamp=${safeTs}`);
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const data = await res.json();
-      setStreamUrl(proxyStreamUrl(data.url));
+      setStreamUrl(data.url);
       setMode('archive');
       setArchiveTimestamp(safeTs);
       const hours = parseInt(data.hoursBack, 10);
