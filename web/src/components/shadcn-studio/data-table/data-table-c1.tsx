@@ -61,11 +61,8 @@ const ChannelScheduleCL = ({
     return [...timeProgramm].sort((a, b) => a.START_TIME - b.START_TIME)
   }, [timeProgramm])
 
-  // Wall-clock "now" — always real time, used to decide what is past/future.
   const nowSec = Math.floor(Date.now() / 1000)
 
-  // The timestamp used to highlight the currently-playing program.
-  // In archive mode this follows the seek point; in live mode it's wall-clock.
   const activeSec =
     mode === 'archive' && archiveTimestamp !== null ? archiveTimestamp : nowSec
 
@@ -74,10 +71,6 @@ const ChannelScheduleCL = ({
 
   const isPastProgram = (p: ProgramItem) => nowSec >= p.END_TIME
 
-  /**
-   * A program is clickable (→ go to archive) only when it has already started
-   * relative to real wall-clock time. Future programs are not yet available.
-   */
   const isClickable = (p: ProgramItem) => p.START_TIME <= nowSec
 
   const handleClick = (p: ProgramItem) => {
@@ -87,19 +80,19 @@ const ChannelScheduleCL = ({
 
   return (
     <div className='w-full h-[calc(100vh-266px)] flex'>
-      <div className='rounded-lg border w-full overflow-auto'>
-        <div className='divide-y'>
+      <div className='rounded-xl border border-black/8 dark:border-white/8 w-full overflow-auto bg-white/50 dark:bg-white/3 backdrop-blur-md'>
+        <div className='divide-y divide-black/5 dark:divide-white/5'>
           {sorted.length === 0 ? (
-            <div className='px-4 py-3 text-sm text-muted-foreground'>
+            <div className='px-4 py-3 text-sm text-black/35 dark:text-white/30'>
               No programs for this date.
             </div>
           ) : (
             sorted.map((p) => {
-              const genre = (p.GANRE && p.GANRE.trim()) ? p.GANRE.trim() : 'Other'
-              const isCurrent  = isCurrentProgram(p)
-              const isPast     = isPastProgram(p)
-              const clickable  = isClickable(p)
-              const isFuture   = !clickable
+              const genre     = (p.GANRE && p.GANRE.trim()) ? p.GANRE.trim() : 'Other'
+              const isCurrent = isCurrentProgram(p)
+              const isPast    = isPastProgram(p)
+              const clickable = isClickable(p)
+              const isFuture  = !clickable
 
               return (
                 <div
@@ -107,38 +100,37 @@ const ChannelScheduleCL = ({
                   onClick={() => handleClick(p)}
                   title={isFuture ? 'Not yet available' : undefined}
                   className={cn(
-                    'flex items-center gap-3 px-4 py-2.5 transition-colors',
-                    // Cursor: pointer for clickable, default for future
+                    'flex items-center gap-3 px-4 py-2.5 transition-all duration-150 border-l-2',
                     clickable ? 'cursor-pointer' : 'cursor-default',
                     isCurrent
-                      ? 'bg-orange-500/15 border-l-2 border-orange-400'
+                      ? 'bg-gradient-to-r from-orange-50 to-yellow-50/60 dark:from-orange-500/10 dark:to-yellow-400/5 border-l-orange-400'
                       : isPast
-                      ? 'opacity-50 hover:opacity-80 hover:bg-accent/50'
-                      : 'opacity-40', // future: dimmed, no hover effect
+                      ? 'border-l-transparent opacity-50 hover:opacity-80 hover:bg-black/3 dark:hover:bg-white/4'
+                      : 'border-l-transparent opacity-40',
                   )}
                 >
                   <span className={cn(
-                    'text-sm font-medium w-10 shrink-0',
-                    isCurrent ? 'text-orange-400' : 'text-muted-foreground'
+                    'text-sm font-medium w-10 shrink-0 tabular-nums',
+                    isCurrent ? 'text-orange-400' : 'text-black/30 dark:text-white/25'
                   )}>
                     {formatUnix(p.START_TIME)}
                   </span>
 
-                  <span className='flex-1 text-sm truncate'>{p.TITLE}</span>
+                  <span className='flex-1 text-sm truncate text-black/80 dark:text-white/75'>
+                    {p.TITLE}
+                  </span>
 
-                  {/* Pulsing dot for currently-active program */}
                   {isCurrent && (
                     <span className='w-2 h-2 rounded-full bg-orange-400 shrink-0 animate-pulse' />
                   )}
 
-                  {/* Lock icon hint for future programs */}
                   {isFuture && (
-                    <span className='text-xs text-muted-foreground shrink-0 select-none'>
+                    <span className='text-xs text-black/25 dark:text-white/20 shrink-0 select-none'>
                       🔒
                     </span>
                   )}
 
-                  <Badge className={cn('border-none text-xs px-2 py-0.5', getGenreColor(genre))}>
+                  <Badge className={cn('border-none text-[10px] px-2 py-0.5 font-medium', getGenreColor(genre))}>
                     {genre}
                   </Badge>
                 </div>

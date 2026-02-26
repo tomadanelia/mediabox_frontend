@@ -63,7 +63,7 @@ function dayLabel(d: Date): string {
 
 const Spinner = () => (
   <div className="flex items-center justify-center py-10">
-    <div className="w-5 h-5 border-2 border-white/20 border-t-orange-400 rounded-full animate-spin" />
+    <div className="w-5 h-5 border-2 border-black/10 dark:border-white/10 border-t-orange-400 rounded-full animate-spin" />
   </div>
 )
 
@@ -77,7 +77,6 @@ const FullScreenList: React.FC<Props> = ({
 }) => {
   const nowSec = Math.floor(Date.now() / 1000)
 
-  // Date strip: rewindableDays past + today
   const dateStrip = Array.from({ length: rewindableDays + 1 }, (_, i) => {
     const d = new Date()
     d.setHours(0, 0, 0, 0)
@@ -88,15 +87,11 @@ const FullScreenList: React.FC<Props> = ({
   const [channels,    setChannels]    = useState<Channel[]>([])
   const [loadingCh,   setLoadingCh]   = useState(true)
   const [errorCh,     setErrorCh]     = useState<string | null>(null)
-
-  // The channel being previewed in the right panel (NOT necessarily the one streaming)
   const [previewId,   setPreviewId]   = useState<string>(currentChannelId ?? '')
-
   const [programs,    setPrograms]    = useState<Program[]>([])
   const [loadingPr,   setLoadingPr]   = useState(false)
   const [selDate,     setSelDate]     = useState<Date>(dateStrip[dateStrip.length - 1])
 
-  // ── Fetch channels once ────────────────────────────────────────────────────
   useEffect(() => {
     let dead = false
     setLoadingCh(true)
@@ -112,7 +107,6 @@ const FullScreenList: React.FC<Props> = ({
     return () => { dead = true }
   }, [])
 
-  // ── Fetch programs when preview channel or date changes ────────────────────
   useEffect(() => {
     if (!previewId) return
     let dead = false
@@ -130,15 +124,11 @@ const FullScreenList: React.FC<Props> = ({
   const sorted = [...programs].sort((a, b) => a.START_TIME - b.START_TIME)
   const todaySelected = selDate.toDateString() === new Date().toDateString()
 
-  // ── When user clicks a channel: switch stream immediately + load programs ──
   const handleChannelClick = (ch: Channel) => {
     setPreviewId(ch.id)
-    // Switch to live for this channel right away
     onSelect({ channel: ch, mode: 'live' })
-    // Don't close — let user browse programs too
   }
 
-  // ── When user clicks a program row ────────────────────────────────────────
   const handleProgramClick = (p: Program) => {
     if (!previewChannel) return
     const isCurrent = nowSec >= p.START_TIME && nowSec < p.END_TIME
@@ -153,26 +143,30 @@ const FullScreenList: React.FC<Props> = ({
   // ─── Render ────────────────────────────────────────────────────────────────
 
   return (
-    <div className="absolute inset-0 z-50 flex flex-col backdrop-blur-lg bg-black/70">
+    <div className="absolute inset-0 z-50 flex flex-col bg-white/80 dark:bg-black/70 backdrop-blur-lg">
 
       {/* ── Top bar ── */}
-      <div className="shrink-0 px-4 pt-3 pb-2 border-b border-white/10">
+      <div className="shrink-0 px-4 pt-3 pb-2 border-b border-black/8 dark:border-white/10">
         <div className="flex items-center justify-between mb-2">
-          <span className="text-white font-bold text-sm tracking-wide">TV Guide</span>
-          <button onClick={onClose} className="p-1 text-white/40 hover:text-white transition-colors">
+          <span className="text-black/80 dark:text-white/80 font-bold text-sm tracking-wide">TV Guide</span>
+          <button
+            onClick={onClose}
+            className="w-7 h-7 flex items-center justify-center rounded-lg text-black/30 dark:text-white/40 hover:text-black/60 dark:hover:text-white/60 hover:bg-black/5 dark:hover:bg-white/10 transition-all duration-150"
+          >
             <X className="w-4 h-4" />
           </button>
         </div>
+
         {/* Date strip */}
         <div className="flex gap-1.5 overflow-x-auto" style={{ scrollbarWidth: 'none' }}>
           {dateStrip.map((d, i) => (
             <button
               key={i}
               onClick={() => setSelDate(d)}
-              className={`shrink-0 px-2.5 py-1 rounded-md text-[11px] font-semibold whitespace-nowrap transition-all ${
+              className={`shrink-0 px-2.5 py-1 rounded-lg text-[11px] font-semibold whitespace-nowrap transition-all duration-150 ${
                 d.toDateString() === selDate.toDateString()
-                  ? 'bg-gradient-to-r from-orange-500 to-yellow-400 text-white'
-                  : 'bg-white/10 text-white/50 hover:bg-white/20 hover:text-white'
+                  ? 'bg-gradient-to-r from-orange-500 to-yellow-400 text-white shadow-sm shadow-orange-300/30'
+                  : 'bg-white/70 dark:bg-white/5 border border-black/8 dark:border-white/10 text-black/50 dark:text-white/40 hover:text-black/70 dark:hover:text-white/60 hover:bg-white dark:hover:bg-white/10'
               }`}
             >
               {dayLabel(d)}
@@ -181,17 +175,17 @@ const FullScreenList: React.FC<Props> = ({
         </div>
       </div>
 
-      {/* ── Body: channel list left, programs right ── */}
-      <div className="flex flex-1 min-h-0 overflow-hidden">
+      {/* ── Body ── */}
+      <div className="flex flex-1 min-h-0 overflow-hidden gap-3 p-3">
 
         {/* Channel list */}
-        <div className="w-40 shrink-0 border-r border-white/10 overflow-y-auto">
+        <div className="w-1/4 shrink-0 rounded-xl border border-black/8 dark:border-white/8 bg-white/50 dark:bg-white/3 backdrop-blur-md overflow-y-auto">
           {loadingCh ? (
             <Spinner />
           ) : errorCh ? (
             <p className="text-red-400 text-[10px] text-center px-3 pt-6">{errorCh}</p>
           ) : (
-            <div className="p-1.5 space-y-0.5">
+            <div className="divide-y divide-black/5 dark:divide-white/5">
               {channels.map(ch => {
                 const isStreaming  = ch.id === currentChannelId
                 const isPreviewing = ch.id === previewId
@@ -199,24 +193,24 @@ const FullScreenList: React.FC<Props> = ({
                   <button
                     key={ch.id}
                     onClick={() => handleChannelClick(ch)}
-                    className={`w-full flex items-center gap-2 px-2 py-1.5 rounded-lg text-left border transition-all ${
+                    className={`w-full flex items-center gap-2 px-3 py-2 text-left border-l-2 transition-all duration-150 ${
                       isStreaming
-                        ? 'bg-gradient-to-r from-orange-500/30 to-yellow-500/20 border-orange-500/50'
+                        ? 'bg-gradient-to-r from-orange-50 to-yellow-50/60 dark:from-orange-500/10 dark:to-yellow-400/5 border-l-orange-400'
                         : isPreviewing
-                        ? 'bg-white/15 border-white/20'
-                        : 'bg-transparent border-transparent hover:bg-white/10'
+                        ? 'bg-black/3 dark:bg-white/8 border-l-transparent'
+                        : 'border-l-transparent hover:bg-black/3 dark:hover:bg-white/4'
                     }`}
                   >
-                    <div className="w-7 h-7 rounded bg-white/10 shrink-0 overflow-hidden flex items-center justify-center">
+                    <div className="w-7 h-7 rounded-lg bg-white dark:bg-white/10 shadow-sm shrink-0 overflow-hidden flex items-center justify-center">
                       {ch.logo
-                        ? <img src={ch.logo} alt="" className="w-full h-full object-cover"
+                        ? <img src={ch.logo} alt="" className="w-10/12 h-10/12 object-contain"
                             onError={e => { e.currentTarget.style.display = 'none' }} />
-                        : <span className="text-white text-[9px] font-bold">{ch.name.slice(0, 2).toUpperCase()}</span>
+                        : <span className="text-black/40 dark:text-white/40 text-[9px] font-bold">{ch.name.slice(0, 2).toUpperCase()}</span>
                       }
                     </div>
-                    <span className="text-white text-[11px] font-medium truncate flex-1">{ch.name}</span>
+                    <span className="text-black/80 dark:text-white/75 text-[11px] font-medium truncate flex-1">{ch.name}</span>
                     {isStreaming && (
-                      <span className="w-1.5 h-1.5 rounded-full bg-red-500 shrink-0 animate-pulse" />
+                      <span className="w-1.5 h-1.5 rounded-full bg-orange-400 shrink-0 animate-pulse" />
                     )}
                   </button>
                 )
@@ -226,24 +220,24 @@ const FullScreenList: React.FC<Props> = ({
         </div>
 
         {/* Program list */}
-        <div className="flex-1 flex flex-col min-h-0">
+        <div className="flex-1 flex flex-col min-h-0 rounded-xl border border-black/8 dark:border-white/8 bg-white/50 dark:bg-white/3 backdrop-blur-md overflow-hidden">
 
           {/* Channel sub-header */}
           {previewChannel && (
-            <div className="shrink-0 flex items-center justify-between px-3 py-2 border-b border-white/10 bg-white/[0.03]">
+            <div className="shrink-0 flex items-center justify-between px-3 py-2 border-b border-black/5 dark:border-white/8">
               <div className="flex items-center gap-2">
-                <div className="w-6 h-6 rounded bg-white/10 shrink-0 overflow-hidden flex items-center justify-center">
+                <div className="w-6 h-6 rounded-lg bg-white dark:bg-white/10 shadow-sm shrink-0 overflow-hidden flex items-center justify-center">
                   {previewChannel.logo
-                    ? <img src={previewChannel.logo} alt="" className="w-full h-full object-cover" />
-                    : <span className="text-white text-[8px] font-bold">{previewChannel.name.slice(0, 2).toUpperCase()}</span>
+                    ? <img src={previewChannel.logo} alt="" className="w-10/12 h-10/12 object-contain" />
+                    : <span className="text-black/40 dark:text-white/40 text-[8px] font-bold">{previewChannel.name.slice(0, 2).toUpperCase()}</span>
                   }
                 </div>
-                <span className="text-white text-xs font-semibold truncate">{previewChannel.name}</span>
-                <span className="text-white/30 text-[10px]">· {dayLabel(selDate)}</span>
+                <span className="text-black/80 dark:text-white/75 text-xs font-semibold truncate">{previewChannel.name}</span>
+                <span className="text-black/30 dark:text-white/30 text-[10px]">· {dayLabel(selDate)}</span>
               </div>
               <button
                 onClick={() => { onSelect({ channel: previewChannel, mode: 'live' }); onClose() }}
-                className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-red-600 hover:bg-red-500 text-white text-[10px] font-bold transition-colors"
+                className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-gradient-to-r from-orange-500 to-yellow-400 text-white text-[10px] font-bold shadow-sm shadow-orange-300/30 transition-all hover:opacity-90"
               >
                 <Radio className="w-3 h-3" />
                 Live
@@ -256,9 +250,9 @@ const FullScreenList: React.FC<Props> = ({
             {loadingPr ? (
               <Spinner />
             ) : sorted.length === 0 ? (
-              <p className="text-white/30 text-[11px] text-center pt-8">No programs for this date</p>
+              <p className="text-black/30 dark:text-white/30 text-[11px] text-center pt-8">No programs for this date</p>
             ) : (
-              <div className="divide-y divide-white/5">
+              <div className="divide-y divide-black/5 dark:divide-white/5">
                 {sorted.map(p => {
                   const isCurrent = nowSec >= p.START_TIME && nowSec < p.END_TIME
                   const isPast    = nowSec >= p.END_TIME
@@ -270,26 +264,30 @@ const FullScreenList: React.FC<Props> = ({
                       key={p.UID}
                       onClick={() => clickable && handleProgramClick(p)}
                       className={[
-                        'flex items-center gap-2 px-3 py-2 transition-all select-none',
-                        isCurrent  ? 'bg-orange-500/15 border-l-2 border-orange-400 cursor-pointer hover:bg-orange-500/25' : '',
-                        isPast     ? 'opacity-50 cursor-pointer hover:opacity-90 hover:bg-white/5' : '',
-                        isFuture   ? 'opacity-25 cursor-not-allowed' : '',
+                        'flex items-center gap-2 px-3 py-2 transition-all duration-150 select-none border-l-2',
+                        isCurrent  ? 'bg-gradient-to-r from-orange-50 to-yellow-50/60 dark:from-orange-500/10 dark:to-yellow-400/5 border-l-orange-400 cursor-pointer' : '',
+                        isPast     ? 'border-l-transparent opacity-50 cursor-pointer hover:opacity-80 hover:bg-black/3 dark:hover:bg-white/4' : '',
+                        isFuture   ? 'border-l-transparent opacity-25 cursor-not-allowed' : '',
                       ].join(' ')}
                     >
                       {/* Time */}
-                      <span className={`text-[10px] font-mono shrink-0 w-8 ${isCurrent ? 'text-orange-400' : 'text-white/35'}`}>
+                      <span className={`text-[10px] font-mono tabular-nums shrink-0 w-8 ${isCurrent ? 'text-orange-400' : 'text-black/30 dark:text-white/25'}`}>
                         {fmtTime(p.START_TIME)}
                       </span>
 
                       {/* Title */}
-                      <span className={`text-[11px] font-medium truncate flex-1 ${isCurrent ? 'text-white' : 'text-white/75'}`}>
+                      <span className={`text-[11px] font-medium truncate flex-1 ${isCurrent ? 'text-black/80 dark:text-white' : 'text-black/70 dark:text-white/75'}`}>
                         {p.TITLE}
                       </span>
 
                       {/* Badge */}
-                      {isCurrent && <span className="shrink-0 px-1.5 py-0.5 bg-red-500 text-white text-[8px] font-bold rounded">LIVE</span>}
-                      {isPast     && <Clock className="w-2.5 h-2.5 text-white/20 shrink-0" />}
-                      {isFuture   && <span className="text-white/20 text-[10px] shrink-0">🔒</span>}
+                      {isCurrent && (
+                        <span className="shrink-0 px-1.5 py-0.5 bg-gradient-to-r from-orange-500 to-yellow-400 text-white text-[8px] font-bold rounded-md">
+                          LIVE
+                        </span>
+                      )}
+                      {isPast    && <Clock className="w-2.5 h-2.5 text-black/20 dark:text-white/20 shrink-0" />}
+                      {isFuture  && <span className="text-black/20 dark:text-white/20 text-[10px] shrink-0">🔒</span>}
                     </div>
                   )
                 })}

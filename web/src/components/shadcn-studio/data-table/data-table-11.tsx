@@ -41,10 +41,10 @@ const DataTableDemo = ({
   }, [safeChannels, query])
 
   return (
-    <div className='flex-1 flex flex-col h-[calc(100vh-266px)] overflow-hidden gap-3'>
+    <div className='flex-1 flex flex-col h-[calc(100vh-226px)] overflow-hidden gap-3'>
 
       {/* ── Search bar ── */}
-      <div className='relative group'>
+      <div className='relative group shrink-0'>
         {/* glow ring */}
         <span
           className='pointer-events-none absolute inset-0 rounded-xl opacity-0 group-focus-within:opacity-100 transition-opacity duration-300'
@@ -163,13 +163,7 @@ const DataTableDemo = ({
         </div>
       </div>
 
-      {/* ── Footer count ── */}
-      {displayedChannels.length > 0 && (
-        <p className='text-[11px] text-center text-black/25 dark:text-white/20 pb-0.5'>
-          {displayedChannels.length} channel{displayedChannels.length !== 1 ? 's' : ''}
-          {query && ` matching "${query}"`}
-        </p>
-      )}
+    
     </div>
   )
 }

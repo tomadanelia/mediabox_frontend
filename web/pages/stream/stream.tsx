@@ -60,7 +60,7 @@ export const Stream: React.FC = () => {
   const [LeftList, setLeftList] = useState(false);
   const [RightList, setRightList] = useState(false);
   const [isCalendarVisible, setIsCalendarVisible] = useState(false);
-  const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
+  const [selectedCategory, setselectedCategory] = useState<string>("");
 
   const [channels, setChannels] = useState<Channel[]>([]);
   const [selectedChannel, setSelectedChannel] = useState<Channel | null>(null);
@@ -77,6 +77,28 @@ export const Stream: React.FC = () => {
   const rewindableDays = Math.ceil(rewindableHours / 24);
 
   const [liveUnixSec, setLiveUnixSec] = useState(Math.floor(Date.now() / 1000));
+  type Category = {
+  id: string
+  name_ka: string
+  name_en: string
+  description_en: string | null
+  description_ka: string | null
+  icon_url: string | null
+  created_at: string
+  updated_at: string
+}
+console.log(selectedCategory,"selected");
+
+const [categories, setCategories] = useState<Category[]>([]);
+
+useEffect(() => {
+  fetch('http://159.89.20.100/api/channels/categories')
+    .then(res => res.json())
+    .then(data => setCategories(data))
+    .catch(err => console.error('Failed to fetch categories:', err))
+}, [])
+
+
   useEffect(() => {
     const id = setInterval(() => setLiveUnixSec(Math.floor(Date.now() / 1000)), 1000);
     return () => clearInterval(id);
@@ -213,24 +235,14 @@ export const Stream: React.FC = () => {
   };
 
   // ─── Categories ───────────────────────────────────────────────────────────────
-
-  const categories = [
-    { id: 'Georgian', icon: null, logo: GeorgiaLogo },
-    { id: 'movies', icon: Clapperboard, logo: null },
-    { id: 'chess', icon: ChessRook, logo: null },
-    { id: 'gaming', icon: Gamepad2, logo: null },
-    { id: 'news', icon: Newspaper, logo: null },
-    { id: 'music', icon: Music, logo: null },
-    { id: 'photography', icon: Camera, logo: null },
-    { id: 'coding', icon: Code, logo: null },
-  ];
-
-  const filteredChannels = selectedCategories.length > 0
-    ? channels.filter(ch => selectedCategories.includes(ch.category))
+  const filteredChannels = selectedCategory != ""
+    ? channels.filter(ch => selectedCategory == ch.category)
     : channels;
 
-  const toggleCategory = (id: string) =>
-    setSelectedCategories(prev => prev.includes(id) ? [] : [id]);
+  const toggleCategory = (id: string) => selectedCategory == id 
+    ? setselectedCategory("")
+    : setselectedCategory(id)
+    
 
   // ─── Render ───────────────────────────────────────────────────────────────────
 
@@ -243,22 +255,7 @@ export const Stream: React.FC = () => {
         {/* LEFT */}
         <div className={`absolute z-10 lg:relative flex flex-col h-full overflow-hidden bg-yel
           ${!LeftList ? 'w-1/5' : 'w-[65px] lg:w-1/5'}`}>
-          <div className="h-15 flex items-center py-2">
-            <div className='px-1 w-full h-full bg-gray-800 rounded-r-[10px] flex items-center justify-center'>
-              <div className="font-bold flex items-center justify-between w-full">
-                {!LeftList && (
-                  <div className='lg:left-0 absolute'>
-                    <InputSearchIconDemo />
-                  </div>
-                )}
-                <div className='absolute flex items-center justify-center right-0 w-11 h-11'>
-                  <div className='bg-black rounded-sm w-8 h-8' onClick={() => setLeftList(p => !p)}>
-                    <ButtonMenuDemo />
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
+
           <div className="flex-1 relative overflow-y-auto bg-gray">
             <DataTableDemo
               filteredChannels={filteredChannels}
@@ -299,31 +296,36 @@ export const Stream: React.FC = () => {
         {/* RIGHT */}
         <div className={`absolute right-0 z-10 lg:relative flex flex-col h-full overflow-hidden bg-yel
           ${!RightList ? 'w-1/5' : 'w-[65px] lg:w-1/5'}`}>
-          <div className="h-15 flex items-center py-2">
-            <div className="px-1 w-full h-full bg-gray-800 rounded-l-[10px] flex items-center justify-between">
-              <div className='flex items-center justify-center'>
-                <div className='h-9 w-9 rounded-[8px]'>
-                  <div className="h-full w-full bg-white rounded-[8px] flex items-center justify-center text-white font-bold text-sm">
-                    {selectedChannel && (
-                      <img src={selectedChannel.logo} className='rounded-[10px] w-11/12 h-11/12' alt="" />
-                    )}
-                    <div className='absolute flex items-center justify-center left-0 w-11 h-11'>
-                      <div className='bg-black rounded-sm w-8 h-8' onClick={() => setRightList(p => !p)}>
-                        <ButtonMenuDemo />
-                      </div>
-                    </div>
-                  </div>
-                </div>
-                <div className='ml-2 flex items-center justify-center text-white font-bold'>
-                  {selectedChannel?.name}
-                </div>
-              </div>
-              <div className='iclefts w-10 h-10 flex items-center justify-center cursor-pointer' onClick={handleCalendarToggle}>
-                <IconButtonCalendar />
-              </div>
-            </div>
-          </div>
+    <div className="h-13 flex items-center pb-2">
+          <div className="px-3 w-full h-full bg-white/70 dark:bg-white/5 border border-black/8 dark:border-white/10 backdrop-blur-md rounded-xl flex items-center justify-between transition-all duration-200">
 
+            {/* Channel info */}
+            <div className='flex items-center gap-2.5'>
+              <div className='w-8 h-8 rounded-lg bg-white dark:bg-white/10 shadow-sm flex items-center justify-center shrink-0 overflow-hidden'>
+                {selectedChannel && (
+                  <img
+                    src={selectedChannel.logo}
+                    className='w-10/12 h-10/12 object-contain rounded-[3px]'
+                    alt=""
+                  />
+                )}
+              </div>
+
+              <span className='text-sm font-medium text-black/80 dark:text-white/75 truncate'>
+                {selectedChannel?.name}
+              </span>
+            </div>
+
+            {/* Calendar button */}
+            <div
+              className='w-8 h-8 flex items-center justify-center rounded-lg cursor-pointer text-black/40 dark:text-white/35 hover:text-orange-400 hover:bg-orange-50 dark:hover:bg-orange-400/10 transition-all duration-150'
+              onClick={handleCalendarToggle}
+            >
+              <IconButtonCalendar />
+            </div>
+
+          </div>
+        </div>
           <div className="flex-1 overflow-y-auto relative">
             <DataTableDemoCL
               timeProgramm={programs}
@@ -354,37 +356,44 @@ export const Stream: React.FC = () => {
             onSelectTime={handleRewind}
           />
         </div>
-        <div className="h-14 justify-center bg-gray-700 dark:bg-gray-600 w-full shrink-0 flex items-center gap-4 px-4 overflow-x-auto">
-          <div className="flex items-center left-4 justify-center gap-3">
+        <div className="shrink-0 w-full flex items-center gap-3 px-1 py-2 overflow-x-auto justify-center">
+
+          <div className="flex items-center shrink-0">
             <IconButtonDemo />
           </div>
-          <div className="flex gap-3 flex-wrap">
+
+          <div className="flex gap-2 ">
             {categories.map((category) => {
-              const IconOrLogo = category.icon || category.logo;
-              const isSelected = selectedCategories.includes(category.id);
+              const isSelected = selectedCategory == category.name_en
               return (
                 <div
                   key={category.id}
-                  onClick={() => toggleCategory(category.id)}
-                  className={`flex relative hover:-translate-y-1 hover:scale-[1.1] h-10 px-2 rounded-sm items-center justify-center transition-all cursor-pointer ${
-                    isSelected
-                      ? 'bg-gradient-to-br from-orange-500 to-yellow-500'
-                      : 'bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700'
-                  }`}
+                  onClick={() => toggleCategory(category.name_en)}
+                  className={`
+                    relative flex items-center gap-1.5 h-10 w-10 px-3 rounded-lg cursor-pointer shrink-0
+                    text-xs font-medium transition-all duration-150
+                    ${isSelected
+                      ? 'bg-gradient-to-br from-orange-500 to-yellow-400 text-white shadow-sm shadow-orange-300/30'
+                      : 'bg-white/70 dark:bg-white/5 border border-black/8 dark:border-white/10 backdrop-blur-md text-black/50 dark:text-white/40 hover:text-black/70 dark:hover:text-white/60 hover:bg-white dark:hover:bg-white/10'
+                    }
+                  `}
                 >
-                  {IconOrLogo && (
-                    <IconOrLogo className={isSelected ? 'text-white' : 'text-gray-500 dark:text-white'} />
+                  {category.icon_url && (
+                    <img src={category.icon_url} alt="" className="w-3.5 h-3.5 object-contain" />
                   )}
-                  <div className='absolute w-full h-full'>
+                  
+
+                  <div className='absolute w-full h-full left-0'>
                     <Tooltip>
                       <TooltipTrigger asChild><div className='w-full h-full' /></TooltipTrigger>
-                      <TooltipContent side='bottom'>{category.id}</TooltipContent>
+                      <TooltipContent side='bottom'>{category.name_en}</TooltipContent>
                     </Tooltip>
                   </div>
                 </div>
-              );
+              )
             })}
           </div>
+
         </div>
       </div>
     </div>
