@@ -357,7 +357,7 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
   // ─── Render ───────────────────────────────────────────────────────────────────
 
   return (
-    <div className="flex w-full relative justify-center p-4">
+    <div className="flex w-full relative justify-center px-4">
       <div className="w-full flex flex-row max-w-6xl rounded-sm">
         <div
           ref={containerRef}
