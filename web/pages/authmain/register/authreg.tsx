@@ -80,8 +80,10 @@ const AuthReg: React.FC = () => {
     return
   }
   setLoading(true)
+
   try {
-    await fetch('http://159.89.20.100/sanctum/csrf-cookie', {
+    // 1. Get CSRF Cookie (Use relative path)
+    await fetch('/sanctum/csrf-cookie', {
       credentials: 'include',
     })
 
@@ -92,14 +94,37 @@ const AuthReg: React.FC = () => {
       password_confirmation: form.password_confirmation,
       ...(contactMethod === 'email' ? { email: form.email } : { phone: form.phone }),
     }
-    const res = await fetch('http://159.89.20.100/api/auth/register', {
+
+    // 2. Register (Add Accept header!)
+    const res = await fetch('/api/auth/register', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 
+        'Content-Type': 'application/json',
+        'Accept': 'application/json' // <--- THIS IS CRITICAL
+      },
       body: JSON.stringify(payload),
       credentials: 'include',
     })
-    const data = await res.json()
-    if (!res.ok) throw new Error(data.message || 'Registration failed')
+
+    const text = await res.text()
+    console.log('Raw response:', text)
+
+    let data: any = null
+    try {
+      data = JSON.parse(text)
+    } catch {
+      // If we are here, Nginx/Laravel still sent HTML
+      throw new Error('Server returned HTML instead of JSON. Check Nginx routing.')
+    }
+
+    if (!res.ok) {
+      // Now you will actually see the validation errors from Laravel
+      const errorMsg = data.errors 
+        ? Object.values(data.errors).flat().join(', ') 
+        : (data.message || 'Registration failed')
+      throw new Error(errorMsg)
+    }
+
     alert('Registered successfully ✅')
   } catch (err: any) {
     alert(err.message)
