@@ -27,8 +27,8 @@ export type Channel = {
   name: string;
   logo: string;
   number: number;
-  url: string;
-  categories: string[];
+  category: string;
+  category_id: string;
 };
 
 export type ProgramItem = {
@@ -122,14 +122,19 @@ export const Stream: React.FC = () => {
   }, []);
 
   const goArchive = useCallback(async (channelId: string, timestamp: number) => {
+    // Clamp: never request a timestamp older than what the server supports.
+    // Use rewindableHours (default 168h) minus a small safety margin (60s).
+    const oldestValid = Math.floor(Date.now() / 1000) - rewindableHours * 3600 + 60;
+    const safeTs = Math.max(timestamp, oldestValid);
+
     setIsStreamLoading(true);
     try {
-      const res = await fetch(`${API_BASE}/channels/${channelId}/archive?timestamp=${timestamp}`);
+      const res = await fetch(`${API_BASE}/channels/${channelId}/archive?timestamp=${safeTs}`);
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const data = await res.json();
       setStreamUrl(proxyStreamUrl(data.url));
       setMode('archive');
-      setArchiveTimestamp(timestamp);
+      setArchiveTimestamp(safeTs);
       const hours = parseInt(data.hoursBack, 10);
       if (!isNaN(hours)) setRewindableHours(hours);
     } catch (e) {
@@ -137,7 +142,7 @@ export const Stream: React.FC = () => {
     } finally {
       setIsStreamLoading(false);
     }
-  }, []);
+  }, [rewindableHours]);
 
   const fetchPrograms = useCallback(async (channelId: string, date: string) => {
     try {
@@ -243,7 +248,7 @@ export const Stream: React.FC = () => {
   ];
 
   const filteredChannels = selectedCategories.length > 0
-    ? channels.filter(ch => ch.categories.some(c => selectedCategories.includes(c)))
+    ? channels.filter(ch => selectedCategories.includes(ch.category))
     : channels;
 
   const toggleCategory = (id: string) =>
@@ -259,7 +264,7 @@ export const Stream: React.FC = () => {
 
         {/* LEFT */}
         <div className={`absolute z-10 lg:relative flex flex-col h-full overflow-hidden bg-yel
-          ${!LeftList ? 'w-1/3' : 'w-[65px] lg:w-1/4'}`}>
+          ${!LeftList ? 'w-1/5' : 'w-[65px] lg:w-1/5'}`}>
           <div className="h-15 flex items-center py-2">
             <div className='px-1 w-full h-full bg-gray-800 rounded-r-[10px] flex items-center justify-center'>
               <div className="font-bold flex items-center justify-between w-full">
@@ -286,7 +291,7 @@ export const Stream: React.FC = () => {
         </div>
 
         {/* CENTER */}
-        <div className="w-[calc(100vw-130px)] lg:w-1/2 relative h-full flex flex-col">
+        <div className="w-[calc(100vw-130px)] lg:w-3/5 relative h-full flex flex-col">
           <div className='flex flex-col'>
             <VideoPlayer
               streamUrl={streamUrl}
@@ -295,6 +300,9 @@ export const Stream: React.FC = () => {
               isLoading={isStreamLoading}
               onRewind={handleRewind}
               onGoLive={handleGoLive}
+              onChannelSelect={setSelectedChannel}
+              currentChannelId={selectedChannel?.id}
+              rewindableDays={rewindableDays}
             />
           </div>
           <div className=''>
@@ -312,7 +320,7 @@ export const Stream: React.FC = () => {
 
         {/* RIGHT */}
         <div className={`absolute right-0 z-10 lg:relative flex flex-col h-full overflow-hidden bg-yel
-          ${!RightList ? 'w-1/3' : 'w-[65px] lg:w-1/4'}`}>
+          ${!RightList ? 'w-1/5' : 'w-[65px] lg:w-1/5'}`}>
           <div className="h-15 flex items-center py-2">
             <div className="px-1 w-full h-full bg-gray-800 rounded-l-[10px] flex items-center justify-between">
               <div className='flex items-center justify-center'>

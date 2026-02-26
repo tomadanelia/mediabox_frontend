@@ -43,7 +43,7 @@ type VideoPlayerProps = {
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
-/** Format a unix timestamp as HH:MM:SS local time. */
+/** Format a unix timestamp as HH:MM:SS local time. ეპოქ თაიმი */
 function formatClock(unixSec: number): string {
   return new Date(unixSec * 1000).toLocaleTimeString('en-GB', {
     hour: '2-digit',
@@ -382,7 +382,7 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
               </div>
               <button
                 onClick={onGoLive}
-                className="pointer-events-auto flex items-center gap-1.5 bg-red-600 hover:bg-red-500 text-white text-xs font-semibold px-3 py-1.5 rounded-full transition-colors"
+                className="pointer-events-auto cursor-pointer flex items-center gap-1.5 bg-red-600 hover:bg-red-500 text-white text-xs font-semibold px-3 py-1.5 rounded-full transition-colors"
               >
                 <Radio className="w-3.5 h-3.5" />
                 Go Live
