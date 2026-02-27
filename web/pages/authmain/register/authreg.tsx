@@ -3,7 +3,7 @@ import { UserIcon, MailIcon, PhoneIcon, EyeIcon, EyeOffIcon } from 'lucide-react
 import { Input } from '../../../src/components/ui/input'
 import { Button } from '../../../src/components/ui/button'
 import CheckboxDemo from '../../../src/components/shadcn-studio/checkbox/checkbox-01'
-import { API_BASE_URL } from '@/config';
+import api from '@/lib/axios'
 
 const IconInput = ({
   icon: Icon,
@@ -84,9 +84,7 @@ const AuthReg: React.FC = () => {
 
   try {
     // 1. Get CSRF Cookie (Use relative path)
-    await fetch('/sanctum/csrf-cookie', {
-      credentials: 'include',
-    })
+    await api.get('/sanctum/csrf-cookie');
 
     const payload = {
       full_name: form.full_name,
@@ -96,34 +94,20 @@ const AuthReg: React.FC = () => {
       ...(contactMethod === 'email' ? { email: form.email } : { phone: form.phone }),
     }
 
-    const res = await fetch(`${API_BASE_URL}/api/auth/register`, {
-      method: 'POST',
-      headers: { 
-        'Content-Type': 'application/json',
-        'Accept': 'application/json' 
-      },
-      body: JSON.stringify(payload),
-      credentials: 'include',
-    })
+    const res = await api.post('/api/auth/register', payload);
+    contactMethod==='email' ? localStorage.setItem('pending_login', form.email) : localStorage.setItem('pending_login', form.phone);
 
-   const data = await res.json()
+   const data = res.data;
 
 console.log('Full response:', data)
 
 if (data.code) {
   console.log('Response code:', data.code)
-}
-    
-
-    if (!res.ok) {
-      const errorMsg = data.errors 
-        ? Object.values(data.errors).flat().join(', ') 
-        : (data.message || 'Registration failed')
-      throw new Error(errorMsg)
-    }
+  alert('Verification code: ' + data.code);}
    window.location.href = '/authentication/verify'
   } catch (err: any) {
-    alert(err.message)
+    const message = err.response?.data?.message || err.message || 'Registration failed';
+    alert(message);
   } finally {
     setLoading(false)
   }
@@ -131,7 +115,7 @@ if (data.code) {
 
   return (
 <div className="flex min-h-svh items-start justify-center p-3 pt-0 dark:bg-gray-950 bg-gray-50 overflow-hidden">
-        <div className="w-full max-w-[400px]  rounded-xl border border-emerald-500/20 bg-white dark:bg-gray-900 shadow-xl shadow-emerald-500/5 px-8 py-10">
+        <div className="w-full max-w-100  rounded-xl border border-emerald-500/20 bg-white dark:bg-gray-900 shadow-xl shadow-emerald-500/5 px-8 py-10">
 
         {/* Header */}
         <div className="mb-8 text-center">

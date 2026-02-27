@@ -2,7 +2,7 @@ import React, { useState, useRef, useEffect } from 'react'
 import { ShieldCheckIcon } from 'lucide-react'
 import { Input } from '../../src/components/ui/input'
 import { API_BASE_URL } from '../../src/config'
-
+import api from '../../src/lib/axios'
 const AuthLoginVerify: React.FC = () => {
   const [code, setCode] = useState<string[]>(['', '', '', '', '', ''])
   const [loading, setLoading] = useState(false)
@@ -50,61 +50,57 @@ const AuthLoginVerify: React.FC = () => {
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    const fullCode = code.join('')
-    if (fullCode.length < 6) {
-      alert('Please enter the full 6-digit code')
-      return
-    }
-    setLoading(true)
-    try {
-      await fetch(`${API_BASE_URL}/sanctum/csrf-cookie`, {
-        credentials: 'include',
-      })
-      const res = await fetch(`${API_BASE_URL}/api/auth/web/login/verify`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ code: fullCode }),
-        credentials: 'include',
-      })
-      const data = await res.json()
-      if (!res.ok) throw new Error(data.message || 'Verification failed')
-      alert('Verified successfully ✅')
-      // redirect to app after verify
-      window.location.href = '/'
-    } catch (err: any) {
-      alert(err.message)
-      // clear code on error so user can retype
-      setCode(['', '', '', '', '', ''])
-      inputRefs.current[0]?.focus()
-    } finally {
-      setLoading(false)
-    }
+  e.preventDefault();
+  const fullCode = code.join('');
+  
+  const loginIdentifier = localStorage.getItem('pending_login'); 
+
+  if (!loginIdentifier) {
+      alert("Session expired. Please log in again.");
+      window.location.href = '/authentication/login';
+      return;
   }
 
-  const handleResend = async () => {
-    if (!canResend) return
-    try {
-      await fetch(`${API_BASE_URL}/sanctum/csrf-cookie`, { credentials: 'include' })
-      const res = await fetch(`${API_BASE_URL}/api/auth/resend`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-      })
-      const data = await res.json()
-      if (!res.ok) throw new Error(data.message || 'Failed to resend')
-      setCode(['', '', '', '', '', ''])
-      setResendTimer(60)
-      setCanResend(false)
-      inputRefs.current[0]?.focus()
-    } catch (err: any) {
-      alert(err.message)
-    }
+  setLoading(true);
+  try {
+    const response = await api.post('/api/auth/web/login/verify', {
+      login: loginIdentifier,
+      code: fullCode
+    });
+
+    localStorage.removeItem('pending_login');
+
+    alert('Verified successfully ✅');
+    window.location.href = '/';
+  } catch (err: any) {
+    const message = err.response?.data?.message || 'Verification failed';
+    alert(message);
+    setCode(['', '', '', '', '', '']);
+    inputRefs.current[0]?.focus();
+  } finally {
+    setLoading(false);
   }
+};
+  const handleResend = async () => {
+  if (!canResend) return;
+  const userLogin = localStorage.getItem('pending_login_identifier');
+
+  try {
+    await api.post('/api/auth/resend', {
+      login: userLogin
+    });
+    
+    alert('Code resent!');
+    setResendTimer(60);
+    setCanResend(false);
+  } catch (err: any) {
+    alert(err.response?.data?.message || 'Failed to resend');
+  }
+};
 
   return (
     <div className="flex h-screen items-start justify-center p-3 pt-0 dark:bg-gray-950 bg-gray-50 overflow-hidden">
-      <div className="w-full max-w-[400px] rounded-xl border border-emerald-500/20 bg-white dark:bg-gray-900 shadow-xl shadow-emerald-500/5 px-8 py-10">
+      <div className="w-full max-w-100 rounded-xl border border-emerald-500/20 bg-white dark:bg-gray-900 shadow-xl shadow-emerald-500/5 px-8 py-10">
 
         {/* Header */}
         <div className="mb-8 text-center">
