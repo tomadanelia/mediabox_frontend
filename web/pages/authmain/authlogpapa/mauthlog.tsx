@@ -1,9 +1,9 @@
 import React, { useState } from 'react'
-import { UserIcon, EyeIcon, EyeOffIcon, LogInIcon } from 'lucide-react'
+import { UserIcon, MailIcon, PhoneIcon, EyeIcon, EyeOffIcon, LogInIcon } from 'lucide-react'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import CheckboxDemo from '../../../src/components/shadcn-studio/checkbox/checkbox-01'
-import { API_BASE_URL } from '@/config';
+import { API_BASE_URL } from '@/config'
 
 const IconInput = ({
   icon: Icon,
@@ -29,15 +29,17 @@ const IconInput = ({
 )
 
 const PasswordInput = ({
-  placeholder = 'Password',
+  placeholder = 'პაროლი',
+  autoComplete = 'current-password',
   ...props
-}: { placeholder?: string } & React.ComponentProps<typeof Input>) => {
+}: { placeholder?: string; autoComplete?: string } & React.ComponentProps<typeof Input>) => {
   const [visible, setVisible] = useState(false)
   return (
     <div className="relative w-full">
       <Input
         type={visible ? 'text' : 'password'}
         placeholder={placeholder}
+        autoComplete={autoComplete}
         className="pr-9 border-emerald-500/40 bg-transparent focus-visible:ring-emerald-500/30 focus-visible:border-emerald-500 placeholder:text-muted-foreground/50 transition-colors"
         {...props}
       />
@@ -55,7 +57,10 @@ const PasswordInput = ({
   )
 }
 
+type LoginMethod = 'email' | 'phone'
+
 const AuthLog: React.FC = () => {
+  const [loginMethod, setLoginMethod] = useState<LoginMethod>('email')
   const [form, setForm] = useState({
     login: '',
     password: '',
@@ -65,80 +70,138 @@ const AuthLog: React.FC = () => {
   const handleChange = (name: string, value: string) =>
     setForm(prev => ({ ...prev, [name]: value }))
 
-  const handleSubmit = async (e: React.FormEvent) => {
-  e.preventDefault()
-  setLoading(true)
+  // clear login field when switching method so stale value doesn't get sent
+  const handleMethodSwitch = (method: LoginMethod) => {
+    setLoginMethod(method)
+    setForm(prev => ({ ...prev, login: '' }))
+  }
+
+  const getCookie = (name: string) => {
+  const value = `; ${document.cookie}`;
+  const parts = value.split(`; ${name}=`);
+  if (parts.length === 2) return decodeURIComponent(parts.pop()?.split(';').shift() || '');
+};
+
+const handleSubmit = async (e: React.FormEvent) => {
+  e.preventDefault();
+  setLoading(true);
   try {
+    // 1. Get the cookie
     await fetch(`${API_BASE_URL}/sanctum/csrf-cookie`, {
       credentials: 'include',
-    })
+    });
 
+    // 2. Extract the token from the cookie
+    const csrfToken = getCookie('XSRF-TOKEN');
+
+    // 3. Send the login request
     const res = await fetch(`${API_BASE_URL}/api/auth/login`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+        'X-XSRF-TOKEN': csrfToken || '', // <--- THIS IS WHAT WAS MISSING
+      },
       body: JSON.stringify(form),
-      credentials: 'include',
-    })
-    const data = await res.json()
-    if (!res.ok) throw new Error(data.message || 'Login failed')
-    alert('Logged in successfully ✅')
-    console.log(data)
+      credentials: 'include', // Crucial for sending cookies back
+    });
+
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.message || 'Login failed');
+    window.location.href = '/authentication/login-verify';
+    console.log('Login successful:', data.code);
   } catch (err: any) {
-    alert(err.message)
+    alert(err.message);
   } finally {
-    setLoading(false)
+    setLoading(false);
   }
-}
+};
+
   return (
     <div className="flex h-screen items-start justify-center p-3 pt-0 dark:bg-gray-950 bg-gray-50 overflow-hidden">
       <div className="w-full max-w-[400px] rounded-xl border border-emerald-500/20 bg-white dark:bg-gray-900 shadow-xl shadow-emerald-500/5 px-8 py-10">
 
         {/* Header */}
         <div className="mb-8 text-center">
-          <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-emerald-500/10 border border-emerald-500/30">
-            <LogInIcon className="size-5 text-emerald-500" />
-          </div>
+        
           <h1 className="text-2xl font-bold tracking-tight dark:text-white text-gray-900">
             Welcome back
           </h1>
           <p className="mt-1 text-sm text-muted-foreground">
-            Sign in to your account
+            შედით თქვენს ანგარიშში
           </p>
         </div>
 
         <form className="space-y-4" onSubmit={handleSubmit}>
 
-          {/* Login (email or username) */}
-          <IconInput
-            icon={UserIcon}
-            placeholder="Email or username"
-            autoComplete="email"
+          {/* Email / Phone toggle */}
+          <div className="flex rounded-lg overflow-hidden border border-emerald-500/30 text-sm font-medium">
+            <button
+              type="button"
+              onClick={() => handleMethodSwitch('email')}
+              className={`cursor-pointer flex-1 py-2 transition-all ${
+                loginMethod === 'email'
+                  ? 'bg-emerald-500 text-white'
+                  : 'bg-transparent dark:text-gray-400 text-gray-500 hover:bg-emerald-500/5'
+              }`}
+            >
+              ელ-ფოსტა
+            </button>
+            <button
+              type="button"
+              onClick={() => handleMethodSwitch('phone')}
+              className={`cursor-pointer flex-1 py-2 transition-all ${
+                loginMethod === 'phone'
+                  ? 'bg-emerald-500 text-white'
+                  : 'bg-transparent dark:text-gray-400 text-gray-500 hover:bg-emerald-500/5'
+              }`}
+            >
+              მობილური
+            </button>
+          </div>
 
-            name="login"
-            value={form.login}
-            onChange={e => handleChange('login', e.target.value)}
-          />
+          {/* Email or Phone field */}
+          {loginMethod === 'email' ? (
+            <IconInput
+              icon={MailIcon}
+              placeholder="ელ-ფოსტა"
+              type="email"
+              name="login"
+              autoComplete="email"
+              value={form.login}
+              onChange={e => handleChange('login', e.target.value)}
+            />
+          ) : (
+            <IconInput
+              icon={PhoneIcon}
+              placeholder="მობილური ნომერი"
+              type="tel"
+              name="login"
+              autoComplete="tel"
+              value={form.login}
+              onChange={e => handleChange('login', e.target.value)}
+            />
+          )}
 
           {/* Password */}
           <PasswordInput
-  placeholder="Password"
-  autoComplete="current-password"
-  name="password"
-  value={form.password}
-  onChange={e => handleChange('password', e.target.value)}
-/>
+            placeholder="პაროლი"
+            name="password"
+            value={form.password}
+            onChange={e => handleChange('password', e.target.value)}
+          />
 
           {/* Remember me + Forgot password */}
           <div className="flex items-center justify-between pt-1">
             <div className="flex items-center gap-2">
               <CheckboxDemo />
-              <span className="text-sm text-muted-foreground">Remember me</span>
+              <span className="text-sm text-muted-foreground">დამიმახსოვრე</span>
             </div>
             <a
               href="#"
               className="text-sm font-semibold text-emerald-500 hover:text-emerald-400 transition-colors"
             >
-              Forgot password?
+              დაგავიწყდა პაროლი?
             </a>
           </div>
 
@@ -154,10 +217,10 @@ const AuthLog: React.FC = () => {
                   <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
                   <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z" />
                 </svg>
-                Signing in...
+                შესვლა...
               </span>
             ) : (
-              'Sign in'
+              'შესვლა'
             )}
           </button>
 
@@ -168,7 +231,7 @@ const AuthLog: React.FC = () => {
             </div>
             <div className="relative flex justify-center text-sm">
               <span className="px-4 bg-white dark:bg-gray-900 text-muted-foreground">
-                Or continue with
+                ან გააგრძელეთ
               </span>
             </div>
           </div>
@@ -197,9 +260,9 @@ const AuthLog: React.FC = () => {
 
           {/* Sign up link */}
           <p className="text-center text-sm text-muted-foreground pt-1">
-            Don't have an account?{' '}
+            არ გაქვთ ანგარიში?{' '}
             <a href="/authentication/register" className="font-semibold text-emerald-500 hover:text-emerald-400 transition-colors">
-              Sign up
+              დარეგისტრირდით
             </a>
           </p>
 

@@ -3,15 +3,7 @@ import Pricing from '../../src/components/shadcn-studio/blocks/pricing-component
 import { useEffect, useState } from 'react'
 import { API_BASE_URL } from '@/config';
 
-const tableFeatures = [
-  { feature: 'Channels', plans: ['10+', '50+', '100+', '200+'] },
-  { feature: 'Devices', plans: ['1', '2', '4', 'Unlimited'] },
-  { feature: 'On-demand Library', plans: ['-', 'Limited', 'Full', 'Full'] },
-  { feature: 'Ad-free', plans: ['-', '-', 'Yes', 'Yes'] },
-  { feature: 'Offline Viewing', plans: ['-', '-', 'Yes', 'Yes'] },
-  { feature: 'Premium Sports', plans: ['-', '-', '-', 'Yes'] },
-  { feature: 'Parental Controls', plans: ['Yes', 'Yes', 'Yes', 'Yes'] }
-]
+
 
 const Plans = () => {
   const [plans, setPlans] = useState<any[]>([])
