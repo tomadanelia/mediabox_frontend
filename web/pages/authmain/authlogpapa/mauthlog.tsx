@@ -4,6 +4,8 @@ import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import CheckboxDemo from '../../../src/components/shadcn-studio/checkbox/checkbox-01'
 import { API_BASE_URL } from '@/config'
+import api from '@/lib/axios'
+import { set } from 'date-fns'
 
 const IconInput = ({
   icon: Icon,
@@ -86,32 +88,23 @@ const handleSubmit = async (e: React.FormEvent) => {
   e.preventDefault();
   setLoading(true);
   try {
-    // 1. Get the cookie
-    await fetch(`${API_BASE_URL}/sanctum/csrf-cookie`, {
-      credentials: 'include',
-    });
-
-    // 2. Extract the token from the cookie
-    const csrfToken = getCookie('XSRF-TOKEN');
-
-    // 3. Send the login request
-    const res = await fetch(`${API_BASE_URL}/api/auth/login`, {
-      method: 'POST',
-      headers: { 
-        'Content-Type': 'application/json',
-        'Accept': 'application/json',
-        'X-XSRF-TOKEN': csrfToken || '', // <--- THIS IS WHAT WAS MISSING
-      },
-      body: JSON.stringify(form),
-      credentials: 'include', // Crucial for sending cookies back
-    });
-
-    const data = await res.json();
-    if (!res.ok) throw new Error(data.message || 'Login failed');
-    window.location.href = '/authentication/login-verify';
-    console.log('Login successful:', data.code);
+    await api.get('/sanctum/csrf-cookie');
+    const res = await api.post('/api/auth/login', form);
+    
+    localStorage.setItem('pending_login', form.login);
+    alert('Login successful! Response: ' + JSON.stringify(res.data.code));
+    setTimeout(() => {
+      window.location.href = '/authentication/login-verify';
+    }, 1000);
   } catch (err: any) {
-    alert(err.message);
+if (err.response?.status === 403 && err.response?.data?.message === 'Account not verified.') {
+      localStorage.setItem('pending_login', form.login);
+      alert('Account unverified. New OTP Sent! Code: ' + err.response.data.code);
+      
+      window.location.href = '/authentication/login-verify';
+      return;
+    }
+    alert(err.response?.data?.message || 'Login failed');
   } finally {
     setLoading(false);
   }
@@ -119,7 +112,7 @@ const handleSubmit = async (e: React.FormEvent) => {
 
   return (
     <div className="flex h-screen items-start justify-center p-3 pt-0 dark:bg-gray-950 bg-gray-50 overflow-hidden">
-      <div className="w-full max-w-[400px] rounded-xl border border-emerald-500/20 bg-white dark:bg-gray-900 shadow-xl shadow-emerald-500/5 px-8 py-10">
+      <div className="w-full max-w-100 rounded-xl border border-emerald-500/20 bg-white dark:bg-gray-900 shadow-xl shadow-emerald-500/5 px-8 py-10">
 
         {/* Header */}
         <div className="mb-8 text-center">
