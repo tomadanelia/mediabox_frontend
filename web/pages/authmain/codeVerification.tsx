@@ -53,12 +53,12 @@ const AuthVerify: React.FC = () => {
   e.preventDefault();
   const fullCode = code.join('');
   
-  const loginIdentifier = localStorage.getItem('pending_login_identifier'); 
+  const loginIdentifier = localStorage.getItem('pending_register_login'); 
 
   setLoading(true);
   try {
     await api.get('/sanctum/csrf-cookie');
-    const response = await api.post('/api/auth/web/login/verify', {
+    const response = await api.post('/api/auth/web/verify', {
       login: loginIdentifier,
       code: fullCode
     });
@@ -78,7 +78,7 @@ const AuthVerify: React.FC = () => {
   const handleResend = async () => {
   if (!canResend) return;
   
-  const userLogin = localStorage.getItem('pending_login_identifier');
+  const userLogin = localStorage.getItem('pending_register_login');
 
   try {
     await api.post('/api/auth/resend', {

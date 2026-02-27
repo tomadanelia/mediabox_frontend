@@ -95,7 +95,7 @@ const AuthReg: React.FC = () => {
     }
 
     const res = await api.post('/api/auth/register', payload);
-    contactMethod==='email' ? localStorage.setItem('pending_login', form.email) : localStorage.setItem('pending_login', form.phone);
+    contactMethod==='email' ? localStorage.setItem('pending_register_login', form.email) : localStorage.setItem('pending_register_login', form.phone);
 
    const data = res.data;
 

@@ -92,11 +92,18 @@ const handleSubmit = async (e: React.FormEvent) => {
     const res = await api.post('/api/auth/login', form);
     
     localStorage.setItem('pending_login', form.login);
-        alert('Login successful! Response: ' + JSON.stringify(res.data.code));
+    alert('Login successful! Response: ' + JSON.stringify(res.data.code));
     setTimeout(() => {
       window.location.href = '/authentication/login-verify';
     }, 1000);
   } catch (err: any) {
+if (err.response?.status === 403 && err.response?.data?.message === 'Account not verified.') {
+      localStorage.setItem('pending_login', form.login);
+      alert('Account unverified. New OTP Sent! Code: ' + err.response.data.code);
+      
+      window.location.href = '/authentication/login-verify';
+      return;
+    }
     alert(err.response?.data?.message || 'Login failed');
   } finally {
     setLoading(false);
