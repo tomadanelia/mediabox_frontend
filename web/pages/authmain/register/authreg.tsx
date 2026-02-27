@@ -106,16 +106,14 @@ const AuthReg: React.FC = () => {
       credentials: 'include',
     })
 
-    const text = await res.text()
-    console.log('Raw response:', text)
+   const data = await res.json()
 
-    let data: any = null
-    try {
-      data = JSON.parse(text)
-    } catch {
-      // If we are here, Nginx/Laravel still sent HTML
-      throw new Error('Server returned HTML instead of JSON. Check Nginx routing.')
-    }
+console.log('Full response:', data)
+
+if (data.code) {
+  console.log('Response code:', data.code)
+}
+    
 
     if (!res.ok) {
       const errorMsg = data.errors 

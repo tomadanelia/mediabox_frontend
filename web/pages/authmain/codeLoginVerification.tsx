@@ -3,7 +3,7 @@ import { ShieldCheckIcon } from 'lucide-react'
 import { Input } from '../../src/components/ui/input'
 import { API_BASE_URL } from '../../src/config'
 
-const AuthVerify: React.FC = () => {
+const AuthLoginVerify: React.FC = () => {
   const [code, setCode] = useState<string[]>(['', '', '', '', '', ''])
   const [loading, setLoading] = useState(false)
   const [resendTimer, setResendTimer] = useState(60)
@@ -61,7 +61,7 @@ const AuthVerify: React.FC = () => {
       await fetch(`${API_BASE_URL}/sanctum/csrf-cookie`, {
         credentials: 'include',
       })
-      const res = await fetch(`${API_BASE_URL}/api/auth/web/verify`, {
+      const res = await fetch(`${API_BASE_URL}/api/auth/web/login/verify`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ code: fullCode }),
@@ -198,4 +198,4 @@ const AuthVerify: React.FC = () => {
   )
 }
 
-export default AuthVerify
+export default AuthLoginVerify

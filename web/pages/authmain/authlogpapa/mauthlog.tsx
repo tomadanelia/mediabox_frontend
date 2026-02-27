@@ -76,28 +76,46 @@ const AuthLog: React.FC = () => {
     setForm(prev => ({ ...prev, login: '' }))
   }
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setLoading(true)
-    try {
-      await fetch(`${API_BASE_URL}/sanctum/csrf-cookie`, {
-        credentials: 'include',
-      })
-      const res = await fetch(`${API_BASE_URL}/api/auth/login`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(form),
-        credentials: 'include',
-      })
-      const data = await res.json()
-      if (!res.ok) throw new Error(data.message || 'Login failed')
-      window.location.href = '/authentication/verify'
-    } catch (err: any) {
-      alert(err.message)
-    } finally {
-      setLoading(false)
-    }
+  const getCookie = (name: string) => {
+  const value = `; ${document.cookie}`;
+  const parts = value.split(`; ${name}=`);
+  if (parts.length === 2) return decodeURIComponent(parts.pop()?.split(';').shift() || '');
+};
+
+const handleSubmit = async (e: React.FormEvent) => {
+  e.preventDefault();
+  setLoading(true);
+  try {
+    // 1. Get the cookie
+    await fetch(`${API_BASE_URL}/sanctum/csrf-cookie`, {
+      credentials: 'include',
+    });
+
+    // 2. Extract the token from the cookie
+    const csrfToken = getCookie('XSRF-TOKEN');
+
+    // 3. Send the login request
+    const res = await fetch(`${API_BASE_URL}/api/auth/login`, {
+      method: 'POST',
+      headers: { 
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+        'X-XSRF-TOKEN': csrfToken || '', // <--- THIS IS WHAT WAS MISSING
+      },
+      body: JSON.stringify(form),
+      credentials: 'include', // Crucial for sending cookies back
+    });
+
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.message || 'Login failed');
+    window.location.href = '/authentication/login-verify';
+    console.log('Login successful:', data.code);
+  } catch (err: any) {
+    alert(err.message);
+  } finally {
+    setLoading(false);
   }
+};
 
   return (
     <div className="flex h-screen items-start justify-center p-3 pt-0 dark:bg-gray-950 bg-gray-50 overflow-hidden">

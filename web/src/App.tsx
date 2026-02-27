@@ -9,6 +9,7 @@ import useUIStore from "./store/ui-store"
 import AuthReg from "../pages/authmain/register/authreg"
 import AuthLog from "../pages/authmain/authlogpapa/mauthlog"
 import AuthVerify from "../pages/authmain/codeVerification"
+import AuthLoginVerify from "../pages/authmain/codeLoginVerification"
 import AdminDashboard from "../pages/admin/admin"
 import type { UIStore } from "./store/ui-store"
 
@@ -40,6 +41,7 @@ const App: React.FC = () => {
             <Route path="login" element={<AuthLog/>} />
             <Route path="register" element={<AuthReg/>} />
             <Route path="verify" element={<AuthVerify />} />
+            <Route path="login-verify" element={<AuthLoginVerify />} />
           </Route>
         </Routes>
       </div>
