@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react"
-import { API_BASE_URL } from "@/config"
+import { API_BASE_URL } from "../../src/config"
 import ChannelScroller from "./comps/ChannelScroller"
 import type { Channel } from "./comps/ChannelScroller"
 
