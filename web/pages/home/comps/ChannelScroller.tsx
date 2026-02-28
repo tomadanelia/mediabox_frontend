@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from "react"
 import { Link } from "react-router-dom"
 import Hls from "hls.js"
+import { Lock } from "lucide-react"
 import api from "../../../src/lib/axios"
 
 export type Channel = {
@@ -41,9 +42,7 @@ function extractStreamUrl(data: unknown): string | null {
   return null
 }
 
-// ─── HLS thumbnail grabber ────────────────────────────────────────────────────
-// No crossOrigin on the video element — setting it causes a CORS preflight on
-// the media server which likely has no CORS headers → browser blocks all chunks.
+// ─── Canvas capture ───────────────────────────────────────────────────────────
 
 function captureFrame(video: HTMLVideoElement): string {
   const canvas = document.createElement("canvas")
@@ -64,7 +63,7 @@ async function grabThumbnail(streamUrl: string): Promise<GrabResult> {
     const video = document.createElement("video")
     video.muted = true
     video.playsInline = true
-    video.autoplay = true  // ← add this so the browser actually decodes frames
+    video.autoplay = true
     Object.assign(video.style, {
       position: "fixed",
       top: "-9999px",
@@ -100,7 +99,6 @@ async function grabThumbnail(streamUrl: string): Promise<GrabResult> {
 
     const timeout = setTimeout(() => finish({ ok: false, reason: "timeout" }), 20_000)
 
-    // ← Key change: capture on timeupdate, which only fires when real frames are decoded
     const onTimeUpdate = () => {
       if (video.videoWidth === 0 || video.readyState < 2) return
       clearTimeout(timeout)
@@ -122,72 +120,146 @@ async function grabThumbnail(streamUrl: string): Promise<GrabResult> {
 
     hls.loadSource(streamUrl)
     hls.attachMedia(video)
-    // video.play() will be triggered automatically via autoplay
-    // but call it explicitly too for safety:
     hls.on(Hls.Events.MANIFEST_PARSED, () => {
       video.play().catch(() => {})
     })
   })
 }
 
-// ─── Component ────────────────────────────────────────────────────────────────
+// ─── Per-card thumb logic ─────────────────────────────────────────────────────
 
-// ThumbState:
-//   undefined  → not started yet (renders nothing / gradient)
-//   "loading"  → spinner
-//   "failed"   → gradient only (no spinner)
-//   string     → data-URL (renders <img>)
-type ThumbState = undefined | "loading" | "failed" | string
-type ThumbMap = Record<string, ThumbState>
+// "locked" = 403 subscription required
+type ThumbState = undefined | "loading" | "failed" | "locked" | string
 
-const ChannelScroller: React.FC<{ channels: Channel[] }> = ({ channels }) => {
-  const [thumbs, setThumbs] = useState<ThumbMap>({})
-  const started = useRef<Set<string>>(new Set())
+async function fetchThumb(channelId: string): Promise<ThumbState> {
+  try {
+    const res = await api.get(`/api/channels/${channelId}/stream`)
+    const streamUrl = extractStreamUrl(res.data)
+    if (!streamUrl) return "failed"
 
-  const setThumb = (id: string, state: ThumbState) =>
-    setThumbs((prev) => ({ ...prev, [id]: state }))
+    const result = await grabThumbnail(streamUrl)
+    return result.ok ? result.dataUrl : "failed"
+  } catch (err: unknown) {
+    if (
+      err &&
+      typeof err === "object" &&
+      "response" in err &&
+      (err as { response?: { status?: number } }).response?.status === 403
+    ) {
+      return "locked"
+    }
+    return "failed"
+  }
+}
+
+// ─── Single channel card ──────────────────────────────────────────────────────
+
+const ChannelCard: React.FC<{ channel: Channel; index: number }> = ({ channel, index }) => {
+  const color = channel.color ?? PALETTE[index % PALETTE.length]
+  const cardRef = useRef<HTMLAnchorElement>(null)
+  const [thumb, setThumb] = useState<ThumbState>(undefined)
+  const started = useRef(false)
 
   useEffect(() => {
-    const preview = channels.slice(0, 5)
-    if (preview.length === 0) return
+    const el = cardRef.current
+    if (!el) return
 
-    preview.forEach(async (channel) => {
-      if (started.current.has(channel.id)) return
-      started.current.add(channel.id)
-      setThumb(channel.id, "loading")
-
-      try {
-        const res = await api.get(`/api/channels/${channel.id}/stream`)
-        console.log(`[ChannelScroller] raw response for "${channel.name}":`, res.data)
-
-        const streamUrl = extractStreamUrl(res.data)
-        if (!streamUrl) {
-          console.warn(
-            `[ChannelScroller] could not extract URL from response for "${channel.name}". ` +
-            `Response was:`, res.data
-          )
-          setThumb(channel.id, "failed")
-          return
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting && !started.current) {
+          started.current = true
+          observer.disconnect()
+          setThumb("loading")
+          fetchThumb(channel.id).then(setThumb)
         }
+      },
+      { rootMargin: "0px 100px 0px 0px", threshold: 0.1 }
+    )
 
-        console.log(`[ChannelScroller] stream URL for "${channel.name}":`, streamUrl)
+    observer.observe(el)
+    return () => observer.disconnect()
+  }, [channel.id])
 
-        // Step 2 — HLS.js fetches directly from media server (no cookies needed)
-        const result = await grabThumbnail(streamUrl)
+  const isLoading = thumb === "loading"
+  const isLocked = thumb === "locked"
+  const hasImage = typeof thumb === "string" && !["loading", "failed", "locked"].includes(thumb)
 
-        if (result.ok) {
-          setThumb(channel.id, result.dataUrl)
-        } else {
-          console.warn(`[ChannelScroller] thumbnail failed for "${channel.name}": reason=${result.reason}`)
-          setThumb(channel.id, "failed")
-        }
-      } catch (e) {
-        console.error(`[ChannelScroller] error for "${channel.name}":`, e)
-        setThumb(channel.id, "failed")
-      }
-    })
-  }, [channels])
+  return (
+    <Link
+      ref={cardRef}
+      to={isLocked ? "#" : `/stream?channel=${channel.id}`}
+      onClick={isLocked ? (e) => e.preventDefault() : undefined}
+      className={`group relative w-64 shrink-0 overflow-hidden rounded-xl border shadow-lg transition
+        ${isLocked
+          ? "border-white/10 cursor-not-allowed"
+          : "border-border hover:-translate-y-1 hover:border-primary/60 hover:shadow-xl"
+        }`}
+    >
+      {/* Gradient base — desaturated when locked */}
+      <div
+        className="absolute inset-0"
+        style={{
+          backgroundImage: `linear-gradient(135deg, ${color}, rgba(15,23,42,0.9))`,
+          filter: isLocked ? "saturate(0.25) brightness(0.45)" : undefined,
+        }}
+      />
 
+      {/* Captured frame */}
+      {hasImage && (
+        <img
+          src={thumb as string}
+          alt={`${channel.name} preview`}
+          className="absolute inset-0 h-full w-full object-cover opacity-85 transition duration-700 group-hover:scale-105"
+        />
+      )}
+
+      {/* Frosted dark overlay for locked */}
+      {isLocked && (
+        <div className="absolute inset-0 bg-black/55 backdrop-blur-[3px]" />
+      )}
+
+      {/* Spinner */}
+      {isLoading && (
+        <div className="absolute inset-0 flex items-center justify-center">
+          <div className="h-6 w-6 animate-spin rounded-full border-2 border-white/20 border-t-white/60" />
+        </div>
+      )}
+
+      {/* Lock badge — centred, shown above the text */}
+      {isLocked && (
+        <div className="absolute inset-0 flex flex-col items-center justify-center gap-1.5 pb-6">
+          <div className="flex h-9 w-9 items-center justify-center rounded-full bg-white/10 ring-1 ring-white/20">
+            <Lock className="h-4 w-4 text-white/60" />
+          </div>
+          <span className="text-[11px] font-medium tracking-wide text-white/45">
+            Subscription required
+          </span>
+        </div>
+      )}
+
+      {/* Text overlay */}
+      <div className={`relative flex h-32 flex-col justify-between p-4 text-white ${isLocked ? "opacity-35" : ""}`}>
+        <div className="space-y-1">
+          <div className="flex items-center gap-2 text-xs text-white/80">
+            <span className={`h-2 w-2 rounded-full ${isLocked ? "bg-white/25" : "bg-green-400"}`} />
+            {isLocked ? "Locked" : "Live"} · {channel.genre}
+          </div>
+          <p className="text-lg font-semibold leading-tight drop-shadow">{channel.name}</p>
+        </div>
+        <div className="flex items-center justify-between text-xs text-white/80">
+          {channel.viewers && !isLocked && <span>{channel.viewers} watching</span>}
+          {!isLocked && (
+            <span className="rounded-full bg-white/10 px-2 py-1 font-medium">უყურე</span>
+          )}
+        </div>
+      </div>
+    </Link>
+  )
+}
+
+// ─── Main scroller ────────────────────────────────────────────────────────────
+
+const ChannelScroller: React.FC<{ channels: Channel[] }> = ({ channels }) => {
   return (
     <section className="space-y-3">
       <div>
@@ -196,57 +268,9 @@ const ChannelScroller: React.FC<{ channels: Channel[] }> = ({ channels }) => {
       </div>
 
       <div className="flex gap-4 overflow-x-auto scrollbar-hide pb-2">
-        {channels.slice(0, 5).map((channel, i) => {
-          const color = channel.color ?? PALETTE[i % PALETTE.length]
-          const thumb = thumbs[channel.id]
-          const isLoading = thumb === "loading"
-          const hasImage = typeof thumb === "string" && thumb !== "loading" && thumb !== "failed"
-
-          return (
-            <Link
-              key={channel.id}
-              to={`/stream?channel=${channel.id}`}
-              className="group relative w-64 shrink-0 overflow-hidden rounded-xl border border-border shadow-lg transition hover:-translate-y-1 hover:border-primary/60 hover:shadow-xl"
-            >
-              {/* Gradient base — always visible */}
-              <div
-                className="absolute inset-0"
-                style={{ backgroundImage: `linear-gradient(135deg, ${color}, rgba(15,23,42,0.9))` }}
-              />
-
-              {/* Captured frame */}
-              {hasImage && (
-                <img
-                  src={thumb as string}
-                  alt={`${channel.name} preview`}
-                  className="absolute inset-0 h-full w-full object-cover opacity-85 transition duration-700 group-hover:scale-105"
-                />
-              )}
-
-              {/* Spinner while loading */}
-              {isLoading && (
-                <div className="absolute inset-0 flex items-center justify-center">
-                  <div className="h-6 w-6 animate-spin rounded-full border-2 border-white/20 border-t-white/60" />
-                </div>
-              )}
-
-              {/* Text overlay */}
-              <div className="relative flex h-32 flex-col justify-between p-4 text-white">
-                <div className="space-y-1">
-                  <div className="flex items-center gap-2 text-xs text-white/80">
-                    <span className="h-2 w-2 rounded-full bg-green-400" />
-                    Live · {channel.genre}
-                  </div>
-                  <p className="text-lg font-semibold leading-tight drop-shadow">{channel.name}</p>
-                </div>
-                <div className="flex items-center justify-between text-xs text-white/80">
-                  {channel.viewers && <span>{channel.viewers} watching</span>}
-                  <span className="rounded-full bg-white/10 px-2 py-1 font-medium">უყურე</span>
-                </div>
-              </div>
-            </Link>
-          )
-        })}
+        {channels.map((channel, i) => (
+          <ChannelCard key={channel.id} channel={channel} index={i} />
+        ))}
       </div>
     </section>
   )
