@@ -1,6 +1,7 @@
 import { Link, NavLink } from "react-router-dom"
-import { BellIcon, Languages, Moon, PlayIcon, SearchIcon, Sun, TvMinimalPlay } from "lucide-react"
-
+import { BellIcon, Languages, Moon, PlayIcon, SearchIcon, Sun, TvMinimalPlay, User } from "lucide-react"
+import { useState, useEffect } from "react"
+import api from "@/lib/axios"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -15,6 +16,13 @@ const Navbar = () => {
   const language = useUIStore((state: UIStore) => state.language)
   const toggleDarkMode = useUIStore((state: UIStore) => state.toggleDarkMode)
   const cycleLanguage = useUIStore((state: UIStore) => state.cycleLanguage)
+  const [user, setUser] = useState<{ avatar_url?: string | null; full_name?: string } | null>(null)
+
+useEffect(() => {
+  api.get("/api/user")
+    .then((res) => setUser(res.data))
+    .catch(() => setUser(null))
+}, [])
 
   const navLinks = [
     { to: "/", label: "Home" },
@@ -26,6 +34,7 @@ const Navbar = () => {
     <header className="top-0 z-50 h-20 bg-background/90 backdrop-blur">
       <div className="flex h-full w-full items-center justify-between gap-6 px-4 sm:px-6">
         <div className="flex items-center gap-4">
+
           <Link to="/" className="flex items-center gap-3">
             <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-gradient-to-br from-blue-500 to-fuchsia-500 text-white shadow-lg">
               <TvMinimalPlay className="h-6 w-6" />
@@ -107,9 +116,11 @@ const Navbar = () => {
             trigger={
               <Button variant="ghost" className="h-full rounded-full p-0">
                 <Avatar className="h-11 w-11">
-                  <AvatarImage src="https://cdn.shadcnstudio.com/ss-assets/avatar/avatar-1.png" />
-                  <AvatarFallback>MB</AvatarFallback>
-                </Avatar>
+    <AvatarImage src={user?.avatar_url ?? ""} />
+    <AvatarFallback className="bg-zinc-200 dark:bg-zinc-700">
+      <User className="h-5 w-5 text-zinc-500" />
+    </AvatarFallback>
+  </Avatar>
               </Button>
             }
           />

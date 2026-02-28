@@ -88,15 +88,17 @@ export default function UserProfile() {
 
   /* ── Fetch favourites ── */
   const fetchFavourites = useCallback(() => {
-    api.get("/user/preferences/favourite-channels")
-      .then((res) => setFavourites(res.data))
-      .catch(() => setFavourites(null));
-  }, []);
-
-  useEffect(() => {
-    if (tab !== "Favourites") return;
-    fetchFavourites();
-  }, [tab, fetchFavourites]);
+  api.get("/user/preferences/favourite-channels")
+    .then((res) => {
+      const data = res.data;
+      setFavourites({
+        ...data,
+        favouriteChannelIds: Array.isArray(data?.favouriteChannelIds) ? data.favouriteChannelIds : [],
+        channels: Array.isArray(data?.channels) ? data.channels : [],
+      });
+    })
+    .catch(() => setFavourites({ favouriteChannelIds: [], channels: [] }));
+}, []);
 
   /* ── Delete favourite ── */
   const deleteFavourite = async (channelId: number | string) => {
@@ -404,7 +406,7 @@ export default function UserProfile() {
           {/* ── Favourites ── */}
           {tab === "Favourites" && (
             <Card title="ფავორიტი არხები" badge="04">
-              {!favourites || favourites.favouriteChannelIds?.length === 0 ? (
+              {!favourites?.favouriteChannelIds?.length ? (
                 <EmptyState message="არ არის დამატებული ფავორიტი არხები." />
               ) : (
                 <div className="overflow-x-auto">
