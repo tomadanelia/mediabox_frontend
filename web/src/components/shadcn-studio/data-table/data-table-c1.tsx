@@ -4,7 +4,7 @@ import { useMemo } from 'react'
 import { Badge } from '@/components/ui/badge'
 import { cn } from '@/lib/utils'
 import { Equalizer } from '@/hmcomponents/AnimatedComponents/Equalizer'
-
+import ButtonIconDemo from '../button/button-05'
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 type ProgramItem = {
@@ -80,7 +80,7 @@ const ChannelScheduleCL = ({
   }
 
   return (
-    <div className='w-full h-[calc(100vh-266px)] flex'>
+    <div className='w-full h-[calc(100vh-180px)] flex'>
       <div className='rounded-xl border border-black/8 dark:border-white/8 w-full overflow-auto bg-white/50 dark:bg-white/3 backdrop-blur-md'>
         <div className='divide-y divide-black/5 dark:divide-white/5'>
           {sorted.length === 0 ? (
