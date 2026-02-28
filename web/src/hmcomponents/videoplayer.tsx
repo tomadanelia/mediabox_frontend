@@ -3,6 +3,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import Hls from 'hls.js';
 import BadgeLiveDemo from '@/components/shadcn-studio/badge/cusotm/badge-c01';
+import { CometRing } from './AnimatedComponents/CometBuffer';
 import {
   ArrowsPointingOutIcon,
   SpeakerWaveIcon,
@@ -369,17 +370,14 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
 
           {/* Spinner */}
           {(isLoading || isBuffering) && (
-            <div className="absolute inset-0 flex items-center justify-center bg-black/50">
-              <div className="text-white">{isLoading ? 'Loading stream…' : 'Buffering…'}</div>
+            <div className="absolute inset-0 flex items-center justify-center bg-black/50 z-40">
+             <div className=' rounded-full'><CometRing/></div>
             </div>
           )}
 
           {/* Archive: behind-live pill + Go Live */}
           {mode === 'archive' && (
-            <div className="absolute top-3 left-0 right-0 flex items-center justify-center gap-3 z-20 pointer-events-none">
-              <div className="pointer-events-none bg-black/70 backdrop-blur-sm text-orange-400 text-xs font-semibold px-3 py-1.5 rounded-full border border-orange-500/30">
-                ⏪ {formatBehind(behindLiveSecs)}
-              </div>
+            <div className="absolute bottom-12 right-6  flex items-center justify-center gap-3 z-20 pointer-events-none">
               <button
                 onClick={onGoLive}
                 className="pointer-events-auto cursor-pointer flex items-center gap-1.5 bg-red-600 hover:bg-red-500 text-white text-xs font-semibold px-3 py-1.5 rounded-full transition-colors"
@@ -495,21 +493,18 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
                   <button onClick={() => skip(30)} className="text-white cursor-pointer" title="Forward 30s">
                     <PictureInPicture2 className="w-6 h-6" />
                   </button>
-                  <button onMouseEnter={() => setShowVolumeSlider(true)} className="text-white cursor-default">
+                  <button onMouseEnter={() => console.log("not implemented")} className="text-white cursor-default">
                     <ScreenShare className="w-6 h-6 opacity-40" />
                   </button>
                   <button onClick={toggleFullscreen} className="text-white relative cursor-pointer">
                     <ArrowsPointingOutIcon className="w-6 h-6" />
-                  </button>
-                  <button className='absolute bottom-12 right-6'>
-                    <BadgeLiveDemo />
                   </button>
                 </div>
               </div>
             </div>
 
             {/* Center playback controls */}
-            <div className="flex items-center justify-center gap-6">
+            <div className="flex absolute items-center h-full top-0 justify-center gap-6">
               <button onClick={() => skip(-10)} className="text-white hover:text-orange-400 transition-colors" title="Rewind 10s">
                 <RotateCcw className="w-7 h-7" />
               </button>
