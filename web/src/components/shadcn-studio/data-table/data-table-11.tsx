@@ -2,7 +2,7 @@
 
 import { Bookmark, Search, X } from 'lucide-react'
 import { useState, useMemo } from 'react'
-
+import { MagneticSnap } from '../../../hmcomponents/AnimatedComponents/BookMark'
 // Matches the real API response
 type Channel = {
   id: string
@@ -41,7 +41,7 @@ const DataTableDemo = ({
   }, [safeChannels, query])
 
   return (
-    <div className='flex-1 flex flex-col h-[calc(100vh-226px)] overflow-hidden gap-3'>
+    <div className='flex-1 flex flex-col h-[calc(100vh-146px)] overflow-hidden gap-3'>
 
       {/* ── Search bar ── */}
       <div className='relative group shrink-0'>
@@ -143,12 +143,7 @@ const DataTableDemo = ({
                   </span>
 
                   {/* bookmark */}
-                  <Bookmark
-                    size={15}
-                    fill='url(#iconGradient)'
-                    stroke='none'
-                    className='shrink-0 opacity-60'
-                  />
+                  <MagneticSnap/>
                 </div>
               )
             })
