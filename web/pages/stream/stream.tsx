@@ -19,7 +19,6 @@ import {
   Music, Camera, Code,
 } from 'lucide-react';
 import { GeorgiaLogo } from '@/components/svg_telecom_production/svglib';
-
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 export type Channel = {
@@ -248,7 +247,6 @@ useEffect(() => {
 
   return (
     <div className="flex flex-col justify-between w-full h-[calc(100vh-80px)] relative">
-
       <div className="flex-1 flex w-full">
         <div className='w-[65px] flex lg:hidden' />
 
@@ -264,7 +262,7 @@ useEffect(() => {
             />
           </div>
         </div>
-
+      
         {/* CENTER */}
         <div className="w-[calc(100vw-130px)] lg:w-3/5 relative h-full flex flex-col">
           <div className='flex flex-col'>

@@ -3,6 +3,7 @@
 import { useMemo } from 'react'
 import { Badge } from '@/components/ui/badge'
 import { cn } from '@/lib/utils'
+import { Equalizer } from '@/hmcomponents/AnimatedComponents/Equalizer'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -130,9 +131,7 @@ const ChannelScheduleCL = ({
                     </span>
                   )}
 
-                  <Badge className={cn('border-none text-[10px] px-2 py-0.5 font-medium', getGenreColor(genre))}>
-                    {genre}
-                  </Badge>
+                 {isCurrent&&( <Equalizer/>)}
                 </div>
               )
             })
