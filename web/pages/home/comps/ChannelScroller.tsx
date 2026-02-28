@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from "react"
 import { Link } from "react-router-dom"
 import Hls from "hls.js"
+import { Lock } from "lucide-react"
 import api from "../../../src/lib/axios"
 
 export type Channel = {
@@ -28,10 +29,7 @@ function extractStreamUrl(data: unknown): string | null {
   if (!data) return null
   if (typeof data === "string") {
     const s = data.trim()
-    if (s.startsWith("<") || s.length > 2048) {
-      console.warn("[extractStreamUrl] looks like HTML, ignoring:", s.slice(0, 120))
-      return null
-    }
+    if (s.startsWith("<") || s.length > 2048) return null
     return s
   }
   if (typeof data === "object") {
@@ -41,23 +39,10 @@ function extractStreamUrl(data: unknown): string | null {
     }
     if (obj["data"] && typeof obj["data"] === "object") return extractStreamUrl(obj["data"])
   }
-  console.warn("[extractStreamUrl] no URL found in:", data)
   return null
 }
 
-// ─── HLS thumbnail grabber ────────────────────────────────────────────────────
-//
-// Flow:
-//   1. api.get()  →  our API server  (needs cookies)          ← done in component
-//   2. HLS.js     →  media server    (different domain, no cookies, no CORS)
-//
-// CRITICAL: do NOT set video.crossOrigin at all.
-//   crossOrigin="anonymous" forces a CORS preflight on the media server.
-//   If that server doesn't return Access-Control-Allow-Origin the browser
-//   silently blocks every .m3u8 / .ts request and HLS never fires any events.
-//
-// Trade-off: without crossOrigin the canvas will be "tainted" on cross-origin
-//   streams, so toDataURL() throws. We catch that and return null gracefully.
+// ─── Canvas capture ───────────────────────────────────────────────────────────
 
 function captureFrame(video: HTMLVideoElement): string {
   const canvas = document.createElement("canvas")
@@ -67,21 +52,23 @@ function captureFrame(video: HTMLVideoElement): string {
   return canvas.toDataURL("image/jpeg", 0.82)
 }
 
-async function grabThumbnail(streamUrl: string): Promise<string | null> {
-  if (!Hls.isSupported()) return null
+type GrabResult =
+  | { ok: true; dataUrl: string }
+  | { ok: false; reason: "no-hls" | "timeout" | "hls-error" | "tainted" | "no-video-data" }
 
-  console.log("[grabThumbnail] starting:", streamUrl)
+async function grabThumbnail(streamUrl: string): Promise<GrabResult> {
+  if (!Hls.isSupported()) return { ok: false, reason: "no-hls" }
 
   return new Promise((resolve) => {
     const video = document.createElement("video")
     video.muted = true
     video.playsInline = true
-    // ⚠️  No crossOrigin property — intentional, see note above
+    video.autoplay = true
     Object.assign(video.style, {
       position: "fixed",
       top: "-9999px",
       left: "-9999px",
-      width: "320px",   // real size so the decode pipeline activates
+      width: "320px",
       height: "180px",
       opacity: "0",
       pointerEvents: "none",
@@ -93,7 +80,6 @@ async function grabThumbnail(streamUrl: string): Promise<string | null> {
       maxMaxBufferLength: 4,
       maxBufferSize: 0,
       startLevel: 0,
-      capLevelToPlayerSize: false,
       autoStartLoad: true,
       fragLoadingMaxRetry: 1,
       manifestLoadingMaxRetry: 1,
@@ -101,102 +87,178 @@ async function grabThumbnail(streamUrl: string): Promise<string | null> {
     })
 
     let settled = false
-
-    const finish = (result: string | null) => {
+    const finish = (r: GrabResult) => {
       if (settled) return
       settled = true
       hls.stopLoad()
       hls.detachMedia()
       hls.destroy()
       video.remove()
-      resolve(result)
+      resolve(r)
     }
 
-    const timeout = setTimeout(() => {
-      console.warn("[grabThumbnail] timed out:", streamUrl)
-      finish(null)
-    }, 20_000)
+    const timeout = setTimeout(() => finish({ ok: false, reason: "timeout" }), 20_000)
 
-    hls.on(Hls.Events.MANIFEST_PARSED, (_, d) =>
-      console.log("[grabThumbnail] manifest OK, levels:", d.levels.length))
-
-    hls.on(Hls.Events.FRAG_LOADING, (_, d) =>
-      console.log("[grabThumbnail] frag loading:", d.frag.url))
-
-    hls.on(Hls.Events.FRAG_BUFFERED, () => {
-      if (settled) return
+    const onTimeUpdate = () => {
+      if (video.videoWidth === 0 || video.readyState < 2) return
       clearTimeout(timeout)
-      video.currentTime = 0
-
-      const doCapture = () => {
-        try {
-          finish(captureFrame(video))
-        } catch (err) {
-          // Canvas tainted — cross-origin stream without CORS headers on media server.
-          // HLS loaded fine, we just can't export pixels. Return null, show gradient.
-          console.warn("[grabThumbnail] canvas tainted (media server has no CORS headers):", err)
-          finish(null)
-        }
+      video.pause()
+      try {
+        finish({ ok: true, dataUrl: captureFrame(video) })
+      } catch {
+        finish({ ok: false, reason: "tainted" })
       }
+    }
+    video.addEventListener("timeupdate", onTimeUpdate)
 
-      if (video.readyState >= 2) {
-        doCapture()
-      } else {
-        video.addEventListener("loadeddata", doCapture, { once: true })
-        video.play().then(() => video.pause()).catch(() => {})
-      }
-    })
-
-    hls.on(Hls.Events.ERROR, (_, data) => {
-      console.error("[grabThumbnail] HLS error:", data.type, data.details, "fatal:", data.fatal)
-      if (data.fatal) {
+    hls.on(Hls.Events.ERROR, (_, d) => {
+      if (d.fatal) {
         clearTimeout(timeout)
-        finish(null)
+        finish({ ok: false, reason: "hls-error" })
       }
     })
 
     hls.loadSource(streamUrl)
     hls.attachMedia(video)
+    hls.on(Hls.Events.MANIFEST_PARSED, () => {
+      video.play().catch(() => {})
+    })
   })
 }
 
-// ─── Component ────────────────────────────────────────────────────────────────
+// ─── Per-card thumb logic ─────────────────────────────────────────────────────
 
-type ThumbMap = Record<string, string | null | undefined>
-//   undefined → not started  |  null → loading  |  string → ready
+// "locked" = 403 subscription required
+type ThumbState = undefined | "loading" | "failed" | "locked" | string
 
-const ChannelScroller: React.FC<{ channels: Channel[] }> = ({ channels }) => {
-  const [thumbs, setThumbs] = useState<ThumbMap>({})
-  const started = useRef<Set<string>>(new Set())
+async function fetchThumb(channelId: string): Promise<ThumbState> {
+  try {
+    const res = await api.get(`/api/channels/${channelId}/stream`)
+    const streamUrl = extractStreamUrl(res.data)
+    if (!streamUrl) return "failed"
+
+    const result = await grabThumbnail(streamUrl)
+    return result.ok ? result.dataUrl : "failed"
+  } catch (err: unknown) {
+    if (
+      err &&
+      typeof err === "object" &&
+      "response" in err &&
+      (err as { response?: { status?: number } }).response?.status === 403
+    ) {
+      return "locked"
+    }
+    return "failed"
+  }
+}
+
+// ─── Single channel card ──────────────────────────────────────────────────────
+
+const ChannelCard: React.FC<{ channel: Channel; index: number }> = ({ channel, index }) => {
+  const color = channel.color ?? PALETTE[index % PALETTE.length]
+  const cardRef = useRef<HTMLAnchorElement>(null)
+  const [thumb, setThumb] = useState<ThumbState>(undefined)
+  const started = useRef(false)
 
   useEffect(() => {
-    const preview = channels.slice(0, 5)
-    if (preview.length === 0) return
+    const el = cardRef.current
+    if (!el) return
 
-    preview.forEach(async (channel) => {
-      if (started.current.has(channel.id)) return
-      started.current.add(channel.id)
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting && !started.current) {
+          started.current = true
+          observer.disconnect()
+          setThumb("loading")
+          fetchThumb(channel.id).then(setThumb)
+        }
+      },
+      { rootMargin: "0px 100px 0px 0px", threshold: 0.1 }
+    )
 
-      setThumbs((prev) => ({ ...prev, [channel.id]: null }))
+    observer.observe(el)
+    return () => observer.disconnect()
+  }, [channel.id])
 
-      try {
-        // Step 1: fetch stream URL via our API (sends cookies via axios)
-        const res = await api.get(`/channels/${channel.id}/stream`)
-        console.log(`[ChannelScroller] stream response for ${channel.name}:`, res.data)
+  const isLoading = thumb === "loading"
+  const isLocked = thumb === "locked"
+  const hasImage = typeof thumb === "string" && !["loading", "failed", "locked"].includes(thumb)
 
-        const streamUrl = extractStreamUrl(res.data)
-        if (!streamUrl) return
+  return (
+    <Link
+      ref={cardRef}
+      to={isLocked ? "/packets" : `/TV`}
+      className={`group relative w-64 shrink-0 overflow-hidden rounded-xl border shadow-lg transition
+        ${isLocked
+          ? "border-white/10 cursor-pointer"
+          : "border-border hover:-translate-y-1 hover:border-primary/60 hover:shadow-xl"
+        }`}
+    >
+      {/* Gradient base — desaturated when locked */}
+      <div
+        className="absolute inset-0"
+        style={{
+          backgroundImage: `linear-gradient(135deg, ${color}, rgba(15,23,42,0.9))`,
+          filter: isLocked ? "saturate(0.25) brightness(0.45)" : undefined,
+        }}
+      />
 
-        // Step 2: HLS.js loads the actual stream directly from the media server
-        // (no cookies needed, no CORS headers expected)
-        const thumb = await grabThumbnail(streamUrl)
-        if (thumb) setThumbs((prev) => ({ ...prev, [channel.id]: thumb }))
-      } catch (e) {
-        console.error(`[ChannelScroller] failed for ${channel.id}:`, e)
-      }
-    })
-  }, [channels])
+      {/* Captured frame */}
+      {hasImage && (
+        <img
+          src={thumb as string}
+          alt={`${channel.name} preview`}
+          className="absolute inset-0 h-full w-full object-cover opacity-85 transition duration-700 group-hover:scale-105"
+        />
+      )}
 
+      {/* Frosted dark overlay for locked */}
+      {isLocked && (
+        <div className="absolute inset-0 bg-black/55 backdrop-blur-[3px]" />
+      )}
+
+      {/* Spinner */}
+      {isLoading && (
+        <div className="absolute inset-0 flex items-center justify-center">
+          <div className="h-6 w-6 animate-spin rounded-full border-2 border-white/20 border-t-white/60" />
+        </div>
+      )}
+
+      {/* Lock badge — centred, shown above the text */}
+      {isLocked && (
+        <div className="absolute inset-0 flex flex-col items-center justify-center gap-1.5 pb-6">
+          <div className="flex h-9 w-9 items-center justify-center rounded-full bg-white/10 ring-1 ring-white/20">
+            <Lock className="h-4 w-4 text-white/60" />
+          </div>
+          <span className="text-[11px] font-medium tracking-wide text-white/45">
+            Subscription required
+          </span>
+        </div>
+      )}
+
+      {/* Text overlay */}
+      <div className={`relative flex h-32 flex-col justify-between p-4 text-white ${isLocked ? "opacity-35" : ""}`}>
+        <div className="space-y-1">
+          <div className="flex items-center gap-2 text-xs text-white/80">
+            <span className={`h-2 w-2 rounded-full ${isLocked ? "bg-white/25" : "bg-green-400"}`} />
+            {isLocked ? "Locked" : "Live"} · {channel.genre}
+          </div>
+          <p className="text-lg font-semibold leading-tight drop-shadow">{channel.name}</p>
+        </div>
+        <div className="flex items-center justify-between text-xs text-white/80">
+          {channel.viewers && !isLocked && <span>{channel.viewers} watching</span>}
+          {!isLocked && (
+            <span className="rounded-full bg-white/10 px-2 py-1 font-medium">უყურე</span>
+          )}
+        </div>
+      </div>
+    </Link>
+  )
+}
+
+// ─── Main scroller ────────────────────────────────────────────────────────────
+
+const ChannelScroller: React.FC<{ channels: Channel[] }> = ({ channels }) => {
   return (
     <section className="space-y-3">
       <div>
@@ -205,55 +267,9 @@ const ChannelScroller: React.FC<{ channels: Channel[] }> = ({ channels }) => {
       </div>
 
       <div className="flex gap-4 overflow-x-auto scrollbar-hide pb-2">
-        {channels.slice(0, 5).map((channel, i) => {
-          const color = channel.color ?? PALETTE[i % PALETTE.length]
-          const thumb = thumbs[channel.id]
-
-          return (
-            <Link
-              key={channel.id}
-              to={`/stream?channel=${channel.id}`}
-              className="group relative w-64 shrink-0 overflow-hidden rounded-xl border border-border shadow-lg transition hover:-translate-y-1 hover:border-primary/60 hover:shadow-xl"
-            >
-              {/* Gradient base – always visible */}
-              <div
-                className="absolute inset-0"
-                style={{ backgroundImage: `linear-gradient(135deg, ${color}, rgba(15,23,42,0.9))` }}
-              />
-
-              {/* Captured frame */}
-              {typeof thumb === "string" && (
-                <img
-                  src={thumb}
-                  alt={`${channel.name} preview`}
-                  className="absolute inset-0 h-full w-full object-cover opacity-85 transition duration-700 group-hover:scale-105"
-                />
-              )}
-
-              {/* Spinner */}
-              {thumb === null && (
-                <div className="absolute inset-0 flex items-center justify-center">
-                  <div className="h-6 w-6 animate-spin rounded-full border-2 border-white/20 border-t-white/60" />
-                </div>
-              )}
-
-              {/* Text */}
-              <div className="relative flex h-32 flex-col justify-between p-4 text-white">
-                <div className="space-y-1">
-                  <div className="flex items-center gap-2 text-xs text-white/80">
-                    <span className="h-2 w-2 rounded-full bg-green-400" />
-                    Live · {channel.genre}
-                  </div>
-                  <p className="text-lg font-semibold leading-tight drop-shadow">{channel.name}</p>
-                </div>
-                <div className="flex items-center justify-between text-xs text-white/80">
-                  {channel.viewers && <span>{channel.viewers} watching</span>}
-                  <span className="rounded-full bg-white/10 px-2 py-1 font-medium">უყურე</span>
-                </div>
-              </div>
-            </Link>
-          )
-        })}
+        {channels.map((channel, i) => (
+          <ChannelCard key={channel.id} channel={channel} index={i} />
+        ))}
       </div>
     </section>
   )
