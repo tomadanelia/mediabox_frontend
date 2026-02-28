@@ -293,7 +293,7 @@ export default function AdminDashboard() {
   const fetchChannels = async () => {
     setChannelsLoading(true);
     try {
-      const res = await api.get("/api/channels/all");
+      const res = await api.get("/api/channels");
       const data = res.data;
       setChannels(Array.isArray(data) ? data : data.data ?? []);
     } catch (e) { console.error(e); }
