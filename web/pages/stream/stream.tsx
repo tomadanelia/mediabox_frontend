@@ -91,7 +91,7 @@ console.log(selectedCategory,"selected");
 const [categories, setCategories] = useState<Category[]>([]);
 
 useEffect(() => {
-  fetch('http://159.89.20.100/api/channels/categories')
+  fetch(`${API_BASE}/channels/categories`)
     .then(res => res.json())
     .then(data => setCategories(data))
     .catch(err => console.error('Failed to fetch categories:', err))
