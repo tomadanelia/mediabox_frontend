@@ -13,12 +13,7 @@ const adminSectionLabels: Record<AdminSection, string> = {
   "Support": "მხარდაჭერა",
   "Settings": "პარამეტრები",
 };
-interface User {
-  id: string; name: string; email: string;
-  plan: "Free" | "Premium" | "Enterprise";
-  status: "Active" | "Suspended" | "Pending";
-  joined: string; watchTime: string;
-}
+
 
 type Channel = {
   id: string; uuid: string; name: string;
@@ -466,9 +461,7 @@ const handleEnablePlan = async () => {
   if (!disablePlan) return;
   setDisableLoading(true);
   try {
-    const res = await api.post(`/api/admin/plans/${disablePlan.id}/enable`, {
-      ...newCat
-      });
+    const res = await api.post(`/api/admin/plans/${disablePlan.id}/enable`);
     setDisableModal(false);
      fetchPlans(); 
   } catch (e) { console.error(e); }
@@ -551,22 +544,20 @@ const handleDeletePlan = async () => {
     finally { setBulkAssigningPlan(false); }
   };
 
-  useEffect(() => {
-    fetchCategories();
-    fetchPlans();
-    if (section === "Category-Channels" || section === "Overview" || section === "Plan-Channels") fetchChannels();
-  }, [section]);
+useEffect(() => {
+  fetchCategories();
+  fetchPlans();
+  fetchChannels(); 
+}, []);
 
-  /* Fetch users whenever section is Users OR Overview (for total count) OR page changes */
-  useEffect(() => {
-    if (section === "Users") fetchUsers(usersPage);
-    if (section === "Overview") fetchUsers(1);
-  }, [section, usersPage]);
+useEffect(() => {
+  if (section === "Users") fetchUsers(usersPage);
+  if (section === "Overview") fetchUsers(1);
+}, [section, usersPage]);
 
-  /* Reset to page 1 when leaving Users section */
-  useEffect(() => {
-    if (section !== "Users") setUsersPage(1);
-  }, [section]);
+useEffect(() => {
+  if (section !== "Users") setUsersPage(1);
+}, [section]);
 
   const filteredChannels = channels.filter(c =>
     c.name.toLowerCase().includes(channelSearch.toLowerCase())
