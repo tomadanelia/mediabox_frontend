@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { API_BASE_URL } from '@/config';
+import {CategoryIcon} from "../../src/hmcomponents/IconMapper";
 type AdminSection = "Overview" | "Users" | "Category-Channels" | "Categories" | "Plans" | "Plan-Channels" | "Support" | "Settings";
 const adminSectionLabels: Record<AdminSection, string> = {
   "Overview": "მთავარი",
@@ -845,7 +846,7 @@ const handleDeletePlan = async () => {
                             <span className="text-[0.6rem] text-zinc-700 w-4 shrink-0 font-mono tabular-nums text-right">{idx + 1}</span>
                             <div className="w-8 h-8 rounded-lg bg-zinc-800 border border-zinc-700/50 flex items-center justify-center shrink-0 overflow-hidden">
                               {cat.icon_url
-                                ? <img src={cat.icon_url} className="w-5 h-5 object-contain" onError={e => (e.currentTarget.style.display = "none")} />
+                                ? <CategoryIcon name={cat.icon_url} className="w-7 h-7" />
                                 : <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#a78bfa" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M7 7V5a2 2 0 012-2h6a2 2 0 012 2v2"/></svg>
                               }
                             </div>
@@ -972,7 +973,7 @@ const handleDeletePlan = async () => {
                   <div key={cat.id} className="group bg-zinc-900 border border-zinc-800 hover:border-zinc-700 transition-colors rounded-2xl p-4 flex items-center gap-4">
                     <div className="w-11 h-11 rounded-xl bg-zinc-800 flex items-center justify-center shrink-0 overflow-hidden">
                       {cat.icon_url
-                        ? <img src={cat.icon_url} className="w-7 h-7 object-contain" />
+                        ? <CategoryIcon name={cat.icon_url} className="w-7 h-7" />
                         : <span className="text-xl"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
                     <path d="M3 7a2 2 0 012-2h3.17a2 2 0 011.42.59L11 7h10a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V7z"/>
                   </svg></span>
@@ -1334,7 +1335,7 @@ const isActive =
             <div className="p-5 border-b border-zinc-800 flex items-center gap-4">
               <div className="w-11 h-11 rounded-xl bg-zinc-800 flex items-center justify-center shrink-0 overflow-hidden">
                 {activeCategory.icon_url
-                  ? <img src={activeCategory.icon_url} className="w-7 h-7 object-contain" />
+                  ? <CategoryIcon name={activeCategory.icon_url} className="w-7 h-7" />
                   : <span className="text-xl">📁</span>
                 }
               </div>
@@ -1506,7 +1507,7 @@ const isActive =
                 <label key={cat.id} className={`flex items-center gap-3 p-3 rounded-xl border cursor-pointer transition-all ${selectedCategoryId === cat.id ? "border-violet-500 bg-violet-500/10" : "border-zinc-800 bg-zinc-800/30 hover:border-zinc-700 hover:bg-zinc-800/60"}`}>
                   <input type="radio" name="bulkCat" value={cat.id} checked={selectedCategoryId === cat.id} onChange={() => setSelectedCategoryId(cat.id)} className="accent-violet-500" />
                   <div className="w-7 h-7 rounded-lg bg-zinc-800 flex items-center justify-center shrink-0">
-                    {cat.icon_url ? <img src={cat.icon_url} className="w-5 h-5 object-contain" /> : <span className="text-sm">📁</span>}
+                    {cat.icon_url ? <CategoryIcon name={cat.icon_url} className="w-7 h-7" /> : <span className="text-sm">📁</span>}
                   </div>
                   <div className="flex-1 min-w-0">
                     <p className="text-zinc-100 font-medium text-sm truncate">{cat.name_en}</p>
