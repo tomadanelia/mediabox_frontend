@@ -187,11 +187,10 @@ const ChannelCard: React.FC<{ channel: Channel; index: number }> = ({ channel, i
   return (
     <Link
       ref={cardRef}
-      to={isLocked ? "#" : `/stream?channel=${channel.id}`}
-      onClick={isLocked ? (e) => e.preventDefault() : undefined}
+      to={isLocked ? "/packets" : `/TV`}
       className={`group relative w-64 shrink-0 overflow-hidden rounded-xl border shadow-lg transition
         ${isLocked
-          ? "border-white/10 cursor-not-allowed"
+          ? "border-white/10 cursor-pointer"
           : "border-border hover:-translate-y-1 hover:border-primary/60 hover:shadow-xl"
         }`}
     >
