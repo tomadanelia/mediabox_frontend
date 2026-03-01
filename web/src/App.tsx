@@ -12,10 +12,15 @@ import AuthVerify from "../pages/authmain/codeVerification"
 import AuthLoginVerify from "../pages/authmain/codeLoginVerification"
 import AdminDashboard from "../pages/admin/admin"
 import type { UIStore } from "./store/ui-store"
+import useAuthStore from "./store/AuthStore"
 
 const App: React.FC = () => {
   const isDark = useUIStore((state: UIStore) => state.isDark)
+  const fetchUser = useAuthStore((state) => state.fetchUser);
 
+  useEffect(() => {
+    fetchUser(); // Check session once on mount
+  }, [fetchUser]);
   useEffect(() => {
     const root = document.documentElement
     if (isDark) {
