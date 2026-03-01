@@ -294,7 +294,7 @@ export default function AdminDashboard() {
     setChannelsLoading(true);
     try {
       const res = await api.get("/api/channels");
-      const data = res.data;
+      const data = res.data.channels;
       setChannels(Array.isArray(data) ? data : data.data ?? []);
     } catch (e) { console.error(e); }
     finally { setChannelsLoading(false); }
