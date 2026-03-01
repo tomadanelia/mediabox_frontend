@@ -9,26 +9,44 @@ import { Input } from "@/components/ui/input"
 import NotificationDropdown from "@/components/shadcn-studio/blocks/dropdown-notification"
 import ProfileDropdown from "@/components/shadcn-studio/blocks/dropdown-profile"
 import useUIStore from "@/store/ui-store"
-import type { UIStore } from "@/store/ui-store"
+
+const translations = {
+  Ge: {
+    subtitle: 'არხების ჰაბი',
+    search: 'მოძებნე არხები',
+    openLive: 'პირდაპირი',
+    navLinks: [
+      { to: "/", label: "მთავარი" },
+      { to: "/TV", label: "ტელევიზია" },
+      { to: "/packets", label: "პაკეტები" },
+    ],
+  },
+  En: {
+    subtitle: 'Live Streaming Hub',
+    search: 'Search channels or shows',
+    openLive: 'Open Live',
+    navLinks: [
+      { to: "/", label: "Home" },
+      { to: "/TV", label: "TV" },
+      { to: "/packets", label: "Packets" },
+    ],
+  },
+} as const
 
 const Navbar = () => {
-  const isDark = useUIStore((state: UIStore) => state.isDark)
-  const toggleDarkMode = useUIStore((state: UIStore) => state.toggleDarkMode)
-  const setLanguage = useUIStore((state: UIStore) => state.setLanguage)
-  const language = useUIStore((state: UIStore) => state.language)
+  const isDark = useUIStore((state) => state.isDark)
+  const toggleDarkMode = useUIStore((state) => state.toggleDarkMode)
+  const setLanguage = useUIStore((state) => state.setLanguage)
+  const language = useUIStore((state) => state.language)
+  const tx = translations[language]
+
   const [user, setUser] = useState<{ avatar_url?: string | null; full_name?: string } | null>(null)
 
-useEffect(() => {
-  api.get("/api/user")
-    .then((res) => setUser(res.data))
-    .catch(() => setUser(null))
-}, [])
-
-  const navLinks = [
-    { to: "/", label: "Home" },
-    { to: "/TV", label: "TV" },
-    { to: "/packets", label: "Packets"},
-  ]
+  useEffect(() => {
+    api.get("/api/user")
+      .then((res) => setUser(res.data))
+      .catch(() => setUser(null))
+  }, [])
 
   return (
     <header className="top-0 z-50 h-20 bg-background/90 backdrop-blur">
@@ -41,25 +59,25 @@ useEffect(() => {
             </div>
             <div className="leading-tight">
               <p className="text-lg font-semibold text-foreground">Mediabox</p>
-              <p className="text-xs text-muted-foreground">Live streaming hub</p>
+             <p className="w-[160px] text-xs text-muted-foreground">{tx.subtitle}</p>
             </div>
           </Link>
 
           <nav className="hidden items-center gap-4 md:flex">
-            {navLinks.map((link) => (
+            {tx.navLinks.map((link) => (
               <NavLink
-                key={link.to}
-                to={link.to}
-                className={({ isActive }) =>
-                  `rounded-full px-4 py-2 text-sm font-medium transition ${
-                    isActive
-                      ? "bg-primary/10 text-primary"
-                      : "text-muted-foreground hover:text-foreground"
-                  }`
-                }
-              >
-                {link.label}
-              </NavLink>
+  key={link.to}
+  to={link.to}
+  className={({ isActive }) =>
+    `rounded-full px-4 py-2 text-sm font-medium transition text-center min-w-[90px] ${
+      isActive
+        ? "bg-primary/10 text-primary"
+        : "text-muted-foreground hover:text-foreground"
+    }`
+  }
+>
+  {link.label}
+</NavLink>
             ))}
           </nav>
         </div>
@@ -69,13 +87,8 @@ useEffect(() => {
             <div className="pointer-events-none absolute inset-y-0 left-3 flex items-center text-muted-foreground">
               <SearchIcon className="h-4 w-4" />
             </div>
-            <Input placeholder="Search channels or shows" className="pl-9" />
+            <Input placeholder={tx.search} className="pl-9" />
           </div>
-
-          <Button variant="ghost" size="icon" className="md:hidden">
-            <SearchIcon />
-            <span className="sr-only">Search</span>
-          </Button>
 
           <NotificationDropdown
             trigger={
@@ -94,26 +107,26 @@ useEffect(() => {
             className="relative cursor-pointer"
           >
             {isDark ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
-            <span className="sr-only ">Toggle dark mode</span>
+            <span className="sr-only">Toggle dark mode</span>
           </Button>
 
           <Button
-  variant="outline"
-  size="icon"
-  onClick={() => setLanguage(language === "En" ? "Ge" : "En")}
-  className="relative cursor-pointer"
->
-  <Languages className="h-4 w-4" />
-  <span className="absolute -bottom-2 right-0 rounded-full bg-primary px-1 text-[10px] font-semibold text-primary-foreground">
-    {language.toUpperCase()}
-  </span>
-  <span className="sr-only">Switch language</span>
-</Button>
+            variant="outline"
+            size="icon"
+            onClick={() => setLanguage(language === "En" ? "Ge" : "En")}
+            className="relative cursor-pointer"
+          >
+            <Languages className="h-4 w-4" />
+            <span className="absolute -bottom-2 right-0 rounded-full bg-primary px-1 text-[10px] font-semibold text-primary-foreground">
+              {language.toUpperCase()}
+            </span>
+            <span className="sr-only">Switch language</span>
+          </Button>
 
-          <Button asChild className="hidden gap-2 bg-primary text-primary-foreground shadow-lg sm:inline-flex">
+<Button asChild className="hidden w-[120px] justify-center gap-2 bg-primary text-primary-foreground shadow-lg sm:inline-flex">
             <Link to="/stream">
               <PlayIcon className="h-4 w-4" />
-              Open Live
+              {tx.openLive}
             </Link>
           </Button>
 
@@ -121,11 +134,11 @@ useEffect(() => {
             trigger={
               <Button variant="ghost" className="h-full rounded-full p-0">
                 <Avatar className="h-11 w-11">
-    <AvatarImage src={user?.avatar_url ?? ""} />
-    <AvatarFallback className="bg-zinc-200 dark:bg-zinc-700">
-      <User className="h-5 w-5 text-zinc-500" />
-    </AvatarFallback>
-  </Avatar>
+                  <AvatarImage src={user?.avatar_url ?? ""} />
+                  <AvatarFallback className="bg-zinc-200 dark:bg-zinc-700">
+                    <User className="h-5 w-5 text-zinc-500" />
+                  </AvatarFallback>
+                </Avatar>
               </Button>
             }
           />
