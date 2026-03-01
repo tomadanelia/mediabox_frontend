@@ -273,7 +273,7 @@ const Plans = () => {
                       <span className={`text-lg ml-1 ${isLowBalance ? 'text-red-400' : 'text-emerald-500'}`}>₾</span>
                     </p>
                     {isLowBalance && (
-                      <p className="text-xs text-red-400 mt-1">დაბალი ბალანსი</p>
+                      <p className="text-xs text-red-400 mt-1">არასაკმარისი ბალანსი</p>
                     )}
                   </div>
                 ) : (
@@ -283,28 +283,6 @@ const Plans = () => {
             )}
           </div>
         </div>
-
-        {/* ── Active Plans Banner ── */}
-        {isAuthenticated && activePlans.length > 0 && (
-          <div className="mb-12">
-            <p className="text-xs uppercase tracking-[0.2em] text-emerald-500 font-semibold mb-4">
-              თქვენი აქტიური პაკეტები
-            </p>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-              {activePlans.map(ap => (
-                <div key={ap.plan_id} className={`flex items-center justify-between rounded-xl border ${t.activeBanner} px-4 py-3 transition-colors duration-300`}>
-                  <div>
-                    <p className={`font-semibold ${t.text} text-sm`}>{ap.name_ka}</p>
-                    <p className={`text-xs ${t.activeDays} mt-0.5`}>რჩება {ap.days_left} დღე</p>
-                  </div>
-                  <div className="flex-shrink-0 w-10 h-10 rounded-full border-2 border-emerald-500/40 flex items-center justify-center">
-                    <span className="text-emerald-500 font-bold text-xs">{ap.days_left}</span>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
 
         {/* ── Plans Grid ── */}
         {plansLoading ? (
@@ -372,7 +350,7 @@ const Plans = () => {
 
                     {owned && activePlan && (
                       <div className={`mb-4 px-3 py-2 rounded-lg border text-xs ${t.activeChip}`}>
-                        აქტიურია · {activePlan.days_left} დღე დარჩა
+                        აქტიურია · {Math.floor(activePlan.days_left)} დღე დარჩა
                       </div>
                     )}
 
