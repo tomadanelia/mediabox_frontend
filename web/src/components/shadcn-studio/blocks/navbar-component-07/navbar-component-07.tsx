@@ -13,9 +13,9 @@ import type { UIStore } from "@/store/ui-store"
 
 const Navbar = () => {
   const isDark = useUIStore((state: UIStore) => state.isDark)
-  const language = useUIStore((state: UIStore) => state.language)
   const toggleDarkMode = useUIStore((state: UIStore) => state.toggleDarkMode)
-  const cycleLanguage = useUIStore((state: UIStore) => state.cycleLanguage)
+  const setLanguage = useUIStore((state: UIStore) => state.setLanguage)
+  const language = useUIStore((state: UIStore) => state.language)
   const [user, setUser] = useState<{ avatar_url?: string | null; full_name?: string } | null>(null)
 
 useEffect(() => {
@@ -97,13 +97,18 @@ useEffect(() => {
             <span className="sr-only ">Toggle dark mode</span>
           </Button>
 
-          <Button variant="outline" size="icon" onClick={cycleLanguage} className="relative cursor-pointer">
-            <Languages className="h-4 w-4" />
-            <span className="absolute -bottom-2 right-0 rounded-full bg-primary px-1 text-[10px] font-semibold text-primary-foreground">
-              {language.toUpperCase()}
-            </span>
-            <span className="sr-only">Switch language</span>
-          </Button>
+          <Button
+  variant="outline"
+  size="icon"
+  onClick={() => setLanguage(language === "En" ? "Ge" : "En")}
+  className="relative cursor-pointer"
+>
+  <Languages className="h-4 w-4" />
+  <span className="absolute -bottom-2 right-0 rounded-full bg-primary px-1 text-[10px] font-semibold text-primary-foreground">
+    {language.toUpperCase()}
+  </span>
+  <span className="sr-only">Switch language</span>
+</Button>
 
           <Button asChild className="hidden gap-2 bg-primary text-primary-foreground shadow-lg sm:inline-flex">
             <Link to="/stream">

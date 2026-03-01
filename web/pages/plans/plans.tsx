@@ -118,11 +118,11 @@ const Plans = () => {
 
   const isOwned = (planId: string) => activePlans.some(ap => ap.plan_id === planId)
   const getActivePlan = (planId: string) => activePlans.find(ap => ap.plan_id === planId)
-  const popularIndex = Math.min(1, plans.length - 1)
+  const popularIndex = Math.min(3, plans.length - 1)
 
   // ─── Theme tokens ─────────────────────────────────────────────────────────
   const t = {
-    bg: isDark ? 'bg-[#0a0a0f]' : 'bg-[#e8eaf0]',
+  bg: isDark ? 'bg-[#0a0a0f]' : 'bg-[oklch(87.1%_0.15_154.449)]',
     text: isDark ? 'text-white' : 'text-slate-900',
     textMuted: isDark ? 'text-gray-400' : 'text-slate-500',
     textFaint: isDark ? 'text-gray-500' : 'text-slate-400',
@@ -192,7 +192,7 @@ const Plans = () => {
       case 'low_balance':
         return (
           <button
-            onClick={() => showToast('ბალანსის შევსებისთვის მიმართეთ Interpay-ს', 'error')}
+            onClick={() => navigate('/profile')}
             className={`${base} ${isDark ? 'bg-amber-500/10 text-amber-400 border border-amber-500/20 hover:bg-amber-500/20' : 'bg-amber-50 text-amber-700 border border-amber-200 hover:bg-amber-100'} active:scale-[0.98]`}
           >
             ბალანსის შევსება
@@ -217,6 +217,14 @@ const Plans = () => {
     }
   }
 
+ 
+  const gridClass = (count: number) => {
+    if (count === 1) return 'grid grid-cols-1 max-w-sm mx-auto gap-6'
+    if (count === 2) return 'grid grid-cols-1 sm:grid-cols-2 gap-6 max-w-3xl mx-auto'
+    if (count === 3) return 'grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6'
+    return 'grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-5'
+  }
+
   return (
     <div className={`min-h-screen ${t.bg} ${t.text} font-sans transition-colors duration-300`} style={{ fontFamily: "'DM Sans', 'Segoe UI', sans-serif" }}>
 
@@ -231,7 +239,7 @@ const Plans = () => {
         </div>
       )}
 
-      <div className="max-w-6xl mx-auto px-4 py-16 sm:px-6 lg:px-8">
+      <div className="max-w-7xl mx-auto px-4 py-16 sm:px-6 lg:px-8">
 
         {/* ── Header + Balance/Login widget ── */}
         <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-6 mb-16">
@@ -254,7 +262,7 @@ const Plans = () => {
               // Guest → clickable login prompt
               <button
                 onClick={() => navigate('/authentication/register')}
-                className={`rounded-2xl ${t.balanceCard}  px-6 py-4 transition-all duration-200 hover:scale-[1.02] active:scale-[0.98] cursor-pointer text-left w-full`}
+                className={`rounded-2xl ${t.balanceCard} px-6 py-4 transition-all duration-200 hover:scale-[1.02] active:scale-[0.98] cursor-pointer text-left w-full`}
               >
                 <p className={`text-xs ${t.balanceLabel} uppercase tracking-widest mb-1`}>ანგარიში</p>
                 <p className={`text-lg font-bold ${isDark ? 'text-emerald-400' : 'text-emerald-600'}`}>
@@ -286,9 +294,10 @@ const Plans = () => {
 
         {/* ── Plans Grid ── */}
         {plansLoading ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {[1, 2, 3].map(i => (
-              <div key={i} className={`rounded-2xl ${t.skeletonCard} p-6 animate-pulse`}>
+          // Skeleton always shows 4 slots
+          <div className={gridClass(4)}>
+            {[1, 2, 3, 4].map(i => (
+              <div key={i} className={`rounded-2xl ${t.skeletonCard} p-5 animate-pulse`}>
                 <div className={`h-5 w-1/2 ${t.skeletonInner} rounded mb-3`} />
                 <div className={`h-8 w-1/3 ${t.skeletonInner} rounded mb-6`} />
                 <div className="space-y-2 mb-8">
@@ -300,7 +309,7 @@ const Plans = () => {
             ))}
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <div className={gridClass(plans.length)}>
             {plans.map((plan, index) => {
               const popular = index === popularIndex
               const owned = isOwned(plan.id)
@@ -319,11 +328,11 @@ const Plans = () => {
                     </div>
                   )}
 
-                  <div className="p-6">
-                    <div className="mb-6">
-                      <h3 className={`text-lg font-semibold ${t.text} mb-1`}>{plan.name_ka}</h3>
+                  <div className="p-5">
+                    <div className="mb-5">
+                      <h3 className={`text-base font-semibold ${t.text} mb-1`}>{plan.name_ka}</h3>
                       <div className="flex items-baseline gap-1">
-                        <span className={`text-4xl font-bold ${popular ? 'text-emerald-500' : t.priceColor}`}>
+                        <span className={`text-3xl font-bold ${popular ? 'text-emerald-500' : t.priceColor}`}>
                           {Number(plan.price).toFixed(2)}
                         </span>
                         <span className={`${t.priceMuted} text-sm`}>₾</span>
@@ -331,25 +340,25 @@ const Plans = () => {
                       <p className={`text-xs ${t.textFaint} mt-1`}>{plan.duration_days} დღე</p>
                     </div>
 
-                    <div className={`h-px mb-6 ${popular ? t.dividerPopular : t.divider}`} />
+                    <div className={`h-px mb-5 ${popular ? t.dividerPopular : t.divider}`} />
 
-                    <p className={`text-sm ${t.textMuted} mb-6 leading-relaxed min-h-[3rem]`}>
+                    <p className={`text-xs ${t.textMuted} mb-5 leading-relaxed min-h-[2.5rem]`}>
                       {plan.description_ka}
                     </p>
 
-                    <ul className="space-y-2 mb-8">
-                      <li className={`flex items-center gap-2 text-sm ${t.featureText}`}>
-                        <span className={`w-4 h-4 rounded-full flex items-center justify-center flex-shrink-0 text-xs ${popular ? 'bg-emerald-500/20 text-emerald-500' : t.featureBadge}`}>✓</span>
+                    <ul className="space-y-1.5 mb-6">
+                      <li className={`flex items-center gap-2 text-xs ${t.featureText}`}>
+                        <span className={`w-4 h-4 rounded-full flex items-center justify-center flex-shrink-0 text-[10px] ${popular ? 'bg-emerald-500/20 text-emerald-500' : t.featureBadge}`}>✓</span>
                         ხანგრძლივობა {plan.duration_days} დღე
                       </li>
-                      <li className={`flex items-center gap-2 text-sm ${t.featureText}`}>
-                        <span className={`w-4 h-4 rounded-full flex items-center justify-center flex-shrink-0 text-xs ${popular ? 'bg-emerald-500/20 text-emerald-500' : t.featureBadge}`}>✓</span>
+                      <li className={`flex items-center gap-2 text-xs ${t.featureText}`}>
+                        <span className={`w-4 h-4 rounded-full flex items-center justify-center flex-shrink-0 text-[10px] ${popular ? 'bg-emerald-500/20 text-emerald-500' : t.featureBadge}`}>✓</span>
                         სრული წვდომა
                       </li>
                     </ul>
 
                     {owned && activePlan && (
-                      <div className={`mb-4 px-3 py-2 rounded-lg border text-xs ${t.activeChip}`}>
+                      <div className={`mb-3 px-3 py-2 rounded-lg border text-xs ${t.activeChip}`}>
                         აქტიურია · {Math.floor(activePlan.days_left)} დღე დარჩა
                       </div>
                     )}
