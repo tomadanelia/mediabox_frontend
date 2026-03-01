@@ -16,7 +16,8 @@ const Home: React.FC = () => {
           cache: "no-store",
         })
         if (!res.ok) throw new Error(`HTTP ${res.status}`)
-        setChannels(await res.json())
+        const data = await res.json();
+        setChannels(data.channels)
       } catch (e) {
         console.error("[Home/fetchChannels]", e)
       }
