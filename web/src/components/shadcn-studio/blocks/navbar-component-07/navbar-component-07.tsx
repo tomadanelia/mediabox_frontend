@@ -28,7 +28,7 @@ const translations = {
     navLinks: [
       { to: "/", label: "Home" },
       { to: "/TV", label: "TV" },
-      { to: "/packets", label: "Packets" },
+      { to: "/packets", label: "Plans" },
     ],
   },
 } as const
@@ -124,7 +124,7 @@ const Navbar = () => {
           </Button>
 
 <Button asChild className="hidden w-[120px] justify-center gap-2 bg-primary text-primary-foreground shadow-lg sm:inline-flex">
-            <Link to="/stream">
+            <Link to="/Tv">
               <PlayIcon className="h-4 w-4" />
               {tx.openLive}
             </Link>
