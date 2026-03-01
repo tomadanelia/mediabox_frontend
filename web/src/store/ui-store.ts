@@ -11,7 +11,7 @@ type UIStore = {
 
 const useUIStore = create<UIStore>((set, get) => ({
   isDark: true,
-  language: "En",
+  language: "Ge",
   toggleDarkMode: () => set((state) => ({ isDark: !state.isDark })),
   setLanguage: (language) => set({ language })
 }))
