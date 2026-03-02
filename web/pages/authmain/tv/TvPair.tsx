@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import api from '../../../src/lib/axios'
 import useAuthStore from '../../../src/store/AuthStore'
 
@@ -94,7 +94,7 @@ const TvPair = () => {
               </svg>
             </div>
             <h1 className="text-xl font-semibold text-white mb-2">კოდი არ მოიძებნა</h1>
-            <p className="text-sm text-gray-500">TV-ზე ნახეთ QR კოდი ან ბმული და ხელახლა სცადეთ.</p>
+            <p className="text-sm text-gray-500">ტელევიზორზე შეამოწმეთ QR კოდი ან ბმული და ხელახლა სცადეთ.</p>
           </div>
         )}
 
@@ -116,7 +116,7 @@ const TvPair = () => {
 
             {/* Greeting */}
             <div className="text-center mb-8">
-              <p className="text-xs uppercase tracking-[0.2em] text-blue-400/70 font-semibold mb-2">TV დაწყვილება</p>
+              <p className="text-xs uppercase tracking-[0.2em] text-blue-400/70 font-semibold mb-2">დაწყვილება ტელევიზორთან</p>
               <h1 className="text-3xl font-bold text-white mb-2">
                 გამარჯობა, {user?.full_name?.split(' ')[0] || user?.username}
               </h1>
@@ -143,7 +143,7 @@ const TvPair = () => {
             <button
               onClick={handleConfirm}
               disabled={pairing}
-              className="w-full py-4 rounded-2xl bg-blue-500 hover:bg-blue-400 disabled:bg-blue-500/50 text-white font-bold text-base tracking-wide transition-all duration-200 active:scale-[0.98] shadow-[0_4px_24px_rgba(59,130,246,0.35)] hover:shadow-[0_4px_32px_rgba(59,130,246,0.5)] flex items-center justify-center gap-3"
+              className="w-full py-4 rounded-2xl cursor-pointer bg-blue-500 hover:bg-blue-400 disabled:bg-blue-500/50 text-white font-bold text-base tracking-wide transition-all duration-200 active:scale-[0.98] shadow-[0_4px_24px_rgba(59,130,246,0.35)] hover:shadow-[0_4px_32px_rgba(59,130,246,0.5)] flex items-center justify-center gap-3"
             >
               {pairing ? (
                 <>
@@ -155,13 +155,13 @@ const TvPair = () => {
                   <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
                   </svg>
-                  TV-ს დაწყვილების დადასტურება
+                  ტელევიზორთან დაწყვილების დადასტურება
                 </>
               )}
             </button>
 
             <p className="text-center text-xs text-gray-600 mt-4">
-              თუ ეს თქვენ არ ხართ, უბრალოდ დახურეთ გვერდი
+              <Link to="/">თუ ეს თქვენ არ ხართ, უბრალოდ დახურეთ გვერდი</Link>
             </p>
           </div>
         )}
@@ -182,7 +182,7 @@ const TvPair = () => {
             <h1 className="text-3xl font-bold text-white mb-3">დაწყვილება დასრულდა!</h1>
             <p className="text-gray-400 text-sm leading-relaxed mb-8">
               თქვენი ტელევიზორი წარმატებით დაუკავშირდა<br />
-              თქვენს ანგარიშს. შეგიძლიათ დაბრუნდეთ TV-ზე.
+              თქვენს ანგარიშს. შეგიძლიათ დაბრუნდეთ აპლიკაციაში.
             </p>
 
             <div className="inline-flex items-center gap-2 px-5 py-3 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-sm font-medium">
