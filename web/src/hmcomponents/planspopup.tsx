@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback } from 'react'
 import { X, Clock, ArrowRight, Sparkles, CheckCircle2, CalendarDays, AlertCircle, Loader2, Lock } from 'lucide-react'
-
+import api from '@/lib/axios'
 // ── types ─────────────────────────────────────────────────────────────────────
 
 type Channel = {
@@ -227,19 +227,17 @@ const PlansModal = ({
     setError(null)
     setLoading(true)
 
-    Promise.all([
-      fetch(`http://159.89.20.100/api/channels/${channel.id}/plans`).then((r) => {
-        if (!r.ok) throw new Error(`HTTP ${r.status}`)
-        return r.json() as Promise<ChannelPlansResponse>
-      }),
-      fetch(`http://159.89.20.100/api/plans`).then((r) => {
-        if (!r.ok) throw new Error(`HTTP ${r.status}`)
-        return r.json() as Promise<Plan[]>
-      }),
-    ])
-      .then(([channelData, allPlans]) => {
-        console.log('[PlansModal] channel response:', channelData)
-        console.log('[PlansModal] all plans:', allPlans)
+Promise.all([
+  api.get(`/api/channels/${channel.id}/plans`),
+  api.get(`/api/plans`),
+])
+  .then(([channelRes, allPlansRes]) => {
+    const channelData: ChannelPlansResponse = channelRes.data   // ← .data
+    const allPlans: Plan[] = allPlansRes.data                   // ← .data
+
+    console.log('[PlansModal] channel response:', channelData)
+    console.log('[PlansModal] all plans:', allPlans)
+
 
         const raw = channelData.required_plans ?? []
 
