@@ -32,9 +32,9 @@ const App: React.FC = () => {
 
   return (
     <div className="app-shell min-h-screen relative flex flex-col">
-      <div className="h-20 relative shrink-0">
-        <Navbar />
-      </div>
+    <div className="absolute top-0 left-0 right-0 z-50 h-20 sm:relative sm:z-auto shrink-0 w-full overflow-hidden">
+  <Navbar />
+</div>
       <div className="flex-1 relative overflow-hidden">
         <Routes>
           <Route path="/" element={<Home />} />

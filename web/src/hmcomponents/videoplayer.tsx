@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useMemo } from 'react';
 import Hls from 'hls.js';
 import BadgeLiveDemo from '@/components/shadcn-studio/badge/cusotm/badge-c01';
 import { CometRing } from './AnimatedComponents/CometBuffer';
@@ -28,6 +28,16 @@ type Channel = {
   category_id: string
 }
 
+type ProgramItem = {
+  UID: number
+  CHANNEL_ID: number
+  START_TIME: number
+  END_TIME: number
+  TITLE: string
+  GANRE?: string
+  DESCRIPTION?: string
+}
+
 type VideoPlayerProps = {
   streamUrl: string;
   mode: 'live' | 'archive';
@@ -38,30 +48,21 @@ type VideoPlayerProps = {
   onChannelSelect?: (channel: Channel) => void;
   currentChannelId?: string;
   rewindableDays?: number;
-  /** Pass the already-fetched channel list so fullscreen panel needs no extra fetch */
   channels?: Channel[];
+  /** Program list for the current day — used to compute timeline range */
+  programs?: ProgramItem[];
+  /** First program(s) of next day — defines the right edge of the range */
+  nextDayPrograms?: ProgramItem[];
 };
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
-/** Format a unix timestamp as HH:MM:SS local time. ეპოქ თაიმი */
 function formatClock(unixSec: number): string {
   return new Date(unixSec * 1000).toLocaleTimeString('en-GB', {
-    hour: '2-digit',
-    minute: '2-digit',
-    second: '2-digit',
-    hour12: false,
+    hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false,
   });
 }
 
-/** Format a unix timestamp as HH:MM:SS in local time. */
-function formatClockTime(unixSec: number): string {
-  const d = new Date(unixSec * 1000);
-  const h = String(d.getHours()).padStart(2, '0');
-  const m = String(d.getMinutes()).padStart(2, '0');
-  const s = String(d.getSeconds()).padStart(2, '0');
-  return `${h}:${m}:${s}`;
-}
 function formatBehind(secs: number): string {
   if (secs < 60) return `${Math.floor(secs)}s behind live`;
   if (secs < 3600) return `${Math.floor(secs / 60)}m behind live`;
@@ -70,11 +71,6 @@ function formatBehind(secs: number): string {
   return `${h}h ${m}m behind live`;
 }
 
-/**
- * Returns what unix second we are currently "watching":
- *   Live    → wall-clock now
- *   Archive → archiveTimestamp + how far into the clip we've played
- */
 function getWatchingUnix(
   mode: 'live' | 'archive',
   liveNow: number,
@@ -85,19 +81,6 @@ function getWatchingUnix(
     return archiveTimestamp + Math.floor(currentTime);
   }
   return liveNow;
-}
-
-/**
- * Progress as a fraction of the current calendar day (0–100).
- * Works for both live and archive — the bar always represents position
- * within the 24-hour day regardless of HLS chunk boundaries.
- */
-function getDayProgress(watchingUnixSec: number): number {
-  const d = new Date(watchingUnixSec * 1000);
-  // Midnight of the same local day in unix seconds
-  const midnightUnix = new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime() / 1000;
-  const secondsIntoDay = watchingUnixSec - midnightUnix;
-  return Math.min(100, Math.max(0, (secondsIntoDay / 86400) * 100));
 }
 
 // ─── Component ────────────────────────────────────────────────────────────────
@@ -113,6 +96,8 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
   currentChannelId,
   rewindableDays,
   channels = [],
+  programs = [],
+  nextDayPrograms = [],
 }) => {
   const videoRef      = useRef<HTMLVideoElement | null>(null);
   const containerRef  = useRef<HTMLDivElement | null>(null);
@@ -129,17 +114,41 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
   const [showChannels,     setShowChannels]     = useState(false);
   const [isBuffering,      setIsBuffering]      = useState(false);
 
-  // Wall-clock ticker — used for behind-live calc and day-progress in live mode
   const [liveNow, setLiveNow] = useState(Math.floor(Date.now() / 1000));
   useEffect(() => {
     const id = setInterval(() => setLiveNow(Math.floor(Date.now() / 1000)), 1000);
     return () => clearInterval(id);
   }, []);
 
-  // Derived values
-  const watchingUnix    = getWatchingUnix(mode, liveNow, archiveTimestamp, currentTime);
-  const dayProgressPct  = getDayProgress(watchingUnix);
-  const behindLiveSecs  = mode === 'archive' ? Math.max(0, liveNow - watchingUnix) : 0;
+  const watchingUnix   = getWatchingUnix(mode, liveNow, archiveTimestamp, currentTime);
+  const behindLiveSecs = mode === 'archive' ? Math.max(0, liveNow - watchingUnix) : 0;
+
+  // ─── Program-based range ─────────────────────────────────────────────────────
+  // rangeStart: first program's START_TIME
+  // rangeEnd:   first program of next day's START_TIME, or last program's END_TIME
+  const { rangeStart, rangeEnd } = useMemo(() => {
+    if (!programs.length) {
+      // Fallback: midnight-to-midnight of the watched day
+      const d = new Date(watchingUnix * 1000);
+      const midnight = new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime() / 1000;
+      return { rangeStart: midnight, rangeEnd: midnight + 86400 };
+    }
+    const sorted = [...programs].sort((a, b) => a.START_TIME - b.START_TIME);
+    const start  = sorted[0].START_TIME;
+    const lastEnd = sorted[sorted.length - 1].END_TIME;
+
+    const nextSorted = [...nextDayPrograms].sort((a, b) => a.START_TIME - b.START_TIME);
+    const end = nextSorted.length > 0 ? nextSorted[0].START_TIME : lastEnd;
+
+    return { rangeStart: start, rangeEnd: end };
+  }, [programs, nextDayPrograms, watchingUnix]);
+
+  const rangeDuration = Math.max(rangeEnd - rangeStart, 1);
+
+  /** Where the current watching position sits in the program range (0–100) */
+  const progressPct = Math.min(100, Math.max(0,
+    ((watchingUnix - rangeStart) / rangeDuration) * 100
+  ));
 
   // ── Load HLS ─────────────────────────────────────────────────────────────────
 
@@ -161,8 +170,6 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
 
       hls.on(Hls.Events.MANIFEST_PARSED, () => {
         setIsBuffering(false);
-        // Try to play with sound. If the browser blocks autoplay (policy),
-        // mute and retry — user can unmute manually after.
         video.play()
           .then(() => setIsPlaying(true))
           .catch(() => {
@@ -170,14 +177,14 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
             setIsMuted(true);
             video.play()
               .then(() => setIsPlaying(true))
-              .catch(() => {}); // give up silently if still blocked
+              .catch(() => {});
           });
       });
 
       hls.on(Hls.Events.ERROR, (_e, data) => {
         if (data.fatal) {
           switch (data.type) {
-            case Hls.ErrorTypes.NETWORK_ERROR: hls.startLoad();        break;
+            case Hls.ErrorTypes.NETWORK_ERROR: hls.startLoad();         break;
             case Hls.ErrorTypes.MEDIA_ERROR:   hls.recoverMediaError(); break;
             default:                           hls.destroy();
           }
@@ -213,22 +220,10 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
     const onWaiting        = () => setIsBuffering(true);
     const onPlaying        = () => setIsBuffering(false);
 
-    /**
-     * Archive chunk boundary fix:
-     * HLS timeshift streams are divided into chunks. When the loaded chunk
-     * finishes, the video fires `ended`. If we're in archive mode and real
-     * time has moved on (there is more content available), reload the stream
-     * from where we stopped so playback continues seamlessly.
-     *
-     * We use a ref snapshot of the props instead of closing over them directly
-     * to avoid stale-closure issues inside the event listener.
-     */
     const onEnded = () => {
-      // Read current prop values via the ref snapshot below
       if (modeRef.current === 'archive' && archiveTsRef.current !== null) {
         const resumeAt = archiveTsRef.current + Math.floor(video.currentTime);
         const nowSec   = Math.floor(Date.now() / 1000);
-        // Only reload if there's actually more content to watch (≥5s buffer)
         if (nowSec - resumeAt >= 5) {
           onRewindRef.current(resumeAt);
         }
@@ -254,12 +249,11 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
       video.removeEventListener('playing',        onPlaying);
       video.removeEventListener('ended',          onEnded);
     };
-  }, []); // intentionally empty — we use refs for live prop access
+  }, []);
 
-  // Refs to expose latest prop values inside the static event listener above
-  const modeRef       = useRef(mode);
-  const archiveTsRef  = useRef(archiveTimestamp);
-  const onRewindRef   = useRef(onRewind);
+  const modeRef      = useRef(mode);
+  const archiveTsRef = useRef(archiveTimestamp);
+  const onRewindRef  = useRef(onRewind);
   useEffect(() => { modeRef.current      = mode;             }, [mode]);
   useEffect(() => { archiveTsRef.current = archiveTimestamp; }, [archiveTimestamp]);
   useEffect(() => { onRewindRef.current  = onRewind;         }, [onRewind]);
@@ -282,20 +276,16 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
 
   /**
    * Seek by clicking the progress bar.
-   * Maps the click position (fraction of bar width) back to a unix timestamp
-   * for today, then calls onRewind so the parent fetches the archive URL.
+   * Maps click position to a unix timestamp within the PROGRAM range,
+   * so it stays on the correct day regardless of whether it's today or a past day.
    */
   const handleSeek = (e: React.MouseEvent<HTMLDivElement>) => {
-    const rect = e.currentTarget.getBoundingClientRect();
-    const pct  = Math.min(1, Math.max(0, (e.clientX - rect.left) / rect.width));
+    const rect    = e.currentTarget.getBoundingClientRect();
+    const pct     = Math.min(1, Math.max(0, (e.clientX - rect.left) / rect.width));
+    const targetTs = Math.floor(rangeStart + pct * rangeDuration);
+    const nowSec   = Math.floor(Date.now() / 1000);
 
-    // Reconstruct the unix timestamp for that fraction of today
-    const now       = new Date();
-    const midnight  = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime() / 1000;
-    const targetTs  = Math.floor(midnight + pct * 86400);
-    const nowSec    = Math.floor(Date.now() / 1000);
-
-    // Only allow seeking to a point that has already happened
+    // Don't seek into the future
     if (targetTs >= nowSec) return;
 
     onRewind(targetTs);
@@ -322,31 +312,19 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
     }
   };
 
-  /**
-   * Rewind / fast-forward with accumulation.
-   *
-   * Always computes the new target from `watchingUnix` — the actual unix
-   * second currently on screen — rather than from wall-clock `Date.now()`.
-   * This means pressing -30s three times in a row correctly lands at
-   * watchingUnix - 90s, not always at now - 30s.
-   */
   const skip = (seconds: number) => {
     const target = watchingUnix + seconds;
     const nowSec = Math.floor(Date.now() / 1000);
 
     if (seconds < 0) {
-      // Going backward — always go to archive at the accumulated point
       onRewind(Math.max(0, target));
     } else if (seconds > 0 && mode === 'archive') {
       if (target >= nowSec) {
-        // Skipping past live edge → go live
         onGoLive();
       } else {
-        // Still in archive window → seek to new accumulated point
         onRewind(target);
       }
     }
-    // seconds > 0 while live → no-op (already at live edge)
   };
 
   const toggleFullscreen = () => {
@@ -371,13 +349,13 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
           {/* Spinner */}
           {(isLoading || isBuffering) && (
             <div className="absolute inset-0 flex items-center justify-center bg-black/50 z-40">
-             <div className=' rounded-full'><CometRing/></div>
+              <div className='rounded-full'><CometRing /></div>
             </div>
           )}
 
-          {/* Archive: behind-live pill + Go Live */}
+          {/* Archive: Go Live button */}
           {mode === 'archive' && (
-            <div className="absolute bottom-12 right-6  flex items-center justify-center gap-3 z-20 pointer-events-none">
+            <div className="absolute bottom-12 right-6 flex items-center justify-center gap-3 z-20 pointer-events-none">
               <button
                 onClick={onGoLive}
                 className="pointer-events-auto cursor-pointer flex items-center gap-1.5 bg-red-600 hover:bg-red-500 text-white text-xs font-semibold px-3 py-1.5 rounded-full transition-colors"
@@ -460,27 +438,25 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
                   </div>
                 </div>
 
-                {/* ── Day progress bar ── */}
+                {/* ── Progress bar (program-range based) ── */}
                 <div className="flex-1 h-6 flex items-center">
                   <div
                     className="w-full h-1 bg-white/30 rounded-full cursor-pointer relative"
                     onClick={handleSeek}
                   >
-                    {/* Filled portion — red for live, orange→yellow for archive */}
                     <div
                       className={`h-full rounded-full ${
                         mode === 'live'
                           ? 'bg-red-500'
                           : 'bg-gradient-to-r from-orange-500 to-yellow-500'
                       }`}
-                      style={{ width: `${dayProgressPct}%` }}
+                      style={{ width: `${progressPct}%` }}
                     />
-                    {/* Playhead dot */}
                     <div
                       className={`absolute top-1/2 -translate-y-1/2 -translate-x-1/2 w-3 h-3 rounded-full shadow ${
                         mode === 'live' ? 'bg-red-400' : 'bg-orange-400'
                       }`}
-                      style={{ left: `${dayProgressPct}%` }}
+                      style={{ left: `${progressPct}%` }}
                     />
                   </div>
                 </div>
