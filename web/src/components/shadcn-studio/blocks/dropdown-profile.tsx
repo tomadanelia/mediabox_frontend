@@ -6,7 +6,7 @@ import {
   CreditCardIcon,
   LogOutIcon
 } from 'lucide-react'
-
+import { Link } from 'react-router-dom'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import {
   DropdownMenu,
@@ -53,8 +53,8 @@ const initials = user?.full_name?.split(' ').map((n) => n[0]).join('').toUpperCa
       <>
         <span className='text-foreground text-lg font-semibold'>არ ხართ შემოსული</span>
         <span className='text-muted-foreground text-sm'>
-          <a href='/authentication/login' className='text-primary underline'>Sign in</a>
-          <a href='/authentication/register' className='text-primary underline ml-2'>or register</a>
+          <Link to='/authentication/login' className='text-primary underline'>Sign in</Link>
+          <Link to='/authentication/register' className='text-primary underline ml-2'>or register</Link>
         </span>
       </>
     )}
@@ -66,11 +66,11 @@ const initials = user?.full_name?.split(' ').map((n) => n[0]).join('').toUpperCa
         <DropdownMenuGroup>
           <DropdownMenuItem className='px-4 py-2.5 text-base'>
             <UserIcon className='text-foreground size-5' />
-            <a href='/profile'>Profile</a>
+            <Link to='/profile'>Profile</Link>
           </DropdownMenuItem>
           <DropdownMenuItem className='px-4 py-2.5 text-base'>
             <CreditCardIcon className='text-foreground size-5' />
-            <a href='/packets'>Billing</a>
+            <Link to='/packets'>Billing</Link>
           </DropdownMenuItem>
           <DropdownMenuItem className='px-4 py-2.5 text-base'>
             <SettingsIcon className='text-foreground size-5' />
@@ -82,7 +82,7 @@ const initials = user?.full_name?.split(' ').map((n) => n[0]).join('').toUpperCa
 
         <DropdownMenuItem variant='destructive' className='px-4 py-2.5 text-base'>
           <LogOutIcon className='size-5' />
-          <a href='/authentication/register'>Logout</a>
+          <Link to='/authentication/register'>Logout</Link>
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>
