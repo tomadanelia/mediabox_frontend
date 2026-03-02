@@ -13,6 +13,7 @@ import AuthLoginVerify from "../pages/authmain/codeLoginVerification"
 import AdminDashboard from "../pages/admin/admin"
 import type { UIStore } from "./store/ui-store"
 import useAuthStore from "./store/AuthStore"
+import TvPair from "../pages/authmain/tv/TvPair"
 
 const App: React.FC = () => {
   const isDark = useUIStore((state: UIStore) => state.isDark)
@@ -48,6 +49,7 @@ const App: React.FC = () => {
             <Route path="verify" element={<AuthVerify />} />
             <Route path="login-verify" element={<AuthLoginVerify />} />
           </Route>
+          <Route path="/tv-register" element={<TvPair />} />
         </Routes>
       </div>
     </div>

@@ -3,6 +3,8 @@ import { ShieldCheckIcon } from 'lucide-react'
 import { Input } from '../../src/components/ui/input'
 import { API_BASE_URL } from '../../src/config'
 import api from '@/lib/axios'
+import { useNavigate } from 'react-router-dom'
+import useAuthStore from '../../src/store/AuthStore'
 
 const AuthVerify: React.FC = () => {
   const [code, setCode] = useState<string[]>(['', '', '', '', '', ''])
@@ -10,6 +12,9 @@ const AuthVerify: React.FC = () => {
   const [resendTimer, setResendTimer] = useState(60)
   const [canResend, setCanResend] = useState(false)
   const inputRefs = useRef<(HTMLInputElement | null)[]>([])
+  const navigate= useNavigate();
+  const setUser = useAuthStore((state) => state.setUser)
+
 
   // countdown timer
   useEffect(() => {
@@ -63,8 +68,16 @@ const AuthVerify: React.FC = () => {
       code: fullCode
     });
 
-    alert('Verified successfully ✅');
-    window.location.href = '/';
+    localStorage.removeItem('pending_register_login');
+    setUser(response.data.user ?? response.data)
+    const savedTvCode = localStorage.getItem('tv_pair_code')
+
+if (savedTvCode) {
+  localStorage.removeItem('tv_pair_code') 
+  navigate(`/tv-register?code=${savedTvCode}`)
+} else {
+  navigate('/') 
+}
   } catch (err: any) {
     const message = err.response?.data?.message || 'Verification failed';
     alert(message);
