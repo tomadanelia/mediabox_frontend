@@ -1,8 +1,8 @@
 'use client'
-import { API_BASE_URL } from '@/config';
 
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useMemo } from 'react'
 import { X, Radio, Clock } from 'lucide-react'
+import api from '@/lib/axios'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -14,13 +14,14 @@ type Channel = {
   number: number
   category: string
   category_id: string
+  is_free?: boolean
 }
 
 type Program = {
   UID: number
   CHANNEL_ID: number
-  START_TIME: number   // unix seconds
-  END_TIME: number     // unix seconds
+  START_TIME: number
+  END_TIME: number
   TITLE: string
   GANRE: string
   DESCRIPTION: string
@@ -41,13 +42,17 @@ type Props = {
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
-const API = `${API_BASE_URL}/api`
-
 function toApiDate(d: Date): string {
   const y  = d.getFullYear()
   const m  = String(d.getMonth() + 1).padStart(2, '0')
   const dd = String(d.getDate()).padStart(2, '0')
   return `${y}/${m}/${dd}`
+}
+
+function addOneDay(d: Date): Date {
+  const c = new Date(d)
+  c.setDate(c.getDate() + 1)
+  return c
 }
 
 const hhmm = new Intl.DateTimeFormat('en-GB', { hour: '2-digit', minute: '2-digit', hour12: false })
@@ -84,45 +89,88 @@ const FullScreenList: React.FC<Props> = ({
     return d
   })
 
-  const [channels,    setChannels]    = useState<Channel[]>([])
-  const [loadingCh,   setLoadingCh]   = useState(true)
-  const [errorCh,     setErrorCh]     = useState<string | null>(null)
-  const [previewId,   setPreviewId]   = useState<string>(currentChannelId ?? '')
-  const [programs,    setPrograms]    = useState<Program[]>([])
-  const [loadingPr,   setLoadingPr]   = useState(false)
-  const [selDate,     setSelDate]     = useState<Date>(dateStrip[dateStrip.length - 1])
+  const [channels,        setChannels]        = useState<Channel[]>([])
+  const [loadingCh,       setLoadingCh]       = useState(true)
+  const [errorCh,         setErrorCh]         = useState<string | null>(null)
+  const [previewId,       setPreviewId]       = useState<string>(currentChannelId ?? '')
+  const [programs,        setPrograms]        = useState<Program[]>([])
+  const [nextDayPrograms, setNextDayPrograms] = useState<Program[]>([])
+  const [loadingPr,       setLoadingPr]       = useState(false)
+  const [selDate,         setSelDate]         = useState<Date>(dateStrip[dateStrip.length - 1])
 
+  // ── Fetch channels ──────────────────────────────────────────────────────────
   useEffect(() => {
     let dead = false
     setLoadingCh(true)
-    fetch(`${API}/channels`)
-      .then(r => { if (!r.ok) throw new Error(`HTTP ${r.status}`); return r.json() as Promise<Channel[]> })
-      .then(data => {
+    api.get('/api/channels')
+      .then(res => {
         if (dead) return
-        setChannels(data)
-        setPreviewId(id => id || data[0]?.id || '')
+        const data = res.data
+        const channelList: Channel[] = data.channels ?? (Array.isArray(data) ? data : [])
+        setChannels(channelList)
+        setPreviewId(id => {
+          if (id) return id
+          const firstFree = channelList.find(c => c.is_free) ?? channelList[0]
+          return firstFree?.id ?? ''
+        })
       })
       .catch(e => { if (!dead) setErrorCh(String(e)) })
       .finally(() => { if (!dead) setLoadingCh(false) })
     return () => { dead = true }
   }, [])
 
+  // ── Fetch programs (selected day + next day) ────────────────────────────────
   useEffect(() => {
     if (!previewId) return
     let dead = false
     setLoadingPr(true)
     setPrograms([])
-    fetch(`${API}/channels/${previewId}/programs?date=${toApiDate(selDate)}`)
-      .then(r => { if (!r.ok) throw new Error(`HTTP ${r.status}`); return r.json() as Promise<Program[]> })
-      .then(data => { if (!dead) setPrograms(data) })
+    setNextDayPrograms([])
+
+    const nextDate = addOneDay(selDate)
+
+    Promise.all([
+      api.get(`/api/channels/${previewId}/programs`, { params: { date: toApiDate(selDate) } }),
+      api.get(`/api/channels/${previewId}/programs`, { params: { date: toApiDate(nextDate) } }),
+    ])
+      .then(([res, resNext]) => {
+        if (dead) return
+        setPrograms(res.data ?? [])
+        setNextDayPrograms(resNext.data ?? [])
+      })
       .catch(() => {})
       .finally(() => { if (!dead) setLoadingPr(false) })
+
     return () => { dead = true }
   }, [previewId, selDate.toDateString()])
 
+  // ── Build display list: day1.p1 → day2.p1 (exclusive) ──────────────────────
+  const displayPrograms = useMemo(() => {
+    const sorted     = [...programs].sort((a, b) => a.START_TIME - b.START_TIME)
+    const nextSorted = [...nextDayPrograms].sort((a, b) => a.START_TIME - b.START_TIME)
+
+    if (!sorted.length) return []
+
+    const rangeStart = sorted[0].START_TIME
+    const rangeEnd   = nextSorted.length > 0 ? nextSorted[0].START_TIME : Infinity
+
+    // current day programs + next day programs that fall before rangeEnd
+    const combined = [
+      ...sorted,
+      ...nextSorted.filter(p => p.START_TIME < rangeEnd),
+    ]
+
+    // deduplicate by UID and keep only within range
+    const seen = new Set<number>()
+    return combined.filter(p => {
+      if (seen.has(p.UID)) return false
+      seen.add(p.UID)
+      return p.START_TIME >= rangeStart && p.START_TIME < rangeEnd
+    }).sort((a, b) => a.START_TIME - b.START_TIME)
+  }, [programs, nextDayPrograms])
+
   const previewChannel = channels.find(c => c.id === previewId) ?? null
-  const sorted = [...programs].sort((a, b) => a.START_TIME - b.START_TIME)
-  const todaySelected = selDate.toDateString() === new Date().toDateString()
+  const todaySelected  = selDate.toDateString() === new Date().toDateString()
 
   const handleChannelClick = (ch: Channel) => {
     setPreviewId(ch.id)
@@ -249,11 +297,11 @@ const FullScreenList: React.FC<Props> = ({
           <div className="flex-1 overflow-y-auto">
             {loadingPr ? (
               <Spinner />
-            ) : sorted.length === 0 ? (
+            ) : displayPrograms.length === 0 ? (
               <p className="text-black/30 dark:text-white/30 text-[11px] text-center pt-8">No programs for this date</p>
             ) : (
               <div className="divide-y divide-black/5 dark:divide-white/5">
-                {sorted.map(p => {
+                {displayPrograms.map(p => {
                   const isCurrent = nowSec >= p.START_TIME && nowSec < p.END_TIME
                   const isPast    = nowSec >= p.END_TIME
                   const isFuture  = p.START_TIME > nowSec
@@ -265,29 +313,24 @@ const FullScreenList: React.FC<Props> = ({
                       onClick={() => clickable && handleProgramClick(p)}
                       className={[
                         'flex items-center gap-2 px-3 py-2 transition-all duration-150 select-none border-l-2',
-                        isCurrent  ? 'bg-gradient-to-r from-orange-50 to-yellow-50/60 dark:from-orange-500/10 dark:to-yellow-400/5 border-l-orange-400 cursor-pointer' : '',
-                        isPast     ? 'border-l-transparent opacity-50 cursor-pointer hover:opacity-80 hover:bg-black/3 dark:hover:bg-white/4' : '',
-                        isFuture   ? 'border-l-transparent opacity-25 cursor-not-allowed' : '',
+                        isCurrent ? 'bg-gradient-to-r from-orange-50 to-yellow-50/60 dark:from-orange-500/10 dark:to-yellow-400/5 border-l-orange-400 cursor-pointer' : '',
+                        isPast    ? 'border-l-transparent opacity-50 cursor-pointer hover:opacity-80 hover:bg-black/3 dark:hover:bg-white/4' : '',
+                        isFuture  ? 'border-l-transparent opacity-25 cursor-not-allowed' : '',
                       ].join(' ')}
                     >
-                      {/* Time */}
                       <span className={`text-[10px] font-mono tabular-nums shrink-0 w-8 ${isCurrent ? 'text-orange-400' : 'text-black/30 dark:text-white/25'}`}>
                         {fmtTime(p.START_TIME)}
                       </span>
-
-                      {/* Title */}
                       <span className={`text-[11px] font-medium truncate flex-1 ${isCurrent ? 'text-black/80 dark:text-white' : 'text-black/70 dark:text-white/75'}`}>
                         {p.TITLE}
                       </span>
-
-                      {/* Badge */}
                       {isCurrent && (
                         <span className="shrink-0 px-1.5 py-0.5 bg-gradient-to-r from-orange-500 to-yellow-400 text-white text-[8px] font-bold rounded-md">
                           LIVE
                         </span>
                       )}
-                      {isPast    && <Clock className="w-2.5 h-2.5 text-black/20 dark:text-white/20 shrink-0" />}
-                      {isFuture  && <span className="text-black/20 dark:text-white/20 text-[10px] shrink-0">🔒</span>}
+                      {isPast   && <Clock className="w-2.5 h-2.5 text-black/20 dark:text-white/20 shrink-0" />}
+                      {isFuture && <span className="text-black/20 dark:text-white/20 text-[10px] shrink-0">🔒</span>}
                     </div>
                   )
                 })}

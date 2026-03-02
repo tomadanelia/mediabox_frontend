@@ -22,6 +22,7 @@ type Props = {
   mode?: 'live' | 'archive'
   archiveTimestamp?: number | null
   onProgramSelect?: (startTime: number) => void
+  iconOnly?: boolean
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -56,6 +57,7 @@ const ChannelScheduleCL = ({
   mode = 'live',
   archiveTimestamp = null,
   onProgramSelect,
+  iconOnly = false,
 }: Props) => {
   const sorted = useMemo(() => {
     if (!Array.isArray(timeProgramm)) return []
@@ -67,8 +69,18 @@ const ChannelScheduleCL = ({
   const activeSec =
     mode === 'archive' && archiveTimestamp !== null ? archiveTimestamp : nowSec
 
-  const isCurrentProgram = (p: ProgramItem) =>
-    activeSec >= p.START_TIME && activeSec < p.END_TIME
+  // Find which program contains activeSec.
+  // If activeSec is before all programs (e.g. midnight from calendar pick),
+  // fall back to the first program so the animation always shows.
+  const activeUID = useMemo(() => {
+    if (!sorted.length) return null
+    const match = sorted.find(p => activeSec >= p.START_TIME && activeSec < p.END_TIME)
+    if (match) return match.UID
+    if (activeSec <= sorted[0].START_TIME) return sorted[0].UID
+    return null
+  }, [sorted, activeSec])
+
+  const isCurrentProgram = (p: ProgramItem) => p.UID === activeUID
 
   const isPastProgram = (p: ProgramItem) => nowSec >= p.END_TIME
 
@@ -117,21 +129,23 @@ const ChannelScheduleCL = ({
                     {formatUnix(p.START_TIME)}
                   </span>
 
-                  <span className='flex-1 text-sm truncate text-black/80 dark:text-white/75'>
-                    {p.TITLE}
-                  </span>
+                  {!iconOnly && (
+                    <span className='flex-1 text-sm truncate text-black/80 dark:text-white/75'>
+                      {p.TITLE}
+                    </span>
+                  )}
 
-                  {isCurrent && (
+                  {!iconOnly && isCurrent && (
                     <span className='w-2 h-2 rounded-full bg-orange-400 shrink-0 animate-pulse' />
                   )}
 
-                  {isFuture && (
+                  {!iconOnly && isFuture && (
                     <span className='text-xs text-black/25 dark:text-white/20 shrink-0 select-none'>
                       🔒
                     </span>
                   )}
 
-                 {isCurrent&&( <Equalizer/>)}
+                  {isCurrent && (<Equalizer />)}
                 </div>
               )
             })

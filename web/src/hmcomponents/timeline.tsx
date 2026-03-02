@@ -14,13 +14,14 @@ type ProgramItem = {
 interface TimeProgram {
   id: string
   title: string
-  startTime: string
-  duration: number
   startUnixSec: number
+  endUnixSec: number
+  duration: number
 }
 
 type TimelineProps = {
   timeProgramm?: ProgramItem[] | null
+  nextDayPrograms?: ProgramItem[] | null
 
   currentUnixSec?: number | null
   liveUnixSec?: number | null
@@ -30,53 +31,77 @@ type TimelineProps = {
 
 const clamp = (n: number, min = 0, max = 100) => Math.min(max, Math.max(min, n))
 
-const Timeline: React.FC<TimelineProps> = ({ timeProgramm, currentUnixSec, liveUnixSec, onSelectTime }) => {
+const pad2 = (n: number) => String(n).padStart(2, '0')
+
+const unixToHHmm = (unixSec: number) => {
+  const d = new Date(unixSec * 1000)
+  return `${pad2(d.getHours())}:${pad2(d.getMinutes())}`
+}
+
+const Timeline: React.FC<TimelineProps> = ({
+  timeProgramm,
+  nextDayPrograms,
+  currentUnixSec,
+  liveUnixSec,
+  onSelectTime,
+}) => {
   const programs: TimeProgram[] = useMemo(() => {
     if (!Array.isArray(timeProgramm)) return []
-
-    const pad2 = (n: number) => String(n).padStart(2, '0')
-
     return timeProgramm
       .slice()
       .sort((a, b) => a.START_TIME - b.START_TIME)
-      .map((p) => {
-        const start = new Date(p.START_TIME * 1000)
-        const end = new Date(p.END_TIME * 1000)
-
-        return {
-          id: String(p.UID),
-          title: p.TITLE ?? '',
-          startTime: `${pad2(start.getHours())}:${pad2(start.getMinutes())}`,
-          duration: Math.max(0, Math.round((end.getTime() - start.getTime()) / 60000)),
-          startUnixSec: p.START_TIME,
-        }
-      })
+      .map((p) => ({
+        id: String(p.UID),
+        title: p.TITLE ?? '',
+        startUnixSec: p.START_TIME,
+        endUnixSec: p.END_TIME,
+        duration: Math.max(0, Math.round((p.END_TIME - p.START_TIME) / 60)),
+      }))
   }, [timeProgramm])
 
-  const timeToPercent = (time: string) => {
-    const [h, m] = time.split(':').map(Number)
-    return ((h * 60 + m) / 1440) * 100
-  }
+  // ─── Timeline range ────────────────────────────────────────────────────────
+  // rangeStart: first program's start (or midnight of that day)
+  // rangeEnd:   first program of next day (if provided) OR last program's end
+  const { rangeStart, rangeEnd } = useMemo(() => {
+    if (!programs.length) {
+      const now = Math.floor(Date.now() / 1000)
+      const midnight = now - (now % 86400) - new Date().getTimezoneOffset() * 60
+      return { rangeStart: midnight, rangeEnd: midnight + 86400 }
+    }
 
-  const unixToPercent = (unixSec: number) => {
-    const d = new Date(unixSec * 1000)
-    const minutes = d.getHours() * 60 + d.getMinutes() + d.getSeconds() / 60
-    return (minutes / 1440) * 100
-  }
+    const start = programs[0].startUnixSec
+    const lastEnd = programs[programs.length - 1].endUnixSec
 
-  const unixToHHmm = (unixSec: number) => {
-    const d = new Date(unixSec * 1000)
-    const pad2 = (n: number) => String(n).padStart(2, '0')
-    return `${pad2(d.getHours())}:${pad2(d.getMinutes())}`
-  }
+    // Use first program of next day as the right edge if available
+    const nextDaySorted = Array.isArray(nextDayPrograms)
+      ? [...nextDayPrograms].sort((a, b) => a.START_TIME - b.START_TIME)
+      : []
+    const end = nextDaySorted.length > 0 ? nextDaySorted[0].START_TIME : lastEnd
 
-  const hours = useMemo(() => Array.from({ length: 25 }, (_, i) => i), [])
+    return { rangeStart: start, rangeEnd: end }
+  }, [programs, nextDayPrograms])
+
+  const rangeDuration = Math.max(rangeEnd - rangeStart, 1)
+
+  const toPercent = (unixSec: number) =>
+    clamp(((unixSec - rangeStart) / rangeDuration) * 100)
+
+  // ─── Hour ticks ────────────────────────────────────────────────────────────
+  const hourTicks = useMemo(() => {
+    const ticks: { unixSec: number; label: string }[] = []
+    // round up rangeStart to the next full hour
+    const firstHour = Math.ceil(rangeStart / 3600) * 3600
+    for (let t = firstHour; t <= rangeEnd; t += 3600) {
+      ticks.push({ unixSec: t, label: unixToHHmm(t) })
+    }
+    return ticks
+  }, [rangeStart, rangeEnd])
 
   const live = liveUnixSec ?? Math.floor(Date.now() / 1000)
   const current = currentUnixSec ?? live
 
-  const livePct = clamp(unixToPercent(live))
-  const currentPct = clamp(unixToPercent(current))
+  const livePct = toPercent(live)
+  const currentPct = toPercent(current)
 
   return (
     <div className="w-full px-4">
@@ -101,13 +126,13 @@ const Timeline: React.FC<TimelineProps> = ({ timeProgramm, currentUnixSec, liveU
         </div>
 
         {/* hour ticks */}
-        {hours.map((h) => {
-          const left = (h / 24) * 100
+        {hourTicks.map(({ unixSec, label }) => {
+          const left = toPercent(unixSec)
           return (
-            <div key={h} className="absolute top-1/2 -translate-y-1/2" style={{ left: `${left}%` }}>
+            <div key={unixSec} className="absolute top-1/2 -translate-y-1/2" style={{ left: `${left}%` }}>
               <div className="w-px h-3 bg-gray-500/70" />
               <div className="text-[10px] text-gray-600 mt-0.5 -translate-x-1 select-none">
-                {String(h).padStart(2, '0')}
+                {label}
               </div>
             </div>
           )
@@ -117,8 +142,8 @@ const Timeline: React.FC<TimelineProps> = ({ timeProgramm, currentUnixSec, liveU
         {programs.map((p) => (
           <div
             key={p.id}
-            className="absolute top-0 -translate-x-1/2 -translate-y-1/2"
-            style={{ left: `${timeToPercent(p.startTime)}%` }}
+            className="absolute top-0 -translate-x-1/2 -translate-y-1/2 cursor-pointer"
+            style={{ left: `${toPercent(p.startUnixSec)}%` }}
             onClick={() => {
               const original = Array.isArray(timeProgramm)
                 ? timeProgramm.find((x) => String(x.UID) === p.id)
@@ -132,7 +157,7 @@ const Timeline: React.FC<TimelineProps> = ({ timeProgramm, currentUnixSec, liveU
                   <div className="w-full h-full" />
                 </TooltipTrigger>
                 <TooltipContent side="bottom">
-                  {p.title} · {p.startTime}
+                  {p.title} · {unixToHHmm(p.startUnixSec)}
                 </TooltipContent>
               </Tooltip>
             </div>
