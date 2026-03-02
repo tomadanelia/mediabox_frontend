@@ -111,6 +111,8 @@ export const Stream: React.FC = () => {
 const isMobile = useIsMobile();
 const [leftExpanded, setLeftExpanded] = useState(false);
 const [rightExpanded, setRightExpanded] = useState(false);
+const [favorites,setFavorites] = useState([])
+
 const navigate = useNavigate()
   type Category = {
     id: string
@@ -153,7 +155,34 @@ const navigate = useNavigate()
     const id = setInterval(() => setLiveUnixSec(Math.floor(Date.now() / 1000)), 1000);
     return () => clearInterval(id);
   }, []);
+   
+  useEffect(()=>{
+     api.get('/api/user/preferences/favourite-channels').then(res => setFavorites(res.data)).catch(err => console.error('Failed to fetch favorites:', err));
+  },[]);
+  // POST request - Add to favorites
+const markFavorite = (channelId: number) => {
+  api.post('/api/user/preferences/favourite-channels', { channelId: channelId })
+    .then(response => {
+      console.log('Channel marked as favorite:', response.data);
+      // Refetch favorites to update the list
+      return api.get('/api/user/preferences/favourite-channels');
+    })
+    .then(res => setFavorites(res.data))
+    .catch(err => console.error('Failed to mark channel as favorite:', err));
+};
 
+// DELETE request - Remove from favorites (using URL parameter, no body)
+const unmarkFavorite = (channelId : number) => {
+  api.delete(`/api/user/preferences/favourites/${channelId}`)
+    .then(response => {
+      console.log('Channel removed from favorites:', response.data);
+      // Refetch favorites to update the list
+      return api.get('/api/user/preferences/favourite-channels');
+    })
+    .then(res => setFavorites(res.data))
+    .catch(err => console.error('Failed to remove channel from favorites:', err));
+};
+   
   // ─── API ─────────────────────────────────────────────────────────────────────
 
   const goLive = useCallback(async (channelId: string) => {
@@ -345,12 +374,15 @@ const handleRewind = useCallback((timestamp: number) => {
   )}
 
   <div className="flex-1 relative overflow-y-auto bg-gray">
-    <DataTableDemo
-      filteredChannels={filteredChannels}
-      onChannelSelect={handleChannelSelect}
-      selectedChannel={selectedChannel}
-      iconOnly={isMobile && !leftExpanded}
-    />
+      <DataTableDemo
+    filteredChannels={filteredChannels}
+    onChannelSelect={handleChannelSelect}
+    selectedChannel={selectedChannel}
+    iconOnly={isMobile && !leftExpanded}
+    markFavorite={markFavorite}
+    unmarkFavorite={unmarkFavorite}
+    favlist={favorites}
+  />
   </div>
 </div>
 
