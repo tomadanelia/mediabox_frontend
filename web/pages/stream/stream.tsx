@@ -25,6 +25,7 @@ import { CategoryIcon } from '@/hmcomponents/IconMapper';
 import PlansModal from '@/hmcomponents/planspopup';
 import api from '@/lib/axios';
 import { useIsMobile } from '@/hooks/useIsMobile';
+import { useNavigate } from 'react-router-dom';
 
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -110,6 +111,7 @@ export const Stream: React.FC = () => {
 const isMobile = useIsMobile();
 const [leftExpanded, setLeftExpanded] = useState(false);
 const [rightExpanded, setRightExpanded] = useState(false);
+const navigate = useNavigate()
   type Category = {
     id: string
     name_ka: string
@@ -311,7 +313,7 @@ const handleRewind = useCallback((timestamp: number) => {
             channel={pendingChannel}
             lang="en"
             onClose={() => setPendingChannel(null)}
-            onSelectPlan={(plan, ch) => { /* handle subscription */ }}
+            onSelectPlan={()=> navigate('/packets')}
           />
         </div>
       )}
