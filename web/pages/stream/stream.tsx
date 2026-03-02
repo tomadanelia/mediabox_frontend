@@ -439,7 +439,7 @@ const handleRewind = useCallback((timestamp: number) => {
   lg:relative lg:w-1/5
   absolute right-0 z-10 flex flex-col h-full bg-yel
   transition-all duration-300 ease-in-out
-  ${isMobile ? (rightExpanded ? 'w-4/5' : 'w-[65px]') : ''}
+  ${isMobile ? (rightExpanded ? 'w-2/5' : 'w-[65px]') : ''}
 `}>
 
   {/* Toggle tab — mobile only */}
