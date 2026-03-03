@@ -288,7 +288,13 @@ export default function AdminDashboard() {
   const [usersMeta, setUsersMeta] = useState({ current_page: 1, last_page: 1, total: 0 });
   const [usersPage, setUsersPage] = useState(1);
   const [userSearch, setUserSearch] = useState("");
-
+  const [grantModal, setGrantModal] = useState(false);
+  const [revokeModal, setRevokeModal] = useState(false);
+  const [targetUser, setTargetUser] = useState<any>(null);
+  const [grantPlanId, setGrantPlanId] = useState("");
+  const [grantDays, setGrantDays] = useState("30");
+  const [grantLoading, setGrantLoading] = useState(false);
+  const [revokeLoading, setRevokeLoading] = useState(false);
   /* ── API ── */
   const fetchChannels = async () => {
     setChannelsLoading(true);
@@ -334,6 +340,40 @@ export default function AdminDashboard() {
     } catch (e) { console.error(e); }
     finally { setUsersLoading(false); }
   };
+  const handleGrantPlan = async () => {
+  if (!targetUser || !grantPlanId || !grantDays) return;
+  setGrantLoading(true);
+  try {
+    await api.post(`/api/admin/users/${targetUser.id}/grant-plan`, {
+      plan_id: grantPlanId,
+      days: parseInt(grantDays),
+    });
+    setGrantModal(false);
+    setGrantPlanId("");
+    setGrantDays("30");
+    fetchUsers(usersPage);
+  } catch (e: any) {
+    alert(e.response?.data?.message || "Failed to grant plan");
+  } finally {
+    setGrantLoading(false);
+  }
+};
+
+const handleRevokePlan = async () => {
+  if (!targetUser) return;
+  setRevokeLoading(true);
+  try {
+    await api.post(`/api/admin/users/${targetUser.id}/revoke-plan`, {
+      plan_id: targetUser.account?.plan?.id ?? targetUser.account?.plan_id,
+    });
+    setRevokeModal(false);
+    fetchUsers(usersPage);
+  } catch (e: any) {
+    alert(e.response?.data?.message || "Failed to revoke plan");
+  } finally {
+    setRevokeLoading(false);
+  }
+};
 
    const handleAddCategory = async () => {
     if (!newCat.name_en || !newCat.name_ka) return;
@@ -1155,6 +1195,7 @@ useEffect(() => {
                         <th className="p-4">როლი</th>
                         <th className="p-4">პაკეტი</th>
                         <th className="p-4">სტატუსი</th>
+                        <th className="p-4">მოქმედება</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -1241,6 +1282,27 @@ const isActive =
                                 </span>
                               )}
                             </td>
+<td className="p-4">
+  <div className="flex items-center gap-1.5">
+    <button
+      onClick={() => { setTargetUser(u); setGrantPlanId(""); setGrantDays("30"); setGrantModal(true); }}
+      className="cursor-pointer inline-flex items-center gap-1 text-[0.6rem] font-medium bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 px-2 py-1 rounded-md hover:bg-emerald-500/20 transition-colors"
+    >
+      <svg width="9" height="9" viewBox="0 0 10 10" fill="none"><path d="M5 1v8M1 5h8" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/></svg>
+      მინიჭება
+    </button>
+    {(u.account?.plan || u.account?.plan_name) && (
+      <button
+        onClick={() => { setTargetUser(u); setRevokeModal(true); }}
+        className="cursor-pointer inline-flex items-center gap-1 text-[0.6rem] font-medium bg-red-500/10 text-red-400 border border-red-500/20 px-2 py-1 rounded-md hover:bg-red-500/20 transition-colors"
+      >
+        <svg width="9" height="9" viewBox="0 0 10 10" fill="none"><path d="M2 5h6" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/></svg>
+        გაუქმება
+      </button>
+    )}
+  </div>
+</td>
+                            
                           </tr>
                         );
                       })}
@@ -1788,6 +1850,93 @@ const isActive =
           </div>
         </div>
       )}
+      {/* ══════════════════════════════════════════
+    GRANT PLAN MODAL
+══════════════════════════════════════════ */}
+{grantModal && targetUser && (
+  <div className="fixed inset-0 bg-black/75 z-50 flex items-center justify-center p-4" onClick={e => { if (e.target === e.currentTarget) setGrantModal(false); }}>
+    <div className="bg-zinc-900 border border-zinc-800 rounded-2xl w-full max-w-sm shadow-2xl overflow-hidden">
+      <div className="p-5 border-b border-zinc-800 flex justify-between items-center">
+        <div>
+          <h3 className="font-bold text-zinc-100">პაკეტის მინიჭება</h3>
+          <p className="text-[0.65rem] text-zinc-500 mt-0.5 truncate">
+            {targetUser.full_name ?? targetUser.username} · {targetUser.email}
+          </p>
+        </div>
+        <button onClick={() => setGrantModal(false)} className="cursor-pointer w-8 h-8 flex items-center justify-center rounded-lg text-zinc-500 hover:text-zinc-200 hover:bg-zinc-800 transition-colors">✕</button>
+      </div>
+      <div className="p-5 space-y-4">
+        <div>
+          <label className="text-[0.65rem] text-zinc-500 uppercase tracking-widest block mb-1.5">პაკეტი</label>
+          <select
+            value={grantPlanId}
+            onChange={e => setGrantPlanId(e.target.value)}
+            className="w-full bg-zinc-800 border border-zinc-700 p-2.5 rounded-xl text-sm text-zinc-200 focus:outline-none focus:border-zinc-500 transition-colors"
+          >
+            <option value="" disabled className="text-zinc-500">აირჩიეთ პაკეტი…</option>
+            {plans.filter(p => Boolean(p.is_active)).map(p => (
+              <option key={p.id} value={p.id} className="bg-zinc-800">
+                {p.name_en} — {p.price} ₾ / {p.duration_days}დ
+              </option>
+            ))}
+          </select>
+        </div>
+        <div>
+          <label className="text-[0.65rem] text-zinc-500 uppercase tracking-widest block mb-1.5">ხანგრძლივობა (დღეებში)</label>
+          <input
+            type="number" min="1" value={grantDays}
+            onChange={e => setGrantDays(e.target.value)}
+            className="w-full bg-zinc-800 border border-zinc-700 p-2.5 rounded-xl text-sm focus:outline-none focus:border-zinc-500 transition-colors"
+          />
+        </div>
+      </div>
+      <div className="px-5 pb-5 flex gap-2 justify-end">
+        <button onClick={() => setGrantModal(false)} className="cursor-pointer px-4 py-2 rounded-xl text-xs bg-zinc-800 hover:bg-zinc-700 text-zinc-300 transition-colors">გაუქმება</button>
+        <button
+          onClick={handleGrantPlan}
+          disabled={grantLoading || !grantPlanId || !grantDays}
+          className="cursor-pointer px-5 py-2 rounded-xl text-xs bg-emerald-600 hover:bg-emerald-500 disabled:opacity-40 disabled:cursor-not-allowed text-white font-medium transition-colors flex items-center gap-2"
+        >
+          {grantLoading ? <><IconSpinner />მინიჭება…</> : <><IconCheck />მინიჭება</>}
+        </button>
+      </div>
+    </div>
+  </div>
+)}
+
+{/* ══════════════════════════════════════════
+    REVOKE PLAN MODAL
+══════════════════════════════════════════ */}
+{revokeModal && targetUser && (
+  <div className="fixed inset-0 bg-black/75 z-50 flex items-center justify-center p-4" onClick={e => { if (e.target === e.currentTarget) setRevokeModal(false); }}>
+    <div className="bg-zinc-900 border border-zinc-800 rounded-2xl w-full max-w-sm shadow-2xl overflow-hidden">
+      <div className="p-6 flex flex-col items-center text-center gap-4">
+        <div className="w-14 h-14 rounded-2xl bg-red-500/10 border border-red-500/20 flex items-center justify-center">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#f87171" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+            <circle cx="12" cy="12" r="9"/><path d="M7 12h10"/>
+          </svg>
+        </div>
+        <div>
+          <h3 className="font-bold text-zinc-100 text-base">პაკეტის გაუქმება?</h3>
+          <p className="text-xs text-zinc-500 mt-2 leading-relaxed">
+            <span className="text-zinc-300 font-medium">{targetUser.full_name ?? targetUser.username}</span>-ს პაკეტი გაუუქმდება.<br/>
+            ეს მოქმედება შეუქცევადია.
+          </p>
+        </div>
+      </div>
+      <div className="px-5 pb-5 flex gap-2">
+        <button onClick={() => setRevokeModal(false)} className="cursor-pointer flex-1 py-2.5 rounded-xl text-sm bg-zinc-800 hover:bg-zinc-700 text-zinc-300 transition-colors">გაუქმება</button>
+        <button
+          onClick={handleRevokePlan}
+          disabled={revokeLoading}
+          className="cursor-pointer flex-1 py-2.5 rounded-xl text-sm bg-red-600 hover:bg-red-500 disabled:opacity-40 disabled:cursor-not-allowed text-white font-medium transition-colors flex items-center justify-center gap-2"
+        >
+          {revokeLoading ? <><IconSpinner />გაუქმება…</> : "გაუქმება"}
+        </button>
+      </div>
+    </div>
+  </div>
+)}
 
     </div>
   );
