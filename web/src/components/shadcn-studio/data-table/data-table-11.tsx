@@ -153,12 +153,12 @@ const DataTableDemo = ({
                       </span>
 
                       {/* bookmark */}
-                                <MagneticSnap 
+                                {/* <MagneticSnap 
             channelId={channel.id}
             isFav={isFavorite(Number(channel.id))}
             markFavorite={markFavorite}
             unmarkFavorite={unmarkFavorite}
-          />
+          /> */}
                     </>
                   )}
                 </div>
