@@ -20,8 +20,9 @@ const App: React.FC = () => {
   const fetchUser = useAuthStore((state) => state.fetchUser);
 
   useEffect(() => {
-    fetchUser(); // Check session once on mount
+    fetchUser();
   }, [fetchUser]);
+
   useEffect(() => {
     const root = document.documentElement
     if (isDark) {
@@ -32,11 +33,14 @@ const App: React.FC = () => {
   }, [isDark])
 
   return (
-    <div className="app-shell min-h-screen relative flex flex-col">
-    <div className="absolute top-0 left-0 right-0 z-50 h-20 sm:relative sm:z-auto shrink-0 w-full overflow-hidden">
-  <Navbar />
-</div>
-      <div className="flex-1 relative overflow-hidden">
+    <div className="app-shell h-screen overflow-hidden flex flex-col">
+
+      <div className="shrink-0 w-full z-50">
+        <Navbar />
+      </div>
+
+
+      <div className="flex-1 min-h-0 overflow-hidden relative">
         <Routes>
           <Route path="/" element={<Home />} />
           <Route path="/TV" element={<Stream />} />
@@ -52,6 +56,7 @@ const App: React.FC = () => {
           <Route path="/tv-register" element={<TvPair />} />
         </Routes>
       </div>
+
     </div>
   )
 }
