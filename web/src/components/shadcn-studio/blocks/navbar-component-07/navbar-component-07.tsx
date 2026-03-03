@@ -1,5 +1,5 @@
 import { Link, NavLink } from "react-router-dom"
-import { BellIcon, Languages, Moon, PlayIcon, SearchIcon, Sun, TvMinimalPlay, User } from "lucide-react"
+import { BellIcon, Languages, Moon, PlayIcon, SearchIcon, Sun, TvMinimalPlay, User, ChevronDown, ChevronUp } from "lucide-react"
 import { useState, useEffect } from "react"
 import api from "@/lib/axios"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
@@ -9,6 +9,8 @@ import { Input } from "@/components/ui/input"
 import NotificationDropdown from "@/components/shadcn-studio/blocks/dropdown-notification"
 import ProfileDropdown from "@/components/shadcn-studio/blocks/dropdown-profile"
 import useUIStore from "@/store/ui-store"
+import { useIsMobile } from "@/hooks/useIsMobile"
+import { useOrientation } from "@/hooks/useOrientation"
 
 const translations = {
   Ge: {
@@ -40,6 +42,17 @@ const Navbar = () => {
   const language = useUIStore((state) => state.language)
   const tx = translations[language]
 
+  const isMobile = useIsMobile()
+  const isLandscape = useOrientation()
+  const isCollapsible = isMobile && isLandscape
+
+  const [expanded, setExpanded] = useState(false)
+
+  // Auto-collapse when switching to landscape
+  useEffect(() => {
+    if (isCollapsible) setExpanded(false)
+  }, [isCollapsible])
+
   const [user, setUser] = useState<{ avatar_url?: string | null; full_name?: string } | null>(null)
 
   useEffect(() => {
@@ -49,8 +62,37 @@ const Navbar = () => {
   }, [])
 
   return (
-    <header className="top-0 z-50 h-20 bg-background/90 backdrop-blur">
-      <div className="flex h-full w-full items-center justify-between gap-6 px-4 sm:px-6">
+    <header className={`
+      top-0 z-50 w-full relative overflow-visible
+      bg-white/70 dark:bg-white/5
+      border-b border-black/8 dark:border-white/10
+      backdrop-blur-md
+      transition-all duration-300 ease-in-out
+      ${isCollapsible ? (expanded ? 'h-20' : 'h-0') : 'h-20'}
+    `}>
+
+      {/* ── Pull tab — mobile landscape only ── */}
+      {isCollapsible && (
+        <button
+          onClick={() => setExpanded(v => !v)}
+          className="absolute bottom-0 left-1/2 -translate-x-1/2 translate-y-full z-30
+            w-16 h-5 flex items-center justify-center
+            bg-white/70 dark:bg-white/5
+            border border-t-0 border-black/8 dark:border-white/10
+            rounded-b-lg backdrop-blur-md
+            text-black/40 dark:text-white/40
+            hover:text-orange-400 transition-colors"
+        >
+          {expanded ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
+        </button>
+      )}
+
+      {/* ── Main content ── */}
+      <div className={`
+        flex h-20 w-full items-center justify-between gap-6 px-4 sm:px-6
+        transition-opacity duration-200
+        ${isCollapsible && !expanded ? 'opacity-0 pointer-events-none' : 'opacity-100'}
+      `}>
         <div className="flex items-center gap-4">
 
           <Link to="/" className="flex items-center gap-3">
@@ -59,25 +101,25 @@ const Navbar = () => {
             </div>
             <div className="leading-tight">
               <p className="text-lg font-semibold text-foreground">Mediabox</p>
-             <p className="w-[160px] text-xs text-muted-foreground">{tx.subtitle}</p>
+              <p className="w-[160px] text-xs text-muted-foreground">{tx.subtitle}</p>
             </div>
           </Link>
 
           <nav className="hidden items-center gap-4 md:flex">
             {tx.navLinks.map((link) => (
               <NavLink
-  key={link.to}
-  to={link.to}
-  className={({ isActive }) =>
-    `rounded-full px-4 py-2 text-sm font-medium transition text-center min-w-[90px] ${
-      isActive
-        ? "bg-primary/10 text-primary"
-        : "text-muted-foreground hover:text-foreground"
-    }`
-  }
->
-  {link.label}
-</NavLink>
+                key={link.to}
+                to={link.to}
+                className={({ isActive }) =>
+                  `rounded-full px-4 py-2 text-sm font-medium transition text-center min-w-[90px] ${
+                    isActive
+                      ? "bg-primary/10 text-primary"
+                      : "text-muted-foreground hover:text-foreground"
+                  }`
+                }
+              >
+                {link.label}
+              </NavLink>
             ))}
           </nav>
         </div>
@@ -123,7 +165,7 @@ const Navbar = () => {
             <span className="sr-only">Switch language</span>
           </Button>
 
-<Button asChild className="hidden w-[120px] justify-center gap-2 bg-primary text-primary-foreground shadow-lg sm:inline-flex">
+          <Button asChild className="hidden w-[120px] justify-center gap-2 bg-primary text-primary-foreground shadow-lg sm:inline-flex">
             <Link to="/Tv">
               <PlayIcon className="h-4 w-4" />
               {tx.openLive}

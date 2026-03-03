@@ -1,19 +1,36 @@
 import { useState } from "react";
 
-export function MagneticSnap() {
-  const [saved, setSaved] = useState(false);
+interface MagneticSnapProps {
+  channelId: string;
+  isFav: boolean;
+  markFavorite: (channelId: number) => void;
+  unmarkFavorite: (channelId: number) => void;
+}
+
+export function MagneticSnap({ channelId, isFav, markFavorite, unmarkFavorite }: MagneticSnapProps) {
   const [snap, setSnap] = useState(false);
 
-  const handleClick = () => {
+  const handleClick = (e: React.MouseEvent) => {
+    e.stopPropagation(); // Prevent row selection
+    
     setSnap(true);
-    setTimeout(() => { setSaved(s => !s); setSnap(false); }, 300);
+
+if (isFav) {
+  unmarkFavorite(Number(channelId));
+} else {
+  markFavorite(Number(channelId));
+}
+    
+    setTimeout(() => { 
+      setSnap(false); 
+    }, 300);
   };
 
   return (
     <button
       onClick={handleClick}
       className={`w-6 h-6 flex items-center justify-center rounded border transition-colors duration-300 cursor-pointer
-        ${saved
+        ${isFav
           ? "border-amber-500 bg-amber-500/10"
           : "border-zinc-700 bg-transparent hover:border-zinc-500"
         }`}
@@ -30,8 +47,8 @@ export function MagneticSnap() {
       >
         <path
           d="M5 3h14a1 1 0 011 1v17l-8-4-8 4V4a1 1 0 011-1z"
-          fill={saved ? "#f59e0b" : "none"}
-          stroke={saved ? "#f59e0b" : "#71717a"}
+          fill={isFav ? "#f59e0b" : "none"}
+          stroke={isFav ? "#f59e0b" : "#71717a"}
           strokeWidth="1.5"
           style={{ transition: "all 0.3s" }}
         />

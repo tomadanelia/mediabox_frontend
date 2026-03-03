@@ -19,6 +19,9 @@ type DataTableDemoProps = {
   onChannelSelect: (channel: Channel) => void
   selectedChannel?: Channel | null
   iconOnly?: boolean
+  markFavorite: (channelId: number) => void  // or ChannelId type
+  unmarkFavorite: (channelId: number) => void  // or ChannelId type
+  favlist: any[]  // You can define a more specific type like Channel[] or string[]
 }
 
 const DataTableDemo = ({
@@ -26,11 +29,16 @@ const DataTableDemo = ({
   onChannelSelect,
   selectedChannel,
   iconOnly = false,
+  markFavorite,
+  unmarkFavorite,
+  favlist
 }: DataTableDemoProps) => {
   const [query, setQuery] = useState('')
 
   const safeChannels: Channel[] = Array.isArray(filteredChannels) ? filteredChannels : []
-
+   const isFavorite = (channelId: number) => {
+    return favlist.some(fav => fav.id === channelId);
+  }
   const displayedChannels = useMemo(() => {
     const q = query.trim().toLowerCase()
     if (!q) return safeChannels
@@ -145,7 +153,12 @@ const DataTableDemo = ({
                       </span>
 
                       {/* bookmark */}
-                      <MagneticSnap />
+                                {/* <MagneticSnap 
+            channelId={channel.id}
+            isFav={isFavorite(Number(channel.id))}
+            markFavorite={markFavorite}
+            unmarkFavorite={unmarkFavorite}
+          /> */}
                     </>
                   )}
                 </div>
