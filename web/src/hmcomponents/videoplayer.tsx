@@ -336,15 +336,15 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
   // ─── Render ───────────────────────────────────────────────────────────────────
 
   return (
-    <div className="flex w-full relative justify-center px-4">
-      <div className="w-full flex flex-row max-w-6xl rounded-sm">
+    <div className="flex h-[calc(100vh-40px)] top-5 relative justify-center px-4">
+      <div className=" flex flex-row max-w-6xl rounded-sm">
         <div
           ref={containerRef}
           className="relative bg-black group rounded-[10px] overflow-hidden w-full"
           onMouseEnter={() => setShowControls(true)}
           onMouseLeave={() => { setShowControls(false); setShowVolumeSlider(false); }}
         >
-          <video ref={videoRef} className="w-full aspect-video" onClick={togglePlay} />
+          <video ref={videoRef} className="h-full aspect-video" onClick={togglePlay} />
 
           {/* Spinner */}
           {(isLoading || isBuffering) && (
