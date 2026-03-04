@@ -353,7 +353,7 @@ const handleRewind = useCallback((timestamp: number) => {
     {/* LEFT */}
 <div className={`
   lg:relative lg:w-1/5
-  absolute z-20 flex flex-col h-[calc(100vh-146px)] overflow bg-yel
+  absolute z-20 flex flex-col h-screen lg:h-[calc(100vh-128px)] overflow bg-yel
   transition-all duration-300 ease-in-out
   ${isMobile ? (leftExpanded ? 'w-2/5' : 'w-[65px]') : ''}
 `}>
@@ -361,7 +361,7 @@ const handleRewind = useCallback((timestamp: number) => {
   {isMobile && (
     <button
       onClick={() => setLeftExpanded(v => !v)}
-      className="absolute -right-3 top-1/2 -translate-y-1/2 z-30
+      className="absolute -right-3 top-[50vh] -translate-y-1/2 z-30
         w-6 h-10 flex items-center justify-center
         bg-white dark:bg-zinc-800
         border border-black/10 dark:border-white/10
@@ -387,8 +387,8 @@ const handleRewind = useCallback((timestamp: number) => {
 </div>
 
         {/* CENTER */}
-        <div className="w-[calc(100vw-130px)] lg:w-3/5 relative h-full flex flex-col justify- ">
-          <div className='flex flex-col'>
+<div className="w-[calc(100vw-130px)] lg:w-3/5 relative lg:h-full flex flex-col">
+  <div className='flex flex-col'>
             <VideoPlayer
               programs={programs}
               nextDayPrograms={nextDayPrograms}
@@ -422,6 +422,7 @@ const handleRewind = useCallback((timestamp: number) => {
               <div className='flex items-center h-full gap-2 z-2' />
             </div>
           </div> */}
+          {!isMobile && (
           <div className='w-full h-full flex justify-center items-center'>
             <div className="shrink-0 w-full flex items-center gap-3 px-1 py-2 overflow-x-auto justify-center mt-">
 
@@ -466,12 +467,13 @@ const handleRewind = useCallback((timestamp: number) => {
 
             </div>
           </div>
+          )}
         </div>
 
         {/* RIGHT */}
 <div className={`
   lg:relative lg:w-1/5
-  absolute right-0 z-10 flex flex-col h-full bg-yel
+  absolute right-0 z-10 flex flex-col h-screen lg:h-[calc(100vh-180px)] bg-yel
   transition-all duration-300 ease-in-out
   ${isMobile ? (rightExpanded ? 'w-2/5' : 'w-[65px]') : ''}
 `}>
@@ -561,7 +563,8 @@ const handleRewind = useCallback((timestamp: number) => {
       </div>
 
       {/* BOTTOM */}
-      <div>
+      {!isMobile&&(
+<div>
         <div className='flex-1 h-10'>
           <Timeline
             timeProgramm={programs}
@@ -572,6 +575,7 @@ const handleRewind = useCallback((timestamp: number) => {
           />
         </div>
       </div>
+      )}
     </div>
   );
 };
