@@ -13,7 +13,8 @@ const AuthVerify: React.FC = () => {
   const [canResend, setCanResend] = useState(false)
   const inputRefs = useRef<(HTMLInputElement | null)[]>([])
   const navigate= useNavigate();
-  const setUser = useAuthStore((state) => state.setUser)
+  const setUser = useAuthStore((state) => state.setUser);
+  const remember = useAuthStore(state => state.remember);
 
 
   // countdown timer
@@ -65,7 +66,8 @@ const AuthVerify: React.FC = () => {
     await api.get('/sanctum/csrf-cookie');
     const response = await api.post('/api/auth/web/verify', {
       login: loginIdentifier,
-      code: fullCode
+      code: fullCode,
+      remember:remember
     });
 
     localStorage.removeItem('pending_register_login');
