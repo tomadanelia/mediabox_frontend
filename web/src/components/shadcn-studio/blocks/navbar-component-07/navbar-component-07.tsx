@@ -63,7 +63,7 @@ const Navbar = () => {
 
   return (
     <header className={`
-      top-0 z-50 w-full relative overflow-visible
+      top-0 z-50 w-screen relative overflow-visible
       bg-white/70 dark:bg-white/5
       border-b border-black/8 dark:border-white/10
       backdrop-blur-md
