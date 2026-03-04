@@ -295,6 +295,9 @@ export default function AdminDashboard() {
   const [grantDays, setGrantDays] = useState("30");
   const [grantLoading, setGrantLoading] = useState(false);
   const [revokeLoading, setRevokeLoading] = useState(false);
+  const [userPlans, setUserPlans] = useState<any[]>([]);
+  const [userPlansLoading, setUserPlansLoading] = useState(false);
+  const [revokeTargetPlanId, setRevokeTargetPlanId] = useState<string>("");
   /* ── API ── */
   const fetchChannels = async () => {
     setChannelsLoading(true);
@@ -360,13 +363,14 @@ export default function AdminDashboard() {
 };
 
 const handleRevokePlan = async () => {
-  if (!targetUser) return;
+  if (!targetUser || !revokeTargetPlanId) return;
   setRevokeLoading(true);
   try {
     await api.post(`/api/admin/users/${targetUser.id}/revoke-plan`, {
-      plan_id: targetUser.account?.plan?.id ?? targetUser.account?.plan_id,
+      plan_id: revokeTargetPlanId,
     });
     setRevokeModal(false);
+    setRevokeTargetPlanId("");
     fetchUsers(usersPage);
   } catch (e: any) {
     alert(e.response?.data?.message || "Failed to revoke plan");
@@ -374,7 +378,21 @@ const handleRevokePlan = async () => {
     setRevokeLoading(false);
   }
 };
-
+   const openRevokeModal = async (u: any) => {
+  setTargetUser(u);
+  setUserPlans([]);
+  setRevokeTargetPlanId("");
+  setUserPlansLoading(true);
+  setRevokeModal(true);
+  try {
+    const res = await api.get(`/api/admin/users/${u.id}/plans`);
+    setUserPlans(res.data.plans ?? []);
+  } catch (e) {
+    setUserPlans([]);
+  } finally {
+    setUserPlansLoading(false);
+  }
+};
    const handleAddCategory = async () => {
     if (!newCat.name_en || !newCat.name_ka) return;
     try {
@@ -1291,15 +1309,13 @@ const isActive =
       <svg width="9" height="9" viewBox="0 0 10 10" fill="none"><path d="M5 1v8M1 5h8" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/></svg>
       მინიჭება
     </button>
-    {(u.account?.plan || u.account?.plan_name) && (
       <button
-        onClick={() => { setTargetUser(u); setRevokeModal(true); }}
+        onClick={() => openRevokeModal(u)}
         className="cursor-pointer inline-flex items-center gap-1 text-[0.6rem] font-medium bg-red-500/10 text-red-400 border border-red-500/20 px-2 py-1 rounded-md hover:bg-red-500/20 transition-colors"
       >
         <svg width="9" height="9" viewBox="0 0 10 10" fill="none"><path d="M2 5h6" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/></svg>
         გაუქმება
       </button>
-    )}
   </div>
 </td>
                             
@@ -1918,25 +1934,53 @@ const isActive =
 {revokeModal && targetUser && (
   <div className="fixed inset-0 bg-black/75 z-50 flex items-center justify-center p-4" onClick={e => { if (e.target === e.currentTarget) setRevokeModal(false); }}>
     <div className="bg-zinc-900 border border-zinc-800 rounded-2xl w-full max-w-sm shadow-2xl overflow-hidden">
-      <div className="p-6 flex flex-col items-center text-center gap-4">
-        <div className="w-14 h-14 rounded-2xl bg-red-500/10 border border-red-500/20 flex items-center justify-center">
-          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#f87171" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-            <circle cx="12" cy="12" r="9"/><path d="M7 12h10"/>
-          </svg>
-        </div>
+      <div className="p-5 border-b border-zinc-800 flex justify-between items-center">
         <div>
-          <h3 className="font-bold text-zinc-100 text-base">პაკეტის გაუქმება?</h3>
-          <p className="text-xs text-zinc-500 mt-2 leading-relaxed">
-            <span className="text-zinc-300 font-medium">{targetUser.full_name ?? targetUser.username}</span>-ს პაკეტი გაუუქმდება.<br/>
-            ეს მოქმედება შეუქცევადია.
+          <h3 className="font-bold text-zinc-100">პაკეტის გაუქმება</h3>
+          <p className="text-[0.65rem] text-zinc-500 mt-0.5 truncate">
+            {targetUser.full_name ?? targetUser.username} · {targetUser.email}
           </p>
         </div>
+        <button onClick={() => setRevokeModal(false)} className="cursor-pointer w-8 h-8 flex items-center justify-center rounded-lg text-zinc-500 hover:text-zinc-200 hover:bg-zinc-800 transition-colors">✕</button>
       </div>
+
+      <div className="p-4 space-y-2 max-h-64 overflow-y-auto">
+        {userPlansLoading ? (
+          <div className="flex items-center justify-center gap-2 py-8 text-zinc-500 text-xs">
+            <IconSpinner /><span>Loading…</span>
+          </div>
+        ) : userPlans.length === 0 ? (
+          <div className="flex items-center justify-center py-8 text-zinc-600 text-xs">პაკეტები ვერ მოიძებნა</div>
+        ) : (
+          userPlans.map(plan => (
+            <label
+              key={plan.id}
+              className={`flex items-center gap-3 p-3 rounded-xl border cursor-pointer transition-all ${revokeTargetPlanId === plan.id ? "border-red-500 bg-red-500/10" : "border-zinc-800 bg-zinc-800/30 hover:border-zinc-700 hover:bg-zinc-800/60"}`}
+            >
+              <input type="radio" name="revokePlan" value={plan.id} checked={revokeTargetPlanId === plan.id} onChange={() => setRevokeTargetPlanId(plan.id)} className="accent-red-500" />
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2">
+                  <p className="text-zinc-100 font-medium text-sm truncate">{plan.name_en}</p>
+                  {plan.status === "active"
+                    ? <span className="text-[0.55rem] bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 px-1.5 py-0.5 rounded-md font-medium shrink-0">აქტ.</span>
+                    : <span className="text-[0.55rem] bg-zinc-800 text-zinc-600 border border-zinc-700 px-1.5 py-0.5 rounded-md font-medium shrink-0">გასული</span>
+                  }
+                </div>
+                <p className="text-[0.6rem] text-zinc-500 truncate mt-0.5">
+                  {plan.name_ka} · {plan.price} ₾ · გასვლა: {plan.expires_at ? new Date(plan.expires_at).toLocaleDateString("ka-GE") : "—"}
+                </p>
+              </div>
+              {revokeTargetPlanId === plan.id && <span className="text-red-400 shrink-0"><IconCheck /></span>}
+            </label>
+          ))
+        )}
+      </div>
+
       <div className="px-5 pb-5 flex gap-2">
         <button onClick={() => setRevokeModal(false)} className="cursor-pointer flex-1 py-2.5 rounded-xl text-sm bg-zinc-800 hover:bg-zinc-700 text-zinc-300 transition-colors">გაუქმება</button>
         <button
           onClick={handleRevokePlan}
-          disabled={revokeLoading}
+          disabled={revokeLoading || !revokeTargetPlanId}
           className="cursor-pointer flex-1 py-2.5 rounded-xl text-sm bg-red-600 hover:bg-red-500 disabled:opacity-40 disabled:cursor-not-allowed text-white font-medium transition-colors flex items-center justify-center gap-2"
         >
           {revokeLoading ? <><IconSpinner />გაუქმება…</> : "გაუქმება"}
