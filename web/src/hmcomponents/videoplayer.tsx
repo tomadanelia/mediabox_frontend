@@ -2,7 +2,6 @@
 
 import React, { useState, useRef, useEffect, useMemo } from 'react';
 import Hls from 'hls.js';
-import BadgeLiveDemo from '@/components/shadcn-studio/badge/cusotm/badge-c01';
 import { CometRing } from './AnimatedComponents/CometBuffer';
 import {
   ArrowsPointingOutIcon,
@@ -49,9 +48,7 @@ type VideoPlayerProps = {
   currentChannelId?: string;
   rewindableDays?: number;
   channels?: Channel[];
-  /** Program list for the current day — used to compute timeline range */
   programs?: ProgramItem[];
-  /** First program(s) of next day — defines the right edge of the range */
   nextDayPrograms?: ProgramItem[];
 };
 
@@ -123,34 +120,28 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
   const watchingUnix   = getWatchingUnix(mode, liveNow, archiveTimestamp, currentTime);
   const behindLiveSecs = mode === 'archive' ? Math.max(0, liveNow - watchingUnix) : 0;
 
-  // ─── Program-based range ─────────────────────────────────────────────────────
-  // rangeStart: first program's START_TIME
-  // rangeEnd:   first program of next day's START_TIME, or last program's END_TIME
+  // ─── Program-based range ──────────────────────────────────────────────────────
+
   const { rangeStart, rangeEnd } = useMemo(() => {
     if (!programs.length) {
-      // Fallback: midnight-to-midnight of the watched day
       const d = new Date(watchingUnix * 1000);
       const midnight = new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime() / 1000;
       return { rangeStart: midnight, rangeEnd: midnight + 86400 };
     }
-    const sorted = [...programs].sort((a, b) => a.START_TIME - b.START_TIME);
-    const start  = sorted[0].START_TIME;
+    const sorted  = [...programs].sort((a, b) => a.START_TIME - b.START_TIME);
+    const start   = sorted[0].START_TIME;
     const lastEnd = sorted[sorted.length - 1].END_TIME;
-
     const nextSorted = [...nextDayPrograms].sort((a, b) => a.START_TIME - b.START_TIME);
     const end = nextSorted.length > 0 ? nextSorted[0].START_TIME : lastEnd;
-
     return { rangeStart: start, rangeEnd: end };
   }, [programs, nextDayPrograms, watchingUnix]);
 
   const rangeDuration = Math.max(rangeEnd - rangeStart, 1);
-
-  /** Where the current watching position sits in the program range (0–100) */
-  const progressPct = Math.min(100, Math.max(0,
+  const progressPct   = Math.min(100, Math.max(0,
     ((watchingUnix - rangeStart) / rangeDuration) * 100
   ));
 
-  // ── Load HLS ─────────────────────────────────────────────────────────────────
+  // ── Load HLS ──────────────────────────────────────────────────────────────────
 
   useEffect(() => {
     const video = videoRef.current;
@@ -162,25 +153,21 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
     setCurrentTime(0);
     setDuration(0);
 
+    const tryPlay = () =>
+      video.play()
+        .then(() => setIsPlaying(true))
+        .catch(() => {
+          video.muted = true;
+          setIsMuted(true);
+          video.play().then(() => setIsPlaying(true)).catch(() => {});
+        });
+
     if (Hls.isSupported()) {
       const hls = new Hls({ enableWorker: true, lowLatencyMode: true });
       hlsRef.current = hls;
       hls.loadSource(streamUrl);
       hls.attachMedia(video);
-
-      hls.on(Hls.Events.MANIFEST_PARSED, () => {
-        setIsBuffering(false);
-        video.play()
-          .then(() => setIsPlaying(true))
-          .catch(() => {
-            video.muted = true;
-            setIsMuted(true);
-            video.play()
-              .then(() => setIsPlaying(true))
-              .catch(() => {});
-          });
-      });
-
+      hls.on(Hls.Events.MANIFEST_PARSED, () => { setIsBuffering(false); tryPlay(); });
       hls.on(Hls.Events.ERROR, (_e, data) => {
         if (data.fatal) {
           switch (data.type) {
@@ -193,21 +180,20 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
     } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
       video.src = streamUrl;
       setIsBuffering(false);
-      video.play()
-        .then(() => setIsPlaying(true))
-        .catch(() => {
-          video.muted = true;
-          setIsMuted(true);
-          video.play()
-            .then(() => setIsPlaying(true))
-            .catch(() => {});
-        });
+      tryPlay();
     }
 
     return () => { hlsRef.current?.destroy(); hlsRef.current = null; };
   }, [streamUrl]);
 
-  // ── Video events ─────────────────────────────────────────────────────────────
+  // ── Video events ──────────────────────────────────────────────────────────────
+
+  const modeRef      = useRef(mode);
+  const archiveTsRef = useRef(archiveTimestamp);
+  const onRewindRef  = useRef(onRewind);
+  useEffect(() => { modeRef.current      = mode;             }, [mode]);
+  useEffect(() => { archiveTsRef.current = archiveTimestamp; }, [archiveTimestamp]);
+  useEffect(() => { onRewindRef.current  = onRewind;         }, [onRewind]);
 
   useEffect(() => {
     const video = videoRef.current;
@@ -219,14 +205,11 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
     const onPause          = () => setIsPlaying(false);
     const onWaiting        = () => setIsBuffering(true);
     const onPlaying        = () => setIsBuffering(false);
-
     const onEnded = () => {
       if (modeRef.current === 'archive' && archiveTsRef.current !== null) {
         const resumeAt = archiveTsRef.current + Math.floor(video.currentTime);
         const nowSec   = Math.floor(Date.now() / 1000);
-        if (nowSec - resumeAt >= 5) {
-          onRewindRef.current(resumeAt);
-        }
+        if (nowSec - resumeAt >= 5) onRewindRef.current(resumeAt);
       }
     };
 
@@ -251,14 +234,7 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
     };
   }, []);
 
-  const modeRef      = useRef(mode);
-  const archiveTsRef = useRef(archiveTimestamp);
-  const onRewindRef  = useRef(onRewind);
-  useEffect(() => { modeRef.current      = mode;             }, [mode]);
-  useEffect(() => { archiveTsRef.current = archiveTimestamp; }, [archiveTimestamp]);
-  useEffect(() => { onRewindRef.current  = onRewind;         }, [onRewind]);
-
-  // ── Fullscreen ───────────────────────────────────────────────────────────────
+  // ── Fullscreen ────────────────────────────────────────────────────────────────
 
   useEffect(() => {
     const onChange = () => setIsFullscreen(!!document.fullscreenElement);
@@ -274,20 +250,12 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
     video.paused ? video.play() : video.pause();
   };
 
-  /**
-   * Seek by clicking the progress bar.
-   * Maps click position to a unix timestamp within the PROGRAM range,
-   * so it stays on the correct day regardless of whether it's today or a past day.
-   */
   const handleSeek = (e: React.MouseEvent<HTMLDivElement>) => {
-    const rect    = e.currentTarget.getBoundingClientRect();
-    const pct     = Math.min(1, Math.max(0, (e.clientX - rect.left) / rect.width));
+    const rect     = e.currentTarget.getBoundingClientRect();
+    const pct      = Math.min(1, Math.max(0, (e.clientX - rect.left) / rect.width));
     const targetTs = Math.floor(rangeStart + pct * rangeDuration);
     const nowSec   = Math.floor(Date.now() / 1000);
-
-    // Don't seek into the future
     if (targetTs >= nowSec) return;
-
     onRewind(targetTs);
   };
 
@@ -315,15 +283,10 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
   const skip = (seconds: number) => {
     const target = watchingUnix + seconds;
     const nowSec = Math.floor(Date.now() / 1000);
-
     if (seconds < 0) {
       onRewind(Math.max(0, target));
     } else if (seconds > 0 && mode === 'archive') {
-      if (target >= nowSec) {
-        onGoLive();
-      } else {
-        onRewind(target);
-      }
+      target >= nowSec ? onGoLive() : onRewind(target);
     }
   };
 
@@ -336,160 +299,184 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
   // ─── Render ───────────────────────────────────────────────────────────────────
 
   return (
-    <div className="flex h-[calc(100vh-40px)] top-5 relative justify-center px-4">
-      <div className=" flex flex-row max-w-6xl rounded-sm">
-        <div
-          ref={containerRef}
-          className="relative bg-black group rounded-[10px] overflow-hidden w-full"
-          onMouseEnter={() => setShowControls(true)}
-          onMouseLeave={() => { setShowControls(false); setShowVolumeSlider(false); }}
-        >
-          <video ref={videoRef} className="h-full top-0 aspect-video" onClick={togglePlay} />
+    /*
+     * Outer shell: full available height, centers content.
+     * On fullscreen the browser takes over so these classes don't matter there.
+     */
+    <div className="flex items-center justify-center w-full h-full p-4">
 
-          {/* Spinner */}
-          {(isLoading || isBuffering) && (
-            <div className="absolute inset-0 flex items-center justify-center bg-black/50 z-40">
-              <div className='rounded-full'><CometRing /></div>
-            </div>
-          )}
+      {/*
+       * Aspect-ratio box — this is the key trick:
+       *   • aspect-video  → keeps 16/9
+       *   • w-full        → fills width first
+       *   • max-h-full    → but never taller than the parent (no vertical stretch)
+       *   • max-w-full    → never wider than the parent either
+       *
+       * Result:
+       *   – Wide screen  → width-constrained, height shrinks to match aspect
+       *   – Tall/narrow  → height-constrained (max-h-full kicks in),
+       *                    width shrinks to match aspect
+       *   – Never        → a pillar-box tall video or stretched pixels
+       */}
+      <div
+        ref={containerRef}
+        className={`
+          relative bg-black rounded-[10px] overflow-hidden
+          aspect-video w-full max-h-full
+          ${isFullscreen ? 'rounded-none' : ''}
+        `}
+        style={{ maxWidth: 'calc((100vh - 40px) * (16/9))' }}
+        onMouseEnter={() => setShowControls(true)}
+        onMouseLeave={() => { setShowControls(false); setShowVolumeSlider(false); }}
+      >
+        {/*
+         * The <video> fills the container completely.
+         * The container itself already has the correct 16:9 aspect — so the
+         * video never gets distorted; we don't need object-contain here.
+         */}
+        <video
+          ref={videoRef}
+          className="absolute inset-0 w-full h-full"
+          onClick={togglePlay}
+        />
 
-          {/* Archive: Go Live button */}
-          {mode === 'archive' && (
-            <div className="absolute bottom-12 right-6 flex items-center justify-center gap-3 z-20 pointer-events-none">
-              <button
-                onClick={onGoLive}
-                className="pointer-events-auto cursor-pointer flex items-center gap-1.5 bg-red-600 hover:bg-red-500 text-white text-xs font-semibold px-3 py-1.5 rounded-full transition-colors"
-              >
-                <Radio className="w-3.5 h-3.5" />
-                Go Live
-              </button>
-            </div>
-          )}
+        {/* Spinner */}
+        {(isLoading || isBuffering) && (
+          <div className="absolute inset-0 flex items-center justify-center bg-black/50 z-40">
+            <div className="rounded-full"><CometRing /></div>
+          </div>
+        )}
 
-          {/* Fullscreen channels */}
-          {isFullscreen && (
+        {/* Archive: Go Live button */}
+        {mode === 'archive' && (
+          <div className="absolute bottom-12 right-6 flex items-center justify-center gap-3 z-20 pointer-events-none">
             <button
-              onClick={() => setShowChannels(!showChannels)}
-              className={`absolute top-6 right-6 z-50 text-white hover:text-orange-400 transition-all cursor-pointer px-4 py-2 bg-black/60 backdrop-blur-sm rounded-lg border border-white/20 ${showControls ? 'opacity-100' : 'opacity-0'}`}
+              onClick={onGoLive}
+              className="pointer-events-auto cursor-pointer flex items-center gap-1.5 bg-red-600 hover:bg-red-500 text-white text-xs font-semibold px-3 py-1.5 rounded-full transition-colors"
             >
-              Channels
+              <Radio className="w-3.5 h-3.5" />
+              Go Live
             </button>
-          )}
-          {isFullscreen && showChannels && (
-            <FullScreenList
-              onClose={() => setShowChannels(false)}
-              onSelect={(ev) => {
-                onChannelSelect?.(ev.channel)
-                if (ev.mode === 'archive' && ev.timestamp !== undefined) {
-                  onRewind(ev.timestamp)
-                }
-              }}
-              currentChannelId={currentChannelId}
-              rewindableDays={rewindableDays}
-            />
-          )}
+          </div>
+        )}
 
-          {/* Controls overlay */}
-          <div className={`absolute bottom-0 left-0 right-0 h-full flex justify-center items-center bg-gradient-to-t from-black/90 via-black/50 to-transparent px-6 pb-4 pt-20 transition-opacity duration-300 ${showControls ? 'opacity-100' : 'opacity-0'}`}>
+        {/* Fullscreen channels toggle */}
+        {isFullscreen && (
+          <button
+            onClick={() => setShowChannels(!showChannels)}
+            className={`absolute top-6 right-6 z-50 text-white hover:text-orange-400 transition-all cursor-pointer px-4 py-2 bg-black/60 backdrop-blur-sm rounded-lg border border-white/20 ${showControls ? 'opacity-100' : 'opacity-0'}`}
+          >
+            Channels
+          </button>
+        )}
+        {isFullscreen && showChannels && (
+          <FullScreenList
+            onClose={() => setShowChannels(false)}
+            onSelect={(ev) => {
+              onChannelSelect?.(ev.channel);
+              if (ev.mode === 'archive' && ev.timestamp !== undefined) {
+                onRewind(ev.timestamp);
+              }
+            }}
+            currentChannelId={currentChannelId}
+            rewindableDays={rewindableDays}
+          />
+        )}
 
-            {/* Bottom bar */}
-            <div className={`absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/90 via-black/50 to-transparent px-6 pb-4 pt-20 transition-opacity duration-300 ${showControls ? 'opacity-100' : 'opacity-0'}`}>
-              <div className="flex items-center justify-center gap-4">
+        {/* Controls overlay */}
+        <div
+          className={`absolute inset-0 flex flex-col justify-between transition-opacity duration-300 ${showControls ? 'opacity-100' : 'opacity-0'}`}
+        >
+          {/* Center playback controls */}
+          <div className="absolute h-full w-full flex items-center justify-center gap-6">
+            <button onClick={() => skip(-10)} className="text-white hover:text-orange-400 transition-colors" title="Rewind 10s">
+              <RotateCcw className="w-7 h-7" />
+            </button>
+            <button onClick={togglePlay} className="text-white hover:text-orange-400 transition-colors">
+              {isPlaying ? <Pause className="w-10 h-10" /> : <Play className="w-10 h-10" />}
+            </button>
+            <button onClick={() => skip(10)} className="text-white hover:text-orange-400 transition-colors" title="Forward 10s">
+              <RotateCw className="w-7 h-7" />
+            </button>
+          </div>
 
-                {/* Volume + time */}
-                <div className="flex items-center gap-3 flex-shrink-0">
+          {/* Bottom bar */}
+          <div className="bg-gradient-to-t absolute w-full bottom-0 from-black/90 via-black/40 to-transparent px-4 pb-3 pt-10">
+            <div className="flex items-center gap-3">
+
+              {/* Volume */}
+              <div
+                className="relative flex-shrink-0"
+                onMouseEnter={() => setShowVolumeSlider(true)}
+                onMouseLeave={() => setShowVolumeSlider(false)}
+              >
+                <button onClick={toggleMute} className="text-white w-6 h-6 flex items-center justify-center">
+                  {isMuted
+                    ? <SpeakerXMarkIcon className="w-6 h-6 cursor-pointer" />
+                    : <SpeakerWaveIcon  className="w-6 h-6 cursor-pointer" />
+                  }
+                </button>
+                {showVolumeSlider && (
+                  <>
+                    <div className="absolute bottom-6 left-1/2 -translate-x-1/2 w-8 h-6" />
+                    <div className="absolute bottom-10 left-1/2 -translate-x-1/2">
+                      <div className="h-40 w-6 rounded-sm bg-gray-400/20 backdrop-blur-sm p-1 flex items-center justify-center">
+                        <div
+                          className="absolute w-2 bottom-4 bg-gradient-to-r from-orange-500 to-yellow-500 rounded-full"
+                          style={{ height: `${(isMuted ? 0 : volume) * 80}%` }}
+                        />
+                        <input
+                          type="range" min="0" max="1" step="0.01"
+                          value={isMuted ? 0 : volume}
+                          onChange={handleVolumeChange}
+                          className="w-36 h-2 absolute appearance-none rounded-full cursor-pointer border-none outline-none -rotate-90"
+                        />
+                      </div>
+                    </div>
+                  </>
+                )}
+              </div>
+
+              {/* Clock */}
+              <div className="flex items-center gap-1.5 text-white text-sm font-mono flex-shrink-0">
+                {mode === 'live' && (
+                  <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse shrink-0" />
+                )}
+                {formatClock(watchingUnix)}
+              </div>
+
+              {/* Progress bar */}
+              <div className="flex-1 h-6 flex items-center">
+                <div
+                  className="w-full h-1 bg-white/30 rounded-full cursor-pointer relative"
+                  onClick={handleSeek}
+                >
                   <div
-                    className='relative w-6 h-6'
-                    onMouseEnter={() => setShowVolumeSlider(true)}
-                    onMouseLeave={() => setShowVolumeSlider(false)}
-                  >
-                    <button onClick={toggleMute} className="text-white w-6 h-6">
-                      {isMuted
-                        ? <SpeakerXMarkIcon className="w-6 h-6 cursor-pointer" />
-                        : <SpeakerWaveIcon className="w-6 h-6 cursor-pointer" />
-                      }
-                    </button>
-                    {showVolumeSlider && (
-                      <>
-                        <div className='absolute bottom-6 left-1/2 -translate-x-1/2 w-8 h-6' />
-                        <div className='absolute bottom-10 left-1/2 -translate-x-1/2'>
-                          <div className='h-40 w-6 rounded-sm bg-gray-400/20 backdrop-blur-sm p-1 flex items-center justify-center'>
-                            <div
-                              className="absolute w-2 bottom-4 bg-gradient-to-r from-orange-500 to-yellow-500 rounded-full"
-                              style={{ height: `${(isMuted ? 0 : volume) * 80}%` }}
-                            />
-                            <input
-                              type="range" min="0" max="1" step="0.01"
-                              value={isMuted ? 0 : volume}
-                              onChange={handleVolumeChange}
-                              className="w-36 h-2 absolute appearance-none rounded-full cursor-pointer border-none outline-none -rotate-90"
-                            />
-                          </div>
-                        </div>
-                      </>
-                    )}
-                  </div>
-
-                  <div className="flex items-center gap-1.5 text-white text-sm font-mono">
-                    {mode === 'live' && (
-                      <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse shrink-0" />
-                    )}
-                    {formatClock(watchingUnix)}
-                  </div>
-                </div>
-
-                {/* ── Progress bar (program-range based) ── */}
-                <div className="flex-1 h-6 flex items-center">
+                    className={`h-full rounded-full ${mode === 'live' ? 'bg-red-500' : 'bg-gradient-to-r from-orange-500 to-yellow-500'}`}
+                    style={{ width: `${progressPct}%` }}
+                  />
                   <div
-                    className="w-full h-1 bg-white/30 rounded-full cursor-pointer relative"
-                    onClick={handleSeek}
-                  >
-                    <div
-                      className={`h-full rounded-full ${
-                        mode === 'live'
-                          ? 'bg-red-500'
-                          : 'bg-gradient-to-r from-orange-500 to-yellow-500'
-                      }`}
-                      style={{ width: `${progressPct}%` }}
-                    />
-                    <div
-                      className={`absolute top-1/2 -translate-y-1/2 -translate-x-1/2 w-3 h-3 rounded-full shadow ${
-                        mode === 'live' ? 'bg-red-400' : 'bg-orange-400'
-                      }`}
-                      style={{ left: `${progressPct}%` }}
-                    />
-                  </div>
-                </div>
-
-                {/* Right controls */}
-                <div className="flex items-center gap-3 flex-shrink-0">
-                  <button onClick={() => skip(-30)} className="text-white cursor-pointer" title="Rewind 30s">
-                    <Forward className="w-6 h-6" />
-                  </button>
-                  <button onClick={() => skip(30)} className="text-white cursor-pointer" title="Forward 30s">
-                    <PictureInPicture2 className="w-6 h-6" />
-                  </button>
-                  <button onMouseEnter={() => console.log("not implemented")} className="text-white cursor-default">
-                    <ScreenShare className="w-6 h-6 opacity-40" />
-                  </button>
-                  <button onClick={toggleFullscreen} className="text-white relative cursor-pointer">
-                    <ArrowsPointingOutIcon className="w-6 h-6" />
-                  </button>
+                    className={`absolute top-1/2 -translate-y-1/2 -translate-x-1/2 w-3 h-3 rounded-full shadow ${mode === 'live' ? 'bg-red-400' : 'bg-orange-400'}`}
+                    style={{ left: `${progressPct}%` }}
+                  />
                 </div>
               </div>
-            </div>
 
-            {/* Center playback controls */}
-            <div className="flex absolute items-center h-full top-0 justify-center gap-6">
-              <button onClick={() => skip(-10)} className="text-white hover:text-orange-400 transition-colors" title="Rewind 10s">
-                <RotateCcw className="w-7 h-7" />
-              </button>
-              <button onClick={togglePlay} className="text-white hover:text-orange-400 transition-colors">
-                {isPlaying ? <Pause className="w-10 h-10" /> : <Play className="w-10 h-10" />}
-              </button>
-              <button onClick={() => skip(10)} className="text-white hover:text-orange-400 transition-colors" title="Forward 10s">
-                <RotateCw className="w-7 h-7" />
-              </button>
+              {/* Right controls */}
+              <div className="flex items-center gap-3 flex-shrink-0">
+                <button onClick={() => skip(-30)} className="text-white cursor-pointer" title="Rewind 30s">
+                  <Forward className="w-5 h-5" />
+                </button>
+                <button onClick={() => skip(30)} className="text-white cursor-pointer" title="Forward 30s">
+                  <PictureInPicture2 className="w-5 h-5" />
+                </button>
+                <button className="text-white cursor-default">
+                  <ScreenShare className="w-5 h-5 opacity-40" />
+                </button>
+                <button onClick={toggleFullscreen} className="text-white cursor-pointer">
+                  <ArrowsPointingOutIcon className="w-5 h-5" />
+                </button>
+              </div>
             </div>
           </div>
         </div>

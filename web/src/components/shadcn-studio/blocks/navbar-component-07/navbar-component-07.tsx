@@ -5,7 +5,8 @@ import api from "@/lib/axios"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-
+import logo   from "@/assets/logot.svg"
+import logoDark  from "@/assets/logotDark.svg"
 import NotificationDropdown from "@/components/shadcn-studio/blocks/dropdown-notification"
 import ProfileDropdown from "@/components/shadcn-studio/blocks/dropdown-profile"
 import useUIStore from "@/store/ui-store"
@@ -41,7 +42,7 @@ const Navbar = () => {
   const setLanguage = useUIStore((state) => state.setLanguage)
   const language = useUIStore((state) => state.language)
   const tx = translations[language]
-
+  const currentLogo = isDark ?  logo :logoDark
   const isMobile = useIsMobile()
   const isLandscape = useOrientation()
   const isCollapsible = isMobile && isLandscape
@@ -96,14 +97,9 @@ const Navbar = () => {
         <div className="flex items-center gap-4">
 
           <Link to="/" className="flex items-center gap-3">
-            <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-gradient-to-br from-blue-500 to-fuchsia-500 text-white shadow-lg">
-              <TvMinimalPlay className="h-6 w-6" />
-            </div>
-            <div className="leading-tight">
-              <p className="text-lg font-semibold text-foreground">Mediabox</p>
-              <p className="w-[160px] text-xs text-muted-foreground">{tx.subtitle}</p>
-            </div>
-          </Link>
+  <img src={currentLogo} alt="Mediabox" className="h-9 w-auto" />
+</Link>
+
 
           <nav className="hidden items-center gap-4 md:flex">
             {tx.navLinks.map((link) => (

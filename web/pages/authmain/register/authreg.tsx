@@ -2,8 +2,8 @@ import React, { useState } from 'react'
 import { UserIcon, MailIcon, PhoneIcon, EyeIcon, EyeOffIcon } from 'lucide-react'
 import { Input } from '../../../src/components/ui/input'
 import { Button } from '../../../src/components/ui/button'
-import CheckboxDemo from '../../../src/components/shadcn-studio/checkbox/checkbox-01'
 import api from '@/lib/axios'
+import useAuthStore from '@/store/AuthStore'
 
 const IconInput = ({
   icon: Icon,
@@ -70,6 +70,8 @@ const AuthReg: React.FC = () => {
     password_confirmation: '',
   })
   const [loading, setLoading] = useState(false)
+  const setRemember = useAuthStore(state => state.setRemember);
+  const remember = useAuthStore(state => state.remember);
 
   const handleChange = (name: string, value: string) =>
     setForm(prev => ({ ...prev, [name]: value }))
@@ -214,7 +216,7 @@ if (data.code) {
 
           {/* Terms */}
           <div className="flex items-center gap-2 pt-1">
-            <CheckboxDemo />
+            <input className="mt-2 cursor-pointer" type='checkbox' checked={remember} onChange={e => setRemember(e.target.checked)} />
             <span className="text-sm text-muted-foreground">
               I agree to the{' '}
               <a href="#" className="font-semibold text-emerald-500 hover:text-emerald-400 transition-colors">

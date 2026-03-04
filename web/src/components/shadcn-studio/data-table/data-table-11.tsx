@@ -51,7 +51,7 @@ const DataTableDemo = ({
   }, [safeChannels, query])
 
   return (
-    <div className='flex-1 flex flex-col h-[calc(100vh-128px)] overflow-hidden gap-3'>
+    <div className='flex-1 flex flex-col h-screen lg:h-[calc(100vh-128px)] overflow-hidden gap-3'>
 
       {/* ── Search bar ── */}
       {!iconOnly && (

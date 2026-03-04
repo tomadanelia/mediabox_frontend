@@ -1,21 +1,14 @@
 import { create } from "zustand";
 import api from "../lib/axios"; 
-
-interface User {
-  id: string;
-  username: string;
-  full_name: string;
-  account: {
-    balance: string;
-  };
-}
+import type { User, Account } from "@/types/user"
 
 interface AuthStore {
   user: User | null;
   isAuthenticated: boolean;
   isLoading: boolean;
+  remember:boolean;
   
-  // Actions
+  setRemember: (value: boolean) => void;
   fetchUser: () => Promise<void>;
   logout: () => Promise<void>;
   setUser: (user: User | null) => void;
@@ -25,7 +18,8 @@ const useAuthStore = create<AuthStore>((set) => ({
   user: null,
   isAuthenticated: false,
   isLoading: true,
-
+  remember: false,
+  setRemember: (value: boolean) => set({ remember: value }),
   setUser: (user) => set({ 
     user, 
     isAuthenticated: !!user, 

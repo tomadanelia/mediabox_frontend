@@ -3,6 +3,8 @@ import { API_BASE_URL } from "../../src/config"
 import ChannelScroller from "./comps/ChannelScroller"
 import type { Channel } from "./comps/ChannelScroller"
 import useUIStore from "@/store/ui-store"
+import logo from "../../src/assets/logot.svg"
+import logoDark from "../../src/assets/logotDark.svg"
 
 const API_BASE = `${API_BASE_URL}/api`
 
@@ -10,15 +12,11 @@ const API_BASE = `${API_BASE_URL}/api`
 const HERO_TEXT = {
   En: {
     eyebrow:       "Your universe of live content",
-    wordmarkMedia: "media",
-    wordmarkBox:   "box",
     tagline:       "Stream thousands of live channels, on-demand series, and curated collections — all in one place.",
     pills:         ["Live TV", "Movies", "Series", "Sports", "News", "Kids"],
   },
   Ge: {
     eyebrow:       "შენი პირდაპირი კონტენტის სამყარო",
-    wordmarkMedia: "მედია",
-    wordmarkBox:   "ბოქსი",
     tagline:       "ათასობით პირდაპირი არხი, სერიალი და კურირებული კოლექცია — ყველაფერი ერთ ადგილას.",
     pills:         ["პირდაპირი", "ფილმები", "სერიალები", "სპორტი", "სიახლეები", "საბავშვო"],
   },
@@ -35,6 +33,8 @@ interface HeroBannerProps {
 const HeroBanner: React.FC<HeroBannerProps> = ({ heroImage, language }) => {
   const lang: Lang = language === "Ge" ? "Ge" : "En"
   const t = HERO_TEXT[lang]
+  const { isDark } = useUIStore()
+  const currentLogo = isDark ? logo : logoDark;
 
   return (
     <section
@@ -48,10 +48,7 @@ const HeroBanner: React.FC<HeroBannerProps> = ({ heroImage, language }) => {
       <div className="hero-content">
         <p className="hero-eyebrow">{t.eyebrow}</p>
 
-        <h1 className="hero-wordmark">
-          <span className="hero-wordmark-media">{t.wordmarkMedia}</span>
-          <span className="hero-wordmark-box">{t.wordmarkBox}</span>
-        </h1>
+        <img src={logo} alt="mediabox" className="hero-logo" />
 
         <p className="hero-tagline">{t.tagline}</p>
 
@@ -66,45 +63,45 @@ const HeroBanner: React.FC<HeroBannerProps> = ({ heroImage, language }) => {
 
       <style>{`
         .hero-banner {
-          --hero-accent: #e8a030;
-          --hero-accent2: #c0392b;
+          --hero-accent: #ef4444;
+          --hero-accent2: #b91c1c;
           --hero-h: 340px;
           position: relative;
           width: 100%;
           height: var(--hero-h);
           border-radius: 1.25rem;
           overflow: hidden;
-          background-color: #07080f;
+          background-color: #0c0203;
           background-image:
-            radial-gradient(ellipse 120% 80% at 70% 40%, #1a1060 0%, transparent 60%),
-            radial-gradient(ellipse 80% 60% at 20% 80%, #200a10 0%, transparent 55%),
-            radial-gradient(ellipse 60% 50% at 85% 85%, #0a1a2a 0%, transparent 50%);
+            radial-gradient(ellipse 130% 90% at 65% 30%, #3b0a0a 0%, transparent 55%),
+            radial-gradient(ellipse 90% 70% at 15% 85%, #1a0505 0%, transparent 55%),
+            radial-gradient(ellipse 70% 60% at 90% 80%, #200a0a 0%, transparent 50%);
           background-size: cover;
           background-position: center;
           box-shadow:
-            0 4px 6px -1px rgb(0 0 0 / 0.5),
-            0 20px 60px -10px rgb(0 0 0 / 0.6);
+            0 4px 6px -1px rgb(0 0 0 / 0.6),
+            0 20px 60px -10px rgba(185, 28, 28, 0.25);
         }
         .hero-grain {
           position: absolute; inset: 0;
           background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='1'/%3E%3C/svg%3E");
-          opacity: 0.04; pointer-events: none; mix-blend-mode: overlay;
+          opacity: 0.05; pointer-events: none; mix-blend-mode: overlay;
         }
         .hero-wash {
           position: absolute; inset: 0;
-          background: conic-gradient(from 200deg at 75% 45%, transparent 0deg, #1a0a3a18 60deg, transparent 120deg);
+          background: radial-gradient(ellipse 60% 50% at 80% 20%, rgba(239,68,68,0.12) 0%, transparent 70%);
           pointer-events: none;
         }
         .hero-vignette {
           position: absolute; inset: 0;
-          background: linear-gradient(to bottom, transparent 40%, rgba(7,8,15,0.55) 75%, rgba(7,8,15,0.92) 100%);
+          background: linear-gradient(to bottom, transparent 35%, rgba(12,2,3,0.6) 70%, rgba(12,2,3,0.95) 100%);
           pointer-events: none;
         }
         .hero-banner::before {
           content: "";
           position: absolute; top: 0; left: 5%; right: 5%; height: 1px;
-          background: linear-gradient(90deg, transparent, var(--hero-accent) 30%, var(--hero-accent2) 70%, transparent);
-          opacity: 0.6;
+          background: linear-gradient(90deg, transparent, var(--hero-accent) 40%, var(--hero-accent2) 60%, transparent);
+          opacity: 0.7;
         }
         .hero-content {
           position: absolute; inset: 0;
@@ -119,18 +116,19 @@ const HeroBanner: React.FC<HeroBannerProps> = ({ heroImage, language }) => {
           color: var(--hero-accent); opacity: 0.9; margin: 0;
           animation: hero-fadein 0.6s ease both;
         }
-        .hero-wordmark {
-          font-family: "Georgia", "Palatino Linotype", serif;
-          font-size: clamp(2.4rem, 5vw, 3.8rem);
-          font-weight: 700; letter-spacing: -0.03em; line-height: 1; margin: 0;
-          animation: hero-fadein 0.7s ease both; animation-delay: 0.08s;
+        .hero-logo {
+          height: clamp(2.8rem, 6vw, 4.4rem);
+          width: auto;
+          object-fit: contain;
+          object-position: left center;
+          filter: drop-shadow(0 2px 24px rgba(239,68,68,0.3)) brightness(1.05);
+          animation: hero-fadein 0.7s ease both;
+          animation-delay: 0.08s;
         }
-        .hero-wordmark-media { color: #f0ede6; }
-        .hero-wordmark-box  { color: var(--hero-accent); font-style: italic; }
         .hero-tagline {
           font-family: "Georgia", serif;
           font-size: clamp(0.78rem, 1.4vw, 0.92rem);
-          color: rgba(210, 205, 195, 0.8); max-width: 480px;
+          color: rgba(255, 220, 220, 0.7); max-width: 480px;
           line-height: 1.55; margin: 0;
           animation: hero-fadein 0.7s ease both; animation-delay: 0.16s;
         }
@@ -141,14 +139,22 @@ const HeroBanner: React.FC<HeroBannerProps> = ({ heroImage, language }) => {
         .hero-pill {
           font-family: "SF Mono", monospace;
           font-size: 0.6rem; letter-spacing: 0.12em; text-transform: uppercase;
-          padding: 0.25rem 0.7rem; border-radius: 999px;
-          border: 1px solid rgba(232, 160, 48, 0.28);
-          color: rgba(232, 160, 48, 0.75); background: rgba(232, 160, 48, 0.06);
-          backdrop-filter: blur(4px);
-          transition: border-color 0.2s, color 0.2s;
-          cursor: default; user-select: none;
+          padding: 0.28rem 0.75rem; border-radius: 999px;
+          border: 1px solid rgba(239, 68, 68, 0.3);
+          color: rgba(255, 200, 200, 0.8);
+          background: rgba(239, 68, 68, 0.08);
+          backdrop-filter: blur(6px);
+          transition: border-color 0.2s, color 0.2s, background 0.2s, transform 0.15s;
+          cursor: pointer;
+          user-select: none;
         }
-        .hero-pill:hover { border-color: rgba(232, 160, 48, 0.6); color: rgba(232, 160, 48, 1); }
+        .hero-pill:hover {
+          border-color: rgba(239, 68, 68, 0.7);
+          color: #ffffff;
+          background: rgba(239, 68, 68, 0.18);
+          transform: translateY(-1px);
+        }
+        .hero-pill:active { transform: translateY(0); }
         @keyframes hero-fadein {
           from { opacity: 0; transform: translateY(10px); }
           to   { opacity: 1; transform: translateY(0); }
@@ -166,7 +172,7 @@ const HeroBanner: React.FC<HeroBannerProps> = ({ heroImage, language }) => {
 // ─── Page ─────────────────────────────────────────────────────────────────────
 const Home: React.FC = () => {
   const [channels, setChannels] = useState<Channel[]>([])
-  const { isDark, language } = useUIStore()
+  const {  language } = useUIStore()
 
   useEffect(() => {
     ;(async () => {

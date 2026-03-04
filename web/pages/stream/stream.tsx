@@ -353,7 +353,7 @@ const handleRewind = useCallback((timestamp: number) => {
     {/* LEFT */}
 <div className={`
   lg:relative lg:w-1/5
-  absolute z-20 flex flex-col h-[calc(100vh-128px)] overflow bg-yel
+  absolute z-20 flex flex-col h-screen lg:h-[calc(100vh-128px)] overflow bg-yel
   transition-all duration-300 ease-in-out
   ${isMobile ? (leftExpanded ? 'w-2/5' : 'w-[65px]') : ''}
 `}>
@@ -361,7 +361,7 @@ const handleRewind = useCallback((timestamp: number) => {
   {isMobile && (
     <button
       onClick={() => setLeftExpanded(v => !v)}
-      className="absolute -right-3 top-[calc(50vh-40px)] -translate-y-1/2 z-30
+      className="absolute -right-3 top-[50vh] -translate-y-1/2 z-30
         w-6 h-10 flex items-center justify-center
         bg-white dark:bg-zinc-800
         border border-black/10 dark:border-white/10
@@ -473,7 +473,7 @@ const handleRewind = useCallback((timestamp: number) => {
         {/* RIGHT */}
 <div className={`
   lg:relative lg:w-1/5
-  absolute right-0 z-10 flex flex-col h-full bg-yel
+  absolute right-0 z-10 flex flex-col h-screen lg:h-[calc(100vh-180px)] bg-yel
   transition-all duration-300 ease-in-out
   ${isMobile ? (rightExpanded ? 'w-2/5' : 'w-[65px]') : ''}
 `}>

@@ -1855,7 +1855,7 @@ const isActive =
 ══════════════════════════════════════════ */}
 {grantModal && targetUser && (
   <div className="fixed inset-0 bg-black/75 z-50 flex items-center justify-center p-4" onClick={e => { if (e.target === e.currentTarget) setGrantModal(false); }}>
-    <div className="bg-zinc-900 border border-zinc-800 rounded-2xl w-full max-w-sm shadow-2xl overflow-hidden">
+   <div className="bg-zinc-900 border border-zinc-800 rounded-2xl w-full max-w-md shadow-2xl overflow-hidden">
       <div className="p-5 border-b border-zinc-800 flex justify-between items-center">
         <div>
           <h3 className="font-bold text-zinc-100">პაკეტის მინიჭება</h3>
@@ -1867,20 +1867,28 @@ const isActive =
       </div>
       <div className="p-5 space-y-4">
         <div>
-          <label className="text-[0.65rem] text-zinc-500 uppercase tracking-widest block mb-1.5">პაკეტი</label>
-          <select
-            value={grantPlanId}
-            onChange={e => setGrantPlanId(e.target.value)}
-            className="w-full bg-zinc-800 border border-zinc-700 p-2.5 rounded-xl text-sm text-zinc-200 focus:outline-none focus:border-zinc-500 transition-colors"
-          >
-            <option value="" disabled className="text-zinc-500">აირჩიეთ პაკეტი…</option>
-            {plans.filter(p => Boolean(p.is_active)).map(p => (
-              <option key={p.id} value={p.id} className="bg-zinc-800">
-                {p.name_en} — {p.price} ₾ / {p.duration_days}დ
-              </option>
-            ))}
-          </select>
+  <label className="text-[0.65rem] text-zinc-500 uppercase tracking-widest block mb-2">პაკეტი</label>
+  <div className="space-y-2 max-h-52 overflow-y-auto pr-0.5">
+    {plans.filter(p => Boolean(p.is_active)).map(plan => (
+      <label
+        key={plan.id}
+        className={`flex items-center gap-3 p-3 rounded-xl border cursor-pointer transition-all ${grantPlanId === plan.id ? "border-emerald-500 bg-emerald-500/10" : "border-zinc-800 bg-zinc-800/30 hover:border-zinc-700 hover:bg-zinc-800/60"}`}
+      >
+        <input type="radio" name="grantPlan" value={plan.id} checked={grantPlanId === plan.id} onChange={() => setGrantPlanId(plan.id)} className="accent-emerald-500" />
+        <div className="w-7 h-7 rounded-lg bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center shrink-0">
+          <svg width="13" height="13" viewBox="0 0 20 20" fill="none">
+            <path d="M10 2l2.4 4.8 5.3.8-3.85 3.75.91 5.3L10 14.1l-4.76 2.55.91-5.3L2.3 7.6l5.3-.8L10 2z" stroke="#34d399" strokeWidth="1.6" strokeLinejoin="round"/>
+          </svg>
         </div>
+        <div className="flex-1 min-w-0">
+          <p className="text-zinc-100 font-medium text-sm truncate">{plan.name_en}</p>
+          <p className="text-[0.6rem] text-zinc-500 truncate">{plan.name_ka} · {plan.price} ₾ · {plan.duration_days}დ</p>
+        </div>
+        {grantPlanId === plan.id && <span className="text-emerald-400 shrink-0"><IconCheck /></span>}
+      </label>
+    ))}
+  </div>
+</div>
         <div>
           <label className="text-[0.65rem] text-zinc-500 uppercase tracking-widest block mb-1.5">ხანგრძლივობა (დღეებში)</label>
           <input
