@@ -13,6 +13,8 @@ const AuthLoginVerify: React.FC = () => {
   const inputRefs = useRef<(HTMLInputElement | null)[]>([])
   const navigate= useNavigate();
   const setUser = useAuthStore((state) => state.setUser)
+  const remember = useAuthStore(state => state.remember);
+
 
 
   // countdown timer
@@ -70,7 +72,8 @@ const AuthLoginVerify: React.FC = () => {
   try {
     const response = await api.post('/api/auth/web/login/verify', {
       login: loginIdentifier,
-      code: fullCode
+      code: fullCode,
+      remember: remember
     });
     localStorage.removeItem('pending_login');
 

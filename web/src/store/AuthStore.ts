@@ -14,8 +14,9 @@ interface AuthStore {
   user: User | null;
   isAuthenticated: boolean;
   isLoading: boolean;
+  remember:boolean;
   
-  // Actions
+  setRemember: (value: boolean) => void;
   fetchUser: () => Promise<void>;
   logout: () => Promise<void>;
   setUser: (user: User | null) => void;
@@ -25,7 +26,8 @@ const useAuthStore = create<AuthStore>((set) => ({
   user: null,
   isAuthenticated: false,
   isLoading: true,
-
+  remember: false,
+  setRemember: (value: boolean) => set({ remember: value }),
   setUser: (user) => set({ 
     user, 
     isAuthenticated: !!user, 
