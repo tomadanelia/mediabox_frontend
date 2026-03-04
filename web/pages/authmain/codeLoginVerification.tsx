@@ -5,6 +5,30 @@ import { API_BASE_URL } from '../../src/config'
 import api from '../../src/lib/axios'
 import useAuthStore from '../../src/store/AuthStore'
 import { useNavigate } from 'react-router-dom'
+import useUIStore from '@/store/ui-store'
+const translations = {
+  En: {
+    topText: "Log in again",
+    email:"Email",
+    phone: "Mobile number",
+    remember: "remember me",
+    code: "type 6-digit code",
+    account_verification: "account verification",
+    resend_code:"resend code",
+    confirm:"confirm"
+  },
+  Ge: {
+    password_conf: "გაიმეორეთ პაროლი",
+    topText:"თავიდან შესვლა",
+    register: "რეგისტრაცია",
+    username: "მომხმარებლის სახელი",
+    fullname: "სახელი და გვარი",
+    code: "შეიყვანეთ 6-ნიშნა კოდი",
+    account_verification: "ანგარიშის დადასტურება",
+    resend_code: "ხელახლა გამოგზავნა",
+    confirm : "დადასტურება"
+  },
+} as const;
 const AuthLoginVerify: React.FC = () => {
   const [code, setCode] = useState<string[]>(['', '', '', '', '', ''])
   const [loading, setLoading] = useState(false)
@@ -14,7 +38,8 @@ const AuthLoginVerify: React.FC = () => {
   const navigate= useNavigate();
   const setUser = useAuthStore((state) => state.setUser)
   const remember = useAuthStore(state => state.remember);
-
+  const language = useUIStore((state) => state.language);
+  const tx= translations[language];
 
 
   // countdown timer
@@ -115,7 +140,7 @@ if (savedTvCode) {
 };
 
   return (
-    <div className="flex h-screen items-start justify-center p-3 pt-0 dark:bg-gray-950 bg-gray-50 overflow-hidden">
+    <div className="flex h-screen mt-5 items-start justify-center p-3 pt-0 dark:bg-gray-950 bg-gray-50 overflow-hidden">
       <div className="w-full max-w-100 rounded-xl border border-emerald-500/20 bg-white dark:bg-gray-900 shadow-xl shadow-emerald-500/5 px-8 py-10">
 
         {/* Header */}
@@ -124,10 +149,10 @@ if (savedTvCode) {
             <ShieldCheckIcon className="size-5 text-emerald-500" />
           </div>
           <h1 className="text-2xl font-bold tracking-tight dark:text-white text-gray-900">
-            ანგარიშის დადასტურება
+            {tx.account_verification}
           </h1>
           <p className="mt-1 text-sm text-muted-foreground">
-            შეიყვანეთ 6-ნიშნა კოდი
+            {tx.code}
           </p>
         </div>
 
@@ -165,11 +190,11 @@ if (savedTvCode) {
                 onClick={handleResend}
                 className="font-semibold text-emerald-500 hover:text-emerald-400 transition-colors cursor-pointer"
               >
-                ხელახლა გამოგზავნა
+                {tx.resend_code}
               </button>
             ) : (
               <span>
-                 კოდის ხელახლა გამოგზავნა{' '}
+                 {tx.resend_code}{' '}
                 <span className="font-semibold text-emerald-500">{resendTimer}s</span>
               </span>
             )}
@@ -190,7 +215,7 @@ if (savedTvCode) {
                 Verifying...
               </span>
             ) : (
-              'დადასტურება'
+              tx.confirm
             )}
           </button>
 
@@ -200,7 +225,7 @@ if (savedTvCode) {
               href="/authentication/login"
               className="font-semibold text-emerald-500 hover:text-emerald-400 transition-colors"
             >
-              თავიდან შესვლა
+              {tx.topText}
             </a>
           </p>
 
