@@ -344,7 +344,7 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
           onMouseEnter={() => setShowControls(true)}
           onMouseLeave={() => { setShowControls(false); setShowVolumeSlider(false); }}
         >
-          <video ref={videoRef} className="h-full aspect-video" onClick={togglePlay} />
+          <video ref={videoRef} className="h-full top-0 aspect-video" onClick={togglePlay} />
 
           {/* Spinner */}
           {(isLoading || isBuffering) && (
