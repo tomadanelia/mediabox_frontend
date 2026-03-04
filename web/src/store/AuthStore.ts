@@ -1,14 +1,6 @@
 import { create } from "zustand";
 import api from "../lib/axios"; 
-
-interface User {
-  id: string;
-  username: string;
-  full_name: string;
-  account: {
-    balance: string;
-  };
-}
+import type { User, Account } from "@/types/user"
 
 interface AuthStore {
   user: User | null;

@@ -1,26 +1,9 @@
 import { useState, useEffect, useCallback } from "react";
 import api from "../../src/lib/axios";
 import useUIStore from "@/store/ui-store";
+import useAuthStore from "@/store/AuthStore";
+import type { User, Account } from "@/types/user"
 
-/* ─── Types ─────────────────────────────────────────────── */
-interface Account {
-  id: string;
-  balance: number | string;
-  currency?: string;
-}
-interface User {
-  id: string;
-  username: string;
-  email: string;
-  phone: string | null;
-  full_name: string;
-  avatar_url: string | null;
-  role: string;
-  email_verified_at: string | null;
-  phone_verified_at: string | null;
-  created_at: string;
-  account?: Account | null;
-}
 interface WatchedChannel {
   id: number | string;
   name?: string;
@@ -158,17 +141,24 @@ export default function UserProfile() {
   const [copiedUsername, setCopiedUsername] = useState(false);
   const [copiedBalance, setCopiedBalance] = useState(false);
   const [deletingId, setDeletingId] = useState<number | string | null>(null);
+  const { user: storeUser, fetchUser, isLoading: authLoading } = useAuthStore();
 
-  /* ── Fetch user ── */
   useEffect(() => {
-    api.get("/api/user")
-      .then((res) => setUser(res.data))
-      .catch(() => console.error("Not logged in or failed to fetch user"))
-      .finally(() => setLoading(false));
-    api.get("/api/plans/my")
-      .then((res) => setActivePlans(Array.isArray(res.data) ? res.data : []))
-      .catch(() => setActivePlans([]));
-  }, []);
+  if (!storeUser) fetchUser();
+}, []);
+
+useEffect(() => {
+  if (storeUser) {
+    setUser(storeUser);
+    setLoading(false);
+  }
+}, [storeUser]);
+
+useEffect(() => {
+  api.get("/api/plans/my")
+    .then((res) => setActivePlans(Array.isArray(res.data) ? res.data : []))
+    .catch(() => setActivePlans([]));
+}, []);
 
   /* ── Fetch watch history ── */
   useEffect(() => {
@@ -230,13 +220,13 @@ export default function UserProfile() {
       )
     : "—";
   const balance = user?.account?.balance ?? null;
-  const currency = user?.account?.currency ?? "GEL";
+  const currency =  "GEL";
 
   const emailVerified = !!user?.email_verified_at;
   const phoneVerified = !!user?.phone_verified_at;
   const anyVerified = emailVerified || phoneVerified;
 
-  if (loading) {
+  if (authLoading) {
     return (
       <div className={`flex min-h-screen items-center justify-center ${c.page}`}>
         <div className={`w-7 h-7 rounded-full border-2 ${c.spinnerColor} animate-spin`} />
@@ -271,7 +261,7 @@ export default function UserProfile() {
             {user?.avatar_url ? (
               <img
                 src={user.avatar_url}
-                alt={user.full_name}
+                alt={user.full_name||undefined}
                 className={`w-14 h-14 rounded-2xl object-cover ring-2 ${c.avatarRing}`}
               />
             ) : (
