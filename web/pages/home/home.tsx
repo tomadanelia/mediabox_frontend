@@ -5,7 +5,7 @@ import type { Channel } from "./comps/ChannelScroller"
 import useUIStore from "@/store/ui-store"
 import logo from "../../src/assets/logot.svg"
 import logoDark from "../../src/assets/logotDark.svg"
-
+import api from "@/lib/axios"
 const API_BASE = `${API_BASE_URL}/api`
 
 // ─── Translations ─────────────────────────────────────────────────────────────
@@ -177,13 +177,8 @@ const Home: React.FC = () => {
   useEffect(() => {
     ;(async () => {
       try {
-        const res = await fetch(`${API_BASE}/channels`, {
-          headers: { Accept: "application/json" },
-          cache: "no-store",
-        })
-        if (!res.ok) throw new Error(`HTTP ${res.status}`)
-        const data = await res.json()
-        setChannels(data.channels)
+        const res = await api.get("/api/channels")
+        setChannels(Array.isArray(res.data.channels) ? res.data.channels : [])
       } catch (e) {
         console.error("[Home/fetchChannels]", e)
       }

@@ -5,7 +5,7 @@ import { Lock } from "lucide-react"
 import api from "../../../src/lib/axios"
 import useUIStore from "@/store/ui-store"
 export type Channel = {
-  id: number
+  id: string
   name: string
   genre: string
   viewers?: string
@@ -131,7 +131,7 @@ async function grabThumbnail(streamUrl: string): Promise<GrabResult> {
 // "locked" = 403 subscription required
 type ThumbState = undefined | "loading" | "failed" | "locked" | string
 
-async function fetchThumb(channelId: number): Promise<ThumbState> {
+async function fetchThumb(channelId: string): Promise<ThumbState> {
   try {
     const res = await api.get(`/api/channels/${channelId}/stream`)
     const streamUrl = extractStreamUrl(res.data)
