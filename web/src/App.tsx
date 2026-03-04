@@ -14,7 +14,8 @@ import AdminDashboard from "../pages/admin/admin"
 import type { UIStore } from "./store/ui-store"
 import useAuthStore from "./store/AuthStore"
 import TvPair from "../pages/authmain/tv/TvPair"
-
+import ResetPassword from "../pages/authmain/password/reset"
+import ForgotPassword from "../pages/authmain/password/forgot"
 const App: React.FC = () => {
   const isDark = useUIStore((state: UIStore) => state.isDark)
   const fetchUser = useAuthStore((state) => state.fetchUser);
@@ -52,6 +53,8 @@ const App: React.FC = () => {
             <Route path="register" element={<AuthReg/>} />
             <Route path="verify" element={<AuthVerify />} />
             <Route path="login-verify" element={<AuthLoginVerify />} />
+            <Route path="reset-password" element={<ResetPassword/>} />
+            <Route path="forgot-password" element={<ForgotPassword/>} />
           </Route>
           <Route path="/tv-register" element={<TvPair />} />
         </Routes>
