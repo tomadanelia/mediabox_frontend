@@ -6,8 +6,10 @@ type Language = "En" | "Ge"
 export type UIStore = {
   isDark: boolean
   language: Language
+  selectedChannelId: number
   toggleDarkMode: () => void
   setLanguage: (language: Language) => void
+  setSelectedChannelId: (chId:number) => void
 }
 
 const useUIStore = create<UIStore>()(
@@ -15,8 +17,10 @@ const useUIStore = create<UIStore>()(
     (set) => ({
       isDark: true,
       language: "Ge",
+      selectedChannelId: 22,
       toggleDarkMode: () => set((state) => ({ isDark: !state.isDark })),
       setLanguage: (language) => set({ language }),
+      setSelectedChannelId: (selectedChannelId) => set({selectedChannelId}),
     }),
     {
       name: "ui-storage",

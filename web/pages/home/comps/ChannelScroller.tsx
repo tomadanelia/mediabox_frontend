@@ -3,9 +3,9 @@ import { Link } from "react-router-dom"
 import Hls from "hls.js"
 import { Lock } from "lucide-react"
 import api from "../../../src/lib/axios"
-
+import useUIStore from "@/store/ui-store"
 export type Channel = {
-  id: string
+  id: number
   name: string
   genre: string
   viewers?: string
@@ -131,7 +131,7 @@ async function grabThumbnail(streamUrl: string): Promise<GrabResult> {
 // "locked" = 403 subscription required
 type ThumbState = undefined | "loading" | "failed" | "locked" | string
 
-async function fetchThumb(channelId: string): Promise<ThumbState> {
+async function fetchThumb(channelId: number): Promise<ThumbState> {
   try {
     const res = await api.get(`/api/channels/${channelId}/stream`)
     const streamUrl = extractStreamUrl(res.data)
@@ -159,6 +159,7 @@ const ChannelCard: React.FC<{ channel: Channel; index: number }> = ({ channel, i
   const cardRef = useRef<HTMLAnchorElement>(null)
   const [thumb, setThumb] = useState<ThumbState>(undefined)
   const started = useRef(false)
+  const { setSelectedChannelId } = useUIStore();
 
   useEffect(() => {
     const el = cardRef.current
@@ -187,6 +188,9 @@ const ChannelCard: React.FC<{ channel: Channel; index: number }> = ({ channel, i
   return (
     <Link
       ref={cardRef}
+      onClick={() => {
+    if (!isLocked) setSelectedChannelId(channel.id);
+  }}
       to={isLocked ? "/packets" : `/TV`}
       className={`group relative w-64 shrink-0 overflow-hidden rounded-xl border shadow-lg transition
         ${isLocked
