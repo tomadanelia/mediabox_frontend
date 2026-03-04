@@ -128,14 +128,7 @@ const Navbar = () => {
             <Input placeholder={tx.search} className="pl-9" />
           </div>
 
-          <NotificationDropdown
-            trigger={
-              <Button variant="outline" size="icon" className="relative">
-                <BellIcon />
-                <span className="absolute -top-0.5 -right-0.5 h-2 w-2 rounded-full bg-destructive" />
-              </Button>
-            }
-          />
+         
 
           <Button
             variant="outline"
