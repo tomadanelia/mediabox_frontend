@@ -148,9 +148,9 @@ const DataTableDemo = ({
                       </div>
 
                       {/* category chip */}
-                      <span className='hidden sm:inline-flex text-[10px] px-2 py-0.5 rounded-full bg-black/5 dark:bg-white/8 text-black/40 dark:text-white/35 font-medium truncate max-w-[70px]'>
+                      {/* <span className='hidden sm:inline-flex text-[10px] px-2 py-0.5 rounded-full bg-black/5 dark:bg-white/8 text-black/40 dark:text-white/35 font-medium truncate max-w-[70px]'>
                         {channel.category}
-                      </span>
+                      </span> */}
 
                       {/* bookmark */}
                                 {/* <MagneticSnap 
