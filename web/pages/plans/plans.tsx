@@ -151,7 +151,7 @@ const Plans = () => {
       const data: PurchaseResult = res.data
       showToast(data.message || tx.activeBadge, 'success')
       if (data.remaining_balance !== undefined && user) {
-        setUser({ ...user, account: { balance: String(data.remaining_balance) } })
+        setUser({ ...user, account: { ...user.account!, balance: String(data.remaining_balance) } })
       }
       const activeRes = await api.get('/api/plans/my')
       setActivePlans(activeRes.data)
