@@ -4,7 +4,8 @@ import { Input } from '../../../src/components/ui/input'
 import { Button } from '../../../src/components/ui/button'
 import api from '@/lib/axios'
 import useAuthStore from '@/store/AuthStore'
-
+import useUIStore from '@/store/ui-store'
+import {Link}  from "react-router-dom"
 const IconInput = ({
   icon: Icon,
   placeholder,
@@ -56,7 +57,36 @@ const PasswordInput = ({
     </div>
   )
 }
-
+const translations = {
+  En: {
+    welcome: "Welcome back",
+    topText: "Log in",
+    email:"Email",
+    phone: "Mobile number",
+    forgot: "forget the password?",
+    remember: "remember me",
+    already_account:"already have an account?",
+    register: "Sign Up",
+    password: "password",
+    password_conf: "confirm password",
+    fullname:"full name",
+    username: "username"
+  },
+  Ge: {
+    password_conf: "გაიმეორეთ პაროლი",
+    password: "პაროლი",
+    welcome: "Welcome back",
+    topText:"შესვლა",
+    email:"ელ-ფოსტა",
+    phone: "მობილური",
+    forgot: "დაგავიწყდა პაროლი?",
+    remember: "დამიმახსოვრე",
+    already_account:"უკვე გაქვთ ანგარიში?",
+    register: "რეგისტრაცია",
+    username: "მომხმარებლის სახელი",
+    fullname: "სახელი და გვარი"
+  },
+} as const;
 type ContactMethod = 'email' | 'phone'
 
 const AuthReg: React.FC = () => {
@@ -72,7 +102,8 @@ const AuthReg: React.FC = () => {
   const [loading, setLoading] = useState(false)
   const setRemember = useAuthStore(state => state.setRemember);
   const remember = useAuthStore(state => state.remember);
-
+  const language = useUIStore((state) => state.language);
+  const tx= translations[language];
   const handleChange = (name: string, value: string) =>
     setForm(prev => ({ ...prev, [name]: value }))
 
@@ -116,13 +147,13 @@ if (data.code) {
 }
 
   return (
-<div className="flex min-h-svh items-start justify-center p-3 pt-0 dark:bg-gray-950 bg-gray-50 overflow-hidden">
+<div className="flex min-h-svh items-start justify-center mt-3 p-3 pt-0 dark:bg-gray-950 bg-gray-50 overflow-hidden">
         <div className="w-full max-w-100  rounded-xl border border-emerald-500/20 bg-white dark:bg-gray-900 shadow-xl shadow-emerald-500/5 px-8 py-10">
 
         {/* Header */}
         <div className="mb-8 text-center">
           <h1 className="text-2xl font-bold tracking-tight dark:text-white text-gray-900">
-            რეგისტრაცია
+            {tx.register}
           </h1>
         </div>
 
@@ -139,7 +170,7 @@ if (data.code) {
                   : 'bg-transparent dark:text-gray-400 text-gray-500 hover:bg-emerald-500/5'
               }`}
             >
-              ელ-ფოსტა
+              {tx.email}
             </button>
             <button
               type="button"
@@ -150,14 +181,14 @@ if (data.code) {
                   : 'bg-transparent dark:text-gray-400 text-gray-500 hover:bg-emerald-500/5'
               }`}
             >
-              მობილური
+              {tx.phone}
             </button>
           </div>
 
           {/* Full Name */}
           <IconInput
             icon={UserIcon}
-            placeholder="სახელი და გვარი"
+            placeholder={tx.fullname}
             autoComplete="name"
 
             name="full_name"
@@ -168,7 +199,7 @@ if (data.code) {
           {/* Username */}
           <IconInput
             icon={UserIcon}
-            placeholder="მომხმარებლის სახელი"
+            placeholder={tx.username}
             autoComplete="username"
 
             name="username"
@@ -180,7 +211,7 @@ if (data.code) {
           {contactMethod === 'email' ? (
             <IconInput
               icon={MailIcon}
-              placeholder="ელ-ფოსტა"
+              placeholder={tx.email}
               autoComplete="email"
               type="email"
               name="email"
@@ -190,7 +221,7 @@ if (data.code) {
           ) : (
             <IconInput
               icon={PhoneIcon}
-              placeholder="ტელეფონის ნომერი"
+              placeholder={tx.phone}
               type="tel"
               name="phone"
               value={form.phone}
@@ -200,7 +231,7 @@ if (data.code) {
 
           {/* Password */}
           <PasswordInput
-            placeholder="პაროლი"
+            placeholder={tx.password}
             name="password"
             value={form.password}
             onChange={e => handleChange('password', e.target.value)}
@@ -208,7 +239,7 @@ if (data.code) {
 
           {/* Confirm Password */}
           <PasswordInput
-            placeholder="გაიმეორეთ პაროლი"
+            placeholder={tx.password_conf}
             name="password_confirmation"
             value={form.password_confirmation}
             onChange={e => handleChange('password_confirmation', e.target.value)}
@@ -250,10 +281,10 @@ if (data.code) {
 
           {/* Sign in link */}
           <p className="text-center text-sm text-muted-foreground pt-1">
-            უკვე დარეგისტრირებული ხართ?{' '}
-            <a href="/authentication/login" className="font-semibold text-emerald-500 hover:text-emerald-400 transition-colors">
-              შესვლა
-            </a>
+            {tx.already_account}{' '}
+            <Link to="/authentication/login" className="font-semibold text-emerald-500 hover:text-emerald-400 transition-colors">
+              {tx.topText}
+            </Link>
           </p>
 
         </form>

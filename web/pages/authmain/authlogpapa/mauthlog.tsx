@@ -7,7 +7,32 @@ import { API_BASE_URL } from '@/config'
 import api from '@/lib/axios'
 import { set } from 'date-fns'
 import useAuthStore from '@/store/AuthStore'
-
+import { Navigate ,Link} from 'react-router-dom'
+import useUIStore from '@/store/ui-store'
+const translations = {
+  En: {
+    welcome: "Welcome back",
+    topText: "Log in your account",
+    email:"Email",
+    phone: "Mobile number",
+    forgot: "forget the password?",
+    remember: "remember me",
+    no_account:"do not have an account?",
+    register: "Sign Up",
+    password: "password",
+  },
+  Ge: {
+    password: "პაროლი",
+    welcome: "Welcome back",
+    topText:"შედით თქვენს ანგარიშში",
+    email:"ელ-ფოსტა",
+    phone: "მობილური",
+    forgot: "დაგავიწყდა პაროლი?",
+    remember: "დამიმახსოვრე",
+    no_account:"არ გაქვთ ანგარიში?",
+    register: "დარეგისტრირდით",
+  },
+} as const;
 const IconInput = ({
   icon: Icon,
   placeholder,
@@ -37,6 +62,7 @@ const PasswordInput = ({
   ...props
 }: { placeholder?: string; autoComplete?: string } & React.ComponentProps<typeof Input>) => {
   const [visible, setVisible] = useState(false)
+
   return (
     <div className="relative w-full">
       <Input
@@ -71,10 +97,12 @@ const AuthLog: React.FC = () => {
   const [loading, setLoading] = useState(false)
   const setRemember = useAuthStore(state => state.setRemember);
   const remember = useAuthStore(state => state.remember);
+  const language = useUIStore((state) => state.language);
+  const tx= translations[language];
+
   const handleChange = (name: string, value: string) =>
     setForm(prev => ({ ...prev, [name]: value }))
 
-  // clear login field when switching method so stale value doesn't get sent
   const handleMethodSwitch = (method: LoginMethod) => {
     setLoginMethod(method)
     setForm(prev => ({ ...prev, login: '' }))
@@ -120,10 +148,10 @@ if (err.response?.status === 403 && err.response?.data?.message === 'Account not
         <div className="mb-8 text-center">
         
           <h1 className="text-2xl font-bold tracking-tight dark:text-white text-gray-900">
-            Welcome back
+            {tx.welcome}
           </h1>
           <p className="mt-1 text-sm text-muted-foreground">
-            შედით თქვენს ანგარიშში
+            {tx.topText}
           </p>
         </div>
 
@@ -140,7 +168,7 @@ if (err.response?.status === 403 && err.response?.data?.message === 'Account not
                   : 'bg-transparent dark:text-gray-400 text-gray-500 hover:bg-emerald-500/5'
               }`}
             >
-              ელ-ფოსტა
+            {tx.email}
             </button>
             <button
               type="button"
@@ -151,7 +179,7 @@ if (err.response?.status === 403 && err.response?.data?.message === 'Account not
                   : 'bg-transparent dark:text-gray-400 text-gray-500 hover:bg-emerald-500/5'
               }`}
             >
-              მობილური
+              {tx.phone}
             </button>
           </div>
 
@@ -159,7 +187,7 @@ if (err.response?.status === 403 && err.response?.data?.message === 'Account not
           {loginMethod === 'email' ? (
             <IconInput
               icon={MailIcon}
-              placeholder="ელ-ფოსტა"
+              placeholder={tx.email}
               type="email"
               name="login"
               autoComplete="email"
@@ -169,7 +197,7 @@ if (err.response?.status === 403 && err.response?.data?.message === 'Account not
           ) : (
             <IconInput
               icon={PhoneIcon}
-              placeholder="მობილური ნომერი"
+              placeholder={tx.phone}
               type="tel"
               name="login"
               autoComplete="tel"
@@ -180,7 +208,7 @@ if (err.response?.status === 403 && err.response?.data?.message === 'Account not
 
           {/* Password */}
           <PasswordInput
-            placeholder="პაროლი"
+            placeholder={tx.password}
             name="password"
             value={form.password}
             onChange={e => handleChange('password', e.target.value)}
@@ -190,14 +218,14 @@ if (err.response?.status === 403 && err.response?.data?.message === 'Account not
           <div className="flex items-center justify-between pt-1">
             <div className="flex items-center gap-2">
               <input className="mt-2 cursor-pointer" type='checkbox' checked={remember} onChange={e => setRemember(e.target.checked)} />
-              <span className="text-sm text-muted-foreground">დამიმახსოვრე</span>
+              <span className="text-sm text-muted-foreground">{tx.remember}</span>
             </div>
-            <a
-              href="#"
+            <Link
+              to="/authentication/forgot-password"
               className="text-sm font-semibold text-emerald-500 hover:text-emerald-400 transition-colors"
             >
-              დაგავიწყდა პაროლი?
-            </a>
+             {tx.forgot}
+            </Link>
           </div>
 
           {/* Submit */}
@@ -229,10 +257,10 @@ if (err.response?.status === 403 && err.response?.data?.message === 'Account not
 
           {/* Sign up link */}
           <p className="text-center text-sm text-muted-foreground pt-1">
-            არ გაქვთ ანგარიში?{' '}
-            <a href="/authentication/register" className="font-semibold text-emerald-500 hover:text-emerald-400 transition-colors">
-              დარეგისტრირდით
-            </a>
+            {tx.no_account}{' '}
+            <Link to="/authentication/register" className="font-semibold text-emerald-500 hover:text-emerald-400 transition-colors">
+              {tx.register}
+            </Link>
           </p>
 
         </form>
