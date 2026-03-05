@@ -12,6 +12,8 @@ import ProfileDropdown from "@/components/shadcn-studio/blocks/dropdown-profile"
 import useUIStore from "@/store/ui-store"
 import { useIsMobile } from "@/hooks/useIsMobile"
 import { useOrientation } from "@/hooks/useOrientation"
+import mobdark from "@/assets/MobileDark.svg"
+import mobligt from "@/assets/MobileLight.svg"
 
 const translations = {
   Ge: {
@@ -46,7 +48,7 @@ const Navbar = () => {
   const isMobile = useIsMobile()
   const isLandscape = useOrientation()
   const isCollapsible = isMobile && isLandscape
-
+  const MobileCurrent = isDark? mobligt : mobdark
   const [expanded, setExpanded] = useState(false)
 
   // Auto-collapse when switching to landscape
@@ -97,7 +99,9 @@ const Navbar = () => {
         <div className="flex items-center gap-4">
 
           <Link to="/" className="flex items-center gap-3">
-  <img src={currentLogo} alt="Mediabox" className="h-9 w-auto" />
+          {!isMobile&&( <img src={currentLogo} alt="Mediabox" className="h-9 w-auto" />)}
+          {isMobile&&( <img src={MobileCurrent} alt="Mediabox" className="h-9 w-auto" />)}
+ 
 </Link>
 
 
