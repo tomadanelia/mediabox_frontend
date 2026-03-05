@@ -123,9 +123,9 @@ const ChannelGrid: React.FC<ChannelGridProps> = ({
   categories, selectedCategory, onToggleCategory,
 }) => {
   const [search, setSearch] = useState('');
-  const favoriteIds = new Set(favorites.map((f: any) => f.id ?? f.channel_id ?? f));
+  const favoriteIds = new Set((Array.isArray(favorites) ? favorites : []).map((f: any) => f.id ?? f.channel_id ?? f));
 
-  const filtered = channels.filter(ch => {
+  const filtered = (Array.isArray(channels) ? channels : []).filter(ch => {
     const matchesCat = selectedCategory === '' || ch.category === selectedCategory;
     const matchesSearch = ch.name.toLowerCase().includes(search.toLowerCase());
     return matchesCat && matchesSearch;
@@ -159,7 +159,7 @@ const ChannelGrid: React.FC<ChannelGridProps> = ({
         >
           ყველა
         </button>
-        {categories.map(cat => (
+        {(Array.isArray(categories) ? categories : []).map(cat => (
           <button
             key={cat.id}
             onClick={() => onToggleCategory(cat.name_en)}
@@ -777,7 +777,7 @@ export const Stream: React.FC = () => {
                   <IconButtonDemo />
                 </div>
                 <div className="flex gap-2">
-                  {categories.map((category) => {
+                  {(Array.isArray(categories) ? categories : []).map((category) => {
                     const isSelected = selectedCategory === category.name_en
                     return (
                       <div
