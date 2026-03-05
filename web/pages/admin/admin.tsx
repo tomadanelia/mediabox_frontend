@@ -298,6 +298,17 @@ export default function AdminDashboard() {
   const [userPlans, setUserPlans] = useState<any[]>([]);
   const [userPlansLoading, setUserPlansLoading] = useState(false);
   const [revokeTargetPlanId, setRevokeTargetPlanId] = useState<string>("");
+
+  /* ══════════════════════════════════════
+     SETTINGS / LOGO state
+  ══════════════════════════════════════ */
+  const [logoLight, setLogoLight] = useState("");
+  const [logoDark, setLogoDark] = useState("");
+  const [logoSaving, setLogoSaving] = useState(false);
+  const [logoSaveSuccess, setLogoSaveSuccess] = useState(false);
+  const [logoSaveError, setLogoSaveError] = useState<string | null>(null);
+  const [logoActiveTab, setLogoActiveTab] = useState<"light" | "dark">("light");
+
   /* ── API ── */
   const fetchChannels = async () => {
     setChannelsLoading(true);
@@ -602,6 +613,26 @@ const handleDeletePlan = async () => {
     finally { setBulkAssigningPlan(false); }
   };
 
+  /* ── Logo API ── */
+  const handleSaveLogos = async () => {
+    if (!logoLight.trim() && !logoDark.trim()) return;
+    setLogoSaving(true);
+    setLogoSaveSuccess(false);
+    setLogoSaveError(null);
+    try {
+      await api.post("/api/admin/logos", {
+        logo_light: logoLight,
+        logo_dark: logoDark,
+      });
+      setLogoSaveSuccess(true);
+      setTimeout(() => setLogoSaveSuccess(false), 3000);
+    } catch (e: any) {
+      setLogoSaveError(e.response?.data?.message || "შენახვა ვერ მოხერხდა");
+    } finally {
+      setLogoSaving(false);
+    }
+  };
+
 useEffect(() => {
   fetchCategories();
   fetchPlans();
@@ -668,7 +699,7 @@ useEffect(() => {
       <aside className="hidden lg:flex flex-col w-56 bg-zinc-900 border-r border-zinc-800 shrink-0">
         <div className="p-5 border-b border-zinc-800 font-bold text-zinc-100 tracking-tight">ადმინ პანელი</div>
         <nav className="p-3 flex flex-col gap-1">
-      {(["Overview",  "Categories","Category-Channels", "Plans", "Plan-Channels", "Users"] as AdminSection[]).map(s => (
+      {(["Overview",  "Categories","Category-Channels", "Plans", "Plan-Channels", "Users", "Settings"] as AdminSection[]).map(s => (
         <button
           key={s}
           onClick={() => setSection(s)}
@@ -688,7 +719,7 @@ useEffect(() => {
 
         {/* HEADER */}
         <header className="px-5 py-3 border-b border-zinc-800 bg-zinc-950/80 backdrop-blur flex justify-between items-center sticky top-0 z-10">
-          <h2 className="font-semibold text-zinc-100">{section}</h2>
+          <h2 className="font-semibold text-zinc-100">{adminSectionLabels[section] ?? section}</h2>
 
           {/* Channels section bulk */}
           {selectedChannelUuids.length > 0 && section === "Category-Channels" && (
@@ -1371,6 +1402,191 @@ const isActive =
                   </button>
                 </div>
               )}
+            </div>
+          )}
+
+          {/* ══════════════════════════════════════════
+              SETTINGS SECTION
+          ══════════════════════════════════════════ */}
+          {section === "Settings" && (
+            <div className="space-y-6 max-w-7xl">
+              <div>
+                <h1 className="text-base font-bold text-zinc-100">პარამეტრები</h1>
+                <p className="text-xs text-zinc-500 mt-1">აპლიკაციის კონფიგურაცია და მორგება</p>
+              </div>
+
+              {/* ── Logo Management Card ── */}
+              <div className="bg-zinc-900 border border-zinc-800 rounded-2xl overflow-hidden">
+                {/* Card header */}
+                <div className="px-6 py-4 border-b border-zinc-800 flex items-center gap-3">
+                  <div className="w-9 h-9 rounded-xl bg-violet-500/10 border border-violet-500/20 flex items-center justify-center shrink-0 text-violet-400">
+                    <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
+                      <rect x="3" y="3" width="18" height="18" rx="3"/>
+                      <path d="M3 9h18M9 21V9"/>
+                    </svg>
+                  </div>
+                  <div>
+                    <h3 className="text-sm font-semibold text-zinc-100">ლოგოს მართვა</h3>
+                    <p className="text-[0.65rem] text-zinc-500 mt-0.5">SVG ლოგო ნათელი და მუქი თემისთვის</p>
+                  </div>
+                </div>
+
+                <div className="p-6 space-y-5">
+                  {/* Tab switcher */}
+                  <div className="flex items-center gap-1 bg-zinc-800/60 border border-zinc-700/50 rounded-xl p-1 w-fit">
+                    <button
+                      onClick={() => setLogoActiveTab("light")}
+                      className={`cursor-pointer flex items-center gap-2 px-4 py-1.5 rounded-lg text-xs font-medium transition-all ${
+                        logoActiveTab === "light"
+                          ? "bg-zinc-100 text-zinc-900 shadow-sm"
+                          : "text-zinc-500 hover:text-zinc-300"
+                      }`}
+                    >
+                      <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round">
+                        <circle cx="8" cy="8" r="3"/>
+                        <path d="M8 1v2M8 13v2M1 8h2M13 8h2M3.05 3.05l1.41 1.41M11.54 11.54l1.41 1.41M3.05 12.95l1.41-1.41M11.54 4.46l1.41-1.41"/>
+                      </svg>
+                      ნათელი თემა
+                    </button>
+                    <button
+                      onClick={() => setLogoActiveTab("dark")}
+                      className={`cursor-pointer flex items-center gap-2 px-4 py-1.5 rounded-lg text-xs font-medium transition-all ${
+                        logoActiveTab === "dark"
+                          ? "bg-zinc-800 text-zinc-100 shadow-sm border border-zinc-700"
+                          : "text-zinc-500 hover:text-zinc-300"
+                      }`}
+                    >
+                      <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round">
+                        <path d="M14 10.5A6 6 0 015.5 2a7 7 0 108.5 8.5z"/>
+                      </svg>
+                      მუქი თემა
+                    </button>
+                  </div>
+
+                  {/* Light logo panel */}
+                  {logoActiveTab === "light" && (
+                    <div className="space-y-3">
+                      <div className="flex items-start gap-4">
+                        {/* Preview */}
+                        <div className="w-28 h-20 rounded-xl bg-white border border-zinc-200 flex items-center justify-center shrink-0 overflow-hidden">
+                          {logoLight.trim() ? (
+                            <div
+                              className="w-20 h-14 flex items-center justify-center"
+                              dangerouslySetInnerHTML={{ __html: logoLight }}
+                            />
+                          ) : (
+                            <div className="flex flex-col items-center gap-1.5 text-zinc-300">
+                              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round">
+                                <rect x="3" y="3" width="18" height="18" rx="3"/>
+                                <path d="M3 9h18M9 21V9"/>
+                              </svg>
+                              <span className="text-[0.6rem]">Preview</span>
+                            </div>
+                          )}
+                        </div>
+                        {/* Textarea */}
+                        <div className="flex-1 space-y-2">
+                          <label className="text-[0.65rem] text-zinc-500 uppercase tracking-widest block">
+                            SVG კოდი — ნათელი ფონისთვის
+                          </label>
+                          <textarea
+                            rows={5}
+                            value={logoLight}
+                            onChange={e => setLogoLight(e.target.value)}
+                            placeholder={'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 40">\n  <!-- your light logo SVG here -->\n</svg>'}
+                            className="w-full bg-zinc-800 border border-zinc-700 rounded-xl p-3 text-xs font-mono text-zinc-300 placeholder-zinc-600 focus:outline-none focus:border-zinc-500 transition-colors resize-none leading-relaxed"
+                            spellCheck={false}
+                          />
+                          <p className="text-[0.6rem] text-zinc-600">ჩასვით SVG კოდი პირდაპირ — გამოიყენება ნათელ ინტერფეისზე</p>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Dark logo panel */}
+                  {logoActiveTab === "dark" && (
+                    <div className="space-y-3">
+                      <div className="flex items-start gap-4">
+                        {/* Preview */}
+                        <div className="w-28 h-20 rounded-xl bg-zinc-950 border border-zinc-700 flex items-center justify-center shrink-0 overflow-hidden">
+                          {logoDark.trim() ? (
+                            <div
+                              className="w-20 h-14 flex items-center justify-center"
+                              dangerouslySetInnerHTML={{ __html: logoDark }}
+                            />
+                          ) : (
+                            <div className="flex flex-col items-center gap-1.5 text-zinc-700">
+                              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round">
+                                <rect x="3" y="3" width="18" height="18" rx="3"/>
+                                <path d="M3 9h18M9 21V9"/>
+                              </svg>
+                              <span className="text-[0.6rem]">Preview</span>
+                            </div>
+                          )}
+                        </div>
+                        {/* Textarea */}
+                        <div className="flex-1 space-y-2">
+                          <label className="text-[0.65rem] text-zinc-500 uppercase tracking-widest block">
+                            SVG კოდი — მუქი ფონისთვის
+                          </label>
+                          <textarea
+                            rows={5}
+                            value={logoDark}
+                            onChange={e => setLogoDark(e.target.value)}
+                            placeholder={'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 40">\n  <!-- your dark logo SVG here -->\n</svg>'}
+                            className="w-full bg-zinc-800 border border-zinc-700 rounded-xl p-3 text-xs font-mono text-zinc-300 placeholder-zinc-600 focus:outline-none focus:border-zinc-500 transition-colors resize-none leading-relaxed"
+                            spellCheck={false}
+                          />
+                          <p className="text-[0.6rem] text-zinc-600">ჩასვით SVG ტეგი პირდაპირ — გამოყენება მუქ ინტერფეისზე</p>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Both fields summary + save */}
+                  <div className="pt-1 border-t border-zinc-800 flex items-center justify-between gap-4">
+                    {/* Status indicators */}
+                    <div className="flex items-center gap-3">
+                      <div className="flex items-center gap-1.5">
+                        <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${logoLight.trim() ? "bg-emerald-400" : "bg-zinc-700"}`} />
+                        <span className="text-[0.6rem] text-zinc-600">ნათელი</span>
+                      </div>
+                      <div className="flex items-center gap-1.5">
+                        <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${logoDark.trim() ? "bg-emerald-400" : "bg-zinc-700"}`} />
+                        <span className="text-[0.6rem] text-zinc-600">მუქი</span>
+                      </div>
+                    </div>
+
+                    {/* Feedback + button */}
+                    <div className="flex items-center gap-3">
+                      {logoSaveSuccess && (
+                        <span className="flex items-center gap-1.5 text-xs text-emerald-400">
+                          <IconCheck /> შენახულია
+                        </span>
+                      )}
+                      {logoSaveError && (
+                        <span className="text-xs text-red-400 truncate max-w-40">{logoSaveError}</span>
+                      )}
+                      <button
+                        onClick={handleSaveLogos}
+                        disabled={logoSaving || (!logoLight.trim() && !logoDark.trim())}
+                        className="cursor-pointer flex items-center gap-2 bg-violet-600 hover:bg-violet-500 disabled:opacity-40 disabled:cursor-not-allowed text-white text-xs font-medium px-5 py-2 rounded-xl transition-colors"
+                      >
+                        {logoSaving ? (
+                          <><IconSpinner />შენახვა…</>
+                        ) : (
+                          <>
+                            <svg width="12" height="12" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                              <path d="M2 8v3a1 1 0 001 1h8a1 1 0 001-1V8M7 2v7M4.5 5.5L7 2l2.5 3.5"/>
+                            </svg>
+                            შენახვა
+                          </>
+                        )}
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
             </div>
           )}
 
