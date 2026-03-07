@@ -104,8 +104,8 @@ const TvPair = () => {
             {/* TV icon */}
             <div className="flex justify-center mb-8">
               <div className="relative">
-                <div className="w-20 h-20 rounded-3xl bg-gradient-to-b from-white/10 to-white/5 border border-white/10 flex items-center justify-center shadow-[0_0_40px_rgba(59,130,246,0.15)]">
-                  <svg className="w-10 h-10 text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <div className="w-16 h-16 rounded-3xl bg-gradient-to-b from-white/10 to-white/5 border border-white/10 flex items-center justify-center shadow-[0_0_40px_rgba(59,130,246,0.15)]">
+                  <svg className="w-8 h-8 text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
                   </svg>
                 </div>
@@ -117,7 +117,7 @@ const TvPair = () => {
             {/* Greeting */}
             <div className="text-center mb-8">
               <p className="text-xs uppercase tracking-[0.2em] text-blue-400/70 font-semibold mb-2">დაწყვილება ტელევიზორთან</p>
-              <h1 className="text-3xl font-bold text-white mb-2">
+              <h1 className="text-2xl font-bold text-white mb-2">
                 გამარჯობა, {user?.full_name?.split(' ')[0] || user?.username}
               </h1>
               <p className="text-gray-400 text-sm leading-relaxed">
@@ -129,8 +129,8 @@ const TvPair = () => {
             {/* Code display */}
             <div className="rounded-2xl border border-white/8 bg-white/[0.04] px-6 py-4 mb-6 flex items-center justify-between">
               <div>
-                <p className="text-xs text-gray-500 uppercase tracking-widest mb-1">პეარინგ კოდი</p>
-                <p className="text-2xl font-bold tracking-[0.15em] text-white font-mono">{code}</p>
+                <p className="text-xs text-gray-500 uppercase tracking-widest mb-1">დაწყვილების  კოდი</p>
+                <p className="text-xl font-bold tracking-[0.15em] text-white font-mono">{code}</p>
               </div>
               <div className="w-10 h-10 rounded-full bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center flex-shrink-0">
                 <svg className="w-5 h-5 text-emerald-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -143,7 +143,7 @@ const TvPair = () => {
             <button
               onClick={handleConfirm}
               disabled={pairing}
-              className="w-full py-4 rounded-2xl cursor-pointer bg-blue-500 hover:bg-blue-400 disabled:bg-blue-500/50 text-white font-bold text-base tracking-wide transition-all duration-200 active:scale-[0.98] shadow-[0_4px_24px_rgba(59,130,246,0.35)] hover:shadow-[0_4px_32px_rgba(59,130,246,0.5)] flex items-center justify-center gap-3"
+              className="w-full py-3 rounded-2xl cursor-pointer bg-blue-500 hover:bg-blue-400 disabled:bg-blue-500/50 text-white font-bold text-sm tracking-wide transition-all duration-200 active:scale-[0.98] shadow-[0_4px_24px_rgba(59,130,246,0.35)] hover:shadow-[0_4px_32px_rgba(59,130,246,0.5)] flex items-center justify-center gap-3"
             >
               {pairing ? (
                 <>
@@ -152,7 +152,7 @@ const TvPair = () => {
                 </>
               ) : (
                 <>
-                  <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <svg className="w-5 h-5 ml-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
                   </svg>
                   ტელევიზორთან დაწყვილების დადასტურება
@@ -171,15 +171,15 @@ const TvPair = () => {
           <div className="text-center">
             {/* Animated checkmark */}
             <div className="relative flex justify-center mb-8">
-              <div className="w-24 h-24 rounded-full bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center">
-                <svg className="w-12 h-12 text-emerald-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <div className="w-20 h-20 rounded-full bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center">
+                <svg className="w-10 h-10 text-emerald-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M5 13l4 4L19 7" />
                 </svg>
               </div>
               <div className="absolute inset-0 rounded-full border-2 border-emerald-400/20 animate-ping" style={{ animationDuration: '1.5s' }} />
             </div>
 
-            <h1 className="text-3xl font-bold text-white mb-3">დაწყვილება დასრულდა!</h1>
+            <h1 className="text-2xl font-bold text-white mb-3">დაწყვილება დასრულდა!</h1>
             <p className="text-gray-400 text-sm leading-relaxed mb-8">
               თქვენი ტელევიზორი წარმატებით დაუკავშირდა<br />
               თქვენს ანგარიშს. შეგიძლიათ დაბრუნდეთ აპლიკაციაში.
@@ -191,7 +191,11 @@ const TvPair = () => {
               </svg>
               შეგიძლიათ დახუროთ ეს ჩანართი
             </div>
+            <Link to="/"className="mt-4 inline-flex items-center gap-2 px-5 py-3 rounded-xl bg-white/8 hover:bg-white/12 border border-white/10 hover:border-white/20 text-white text-sm font-semibold transition-all duration-200 active:scale-[0.98]">
+                 მთავარ გვერდზე დაბრუნება
+            </Link>
           </div>
+          
         )}
 
         {/* ── Error ── */}
