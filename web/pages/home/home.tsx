@@ -3,8 +3,6 @@ import { API_BASE_URL } from "../../src/config"
 import ChannelScroller from "./comps/ChannelScroller"
 import type { Channel } from "./comps/ChannelScroller"
 import useUIStore from "@/store/ui-store"
-import logo from "../../src/assets/logot.svg"
-import logoDark from "../../src/assets/logotDark.svg"
 import api from "@/lib/axios"
 const API_BASE = `${API_BASE_URL}/api`
 
@@ -24,7 +22,6 @@ const HERO_TEXT = {
 
 type Lang = keyof typeof HERO_TEXT
 
-// ─── Hero Banner ──────────────────────────────────────────────────────────────
 interface HeroBannerProps {
   heroImage?: string | null
   language: string
@@ -34,8 +31,9 @@ const HeroBanner: React.FC<HeroBannerProps> = ({ heroImage, language }) => {
   const lang: Lang = language === "Ge" ? "Ge" : "En"
   const t = HERO_TEXT[lang]
   const { isDark } = useUIStore()
-  const currentLogo = isDark ? logo : logoDark;
-
+  const currentLogo = useUIStore((state) => state.logoLight)
+  console.log("HeroBanner logo:", currentLogo) // ← does it show the full URL or local path?
+  
   return (
     <section
       className="hero-banner"
@@ -48,7 +46,13 @@ const HeroBanner: React.FC<HeroBannerProps> = ({ heroImage, language }) => {
       <div className="hero-content">
         <p className="hero-eyebrow">{t.eyebrow}</p>
 
-        <img src={logo} alt="mediabox" className="hero-logo" />
+        <img src={currentLogo} onError={(e) => {
+    e.currentTarget.style.visibility = "hidden"
+    e.currentTarget.onerror = null
+  }}
+  onLoad={(e) => {
+    e.currentTarget.style.visibility = "visible"
+  }} alt="mediabox" className="hero-logo" />
 
         <p className="hero-tagline">{t.tagline}</p>
 

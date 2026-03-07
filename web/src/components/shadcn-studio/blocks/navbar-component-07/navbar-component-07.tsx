@@ -1,13 +1,10 @@
 import { Link, NavLink } from "react-router-dom"
-import { BellIcon, Languages, Moon, PlayIcon, SearchIcon, Sun, TvMinimalPlay, User, ChevronDown, ChevronUp } from "lucide-react"
+import {Languages, Moon, PlayIcon, SearchIcon, Sun, User, ChevronDown, ChevronUp } from "lucide-react"
 import { useState, useEffect } from "react"
 import api from "@/lib/axios"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import logo   from "@/assets/logot.svg"
-import logoDark  from "@/assets/logotDark.svg"
-import NotificationDropdown from "@/components/shadcn-studio/blocks/dropdown-notification"
 import ProfileDropdown from "@/components/shadcn-studio/blocks/dropdown-profile"
 import useUIStore from "@/store/ui-store"
 import { useIsMobile } from "@/hooks/useIsMobile"
@@ -44,7 +41,7 @@ const Navbar = () => {
   const setLanguage = useUIStore((state) => state.setLanguage)
   const language = useUIStore((state) => state.language)
   const tx = translations[language]
-  const currentLogo = isDark ?  logo :logoDark
+  const currentLogo = useUIStore((state) => state.isDark ? state.logoLight : state.logoDark)
   const isMobile = useIsMobile()
   const isLandscape = useOrientation()
   const isCollapsible = isMobile && isLandscape
@@ -99,7 +96,13 @@ const Navbar = () => {
         <div className="flex items-center gap-4">
 
           <Link to="/" className="flex items-center gap-3">
-          {!isMobile&&( <img src={currentLogo} alt="Mediabox" className="h-9 w-auto" />)}
+          {!isMobile&&( <img src={currentLogo} alt="Mediabox" onError={(e) => {
+    e.currentTarget.style.visibility = "hidden"
+    e.currentTarget.onerror = null
+  }}
+  onLoad={(e) => {
+    e.currentTarget.style.visibility = "visible"
+  }} className="h-9 w-auto" />)}
           {isMobile&&( <img src={MobileCurrent} alt="Mediabox" className="h-9 w-auto" />)}
  
 </Link>

@@ -16,10 +16,23 @@ import useAuthStore from "./store/AuthStore"
 import TvPair from "../pages/authmain/tv/TvPair"
 import ResetPassword from "../pages/authmain/password/reset"
 import ForgotPassword from "../pages/authmain/password/forgot"
+import api from "./lib/axios"
 const App: React.FC = () => {
-  const isDark = useUIStore((state: UIStore) => state.isDark)
+  const isDark = useUIStore((state: UIStore) => state.isDark);
+  const setLogos = useUIStore((state) => state.setLogos);
   const fetchUser = useAuthStore((state) => state.fetchUser);
-
+  useEffect(() => {
+    api.get("/api/settings/logos")
+      .then((res) => {
+        const { logo_light, logo_dark } = res.data
+        if (logo_light && logo_dark) {
+          const bust = `?v=k`
+          setLogos(logo_dark+bust,logo_light+bust);
+        }
+      })
+      .catch(() => {
+      })
+  }, [])
   useEffect(() => {
     fetchUser();
   }, [fetchUser]);
