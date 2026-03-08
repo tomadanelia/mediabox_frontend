@@ -16,6 +16,8 @@ import useAuthStore from "./store/AuthStore"
 import TvPair from "../pages/authmain/tv/TvPair"
 import ResetPassword from "../pages/authmain/password/reset"
 import ForgotPassword from "../pages/authmain/password/forgot"
+import RemotePage from "../pages/remoteC/remotec"
+import RadioPage from "../pages/radio/radioP"
 import api from "./lib/axios"
 const App: React.FC = () => {
   const isDark = useUIStore((state: UIStore) => state.isDark);
@@ -61,6 +63,8 @@ const App: React.FC = () => {
           <Route path="/packets" element={<Plans />} />
           <Route path="/profile" element={<UserProfile />} />
           <Route path="/admin" element={<AdminDashboard />} />
+          <Route path="/remote" element={<RemotePage />} />
+          <Route path="/radio" element={<RadioPage />} />
           <Route path="/authentication">
             <Route path="login" element={<AuthLog/>} />
             <Route path="register" element={<AuthReg/>} />
