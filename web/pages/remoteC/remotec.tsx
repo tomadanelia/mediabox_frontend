@@ -2,6 +2,7 @@
 
 import { useState, useCallback, useEffect, useRef } from 'react'
 import { Maximize2, Minimize2, Tv2, RefreshCw, WifiOff, Wifi, ChevronDown } from 'lucide-react'
+import api from '@/lib/axios'
 
 // ─── Install deps: npm install laravel-echo pusher-js ─────────────────────
 // Echo is booted lazily on first connect so SSR / non-browser envs are safe.
@@ -283,6 +284,9 @@ export default function RemotePage() {
 
   // ── Boot Echo once (lazy) ───────────────────────────────────────────────
   const bootEcho = useCallback(async (): Promise<any> => {
+     console.log("--- Initializing Echo ---");
+    console.log("Host:", import.meta.env.VITE_REVERB_HOST);
+    console.log("Key:", import.meta.env.VITE_REVERB_APP_KEY);
     if (echoRef.current) return echoRef.current
 
     const token = getToken()
@@ -315,57 +319,48 @@ export default function RemotePage() {
         },
       },
     })
-
+    
     return echoRef.current
   }, [])
 
   // ── Connect to a specific device channel ───────────────────────────────
-  const connectToDevice = useCallback(async (device: Device) => {
-    setStatus('connecting')
-    setShowDevicePicker(false)
-    setSelectedDevice(device)
+ const connectToDevice = useCallback(async (device: Device) => {
+    console.log("Attempting to connect to device:", device.name);
+    console.log("Channel Name:", device.channel);
+    
+    setStatus('connecting');
     try {
-      const echo = await bootEcho()
+      const echo = await bootEcho();
 
-      // Leave previous channel cleanly
-      if (channelRef.current) {
-        echo.leave(channelRef.current.name ?? '')
-        channelRef.current = null
-      }
+      // Echo.private(name) results in 'private-name'
+      const ch = echo.private(device.channel);
+      channelRef.current = ch;
 
-      const ch = echo.private(device.channel)
-      channelRef.current = ch
+      console.log("Subscribing to channel...");
 
-      // Mark connected once Echo confirms subscription
       ch.subscribed(() => {
-        setStatus('connected')
-      })
+        console.log("SUCCESS: Fully subscribed to channel!");
+        setStatus('connected');
+      });
 
+      // If this fires, your 'routes/channels.php' is returning false or 403
       ch.error((err: any) => {
-        console.error('[Echo channel error]', err)
-        setStatus('error')
-        setErrorMsg('Channel auth failed — check your Bearer token.')
-      })
+        console.error("CHANNEL AUTH ERROR:", err);
+        setStatus('error');
+      });
+      
     } catch (e: any) {
-      setStatus('error')
-      setErrorMsg(e?.message ?? 'Failed to connect')
+      console.error("ConnectToDevice Crash:", e);
+      setStatus('error');
     }
-  }, [bootEcho])
-
+}, [bootEcho]);
   // ── Fetch available devices ─────────────────────────────────────────────
   const fetchDevices = useCallback(async () => {
     setStatus('fetching')
     setErrorMsg(null)
     try {
-      const token = getToken()
-      const res = await fetch('/api/user/devices', {
-        headers: {
-          Authorization: token ? `Bearer ${token}` : '',
-          Accept: 'application/json',
-        },
-      })
-      if (!res.ok) throw new Error(`HTTP ${res.status}`)
-      const data: Device[] = await res.json()
+      const res = await api.get("/api/user/devices");
+      const data: Device[] =  res.data;
       setDevices(data)
 
       const ready = data.filter(d => d.is_ready)
