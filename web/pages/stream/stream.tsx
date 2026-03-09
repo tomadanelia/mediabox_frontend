@@ -26,7 +26,7 @@ import PlansModal from '@/hmcomponents/planspopup';
 import api from '@/lib/axios';
 import { useIsMobile } from '@/hooks/useIsMobile';
 import { useNavigate } from 'react-router-dom';
-
+import { useOrientation } from '@/hooks/useOrientation';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -172,6 +172,7 @@ const ChannelGrid: React.FC<ChannelGridProps> = ({
             {cat.icon_url && (
               <span className="w-3.5 h-3.5 flex items-center justify-center">
                 <CategoryIcon name={cat.icon_url} />
+               
               </span>
             )}
             {cat.name_ka}
@@ -793,9 +794,10 @@ export const Stream: React.FC = () => {
                         `}
                       >
                         {category.icon_url && (
-                          <div className="w-5 h-5 flex items-center justify-center flex-none transition-transform duration-150 text-gray-900 dark:text-blue-200">
+                          <div className="w-5 h-5 flex items-center justify-center flex-none transition-transform duration-150  text-gray-900 dark:text-blue-200">
                             <div className={isSelected ? "scale-125" : "scale-100"}>
-                              <CategoryIcon name={category.icon_url} />
+
+                               <span  style={{ fontVariationSettings: "'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24" }} className="material-symbols-outlined">{category.icon_url}</span>
                             </div>
                           </div>
                         )}
