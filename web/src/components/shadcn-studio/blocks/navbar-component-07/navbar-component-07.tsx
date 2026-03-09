@@ -1,21 +1,8 @@
-/**
- * Navbar.tsx
- * ─────────────────────────────────────────────────────────────
- * Dependencies:
- *   - react-router-dom
- *   - zustand  (useUIStore — swap with your own store/context)
- *   - Material Symbols  → add once to index.html <head>:
- *     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" />
- *
- * tailwind.config.js must have:  darkMode: "class"
- * ─────────────────────────────────────────────────────────────
- */
-
 import { useState, useEffect, useRef } from "react"
 import { Link, NavLink } from "react-router-dom"
 import useUIStore from "@/store/ui-store"
 
-// ── shared types ─────────────────────────────────────────────
+// ── Types ─────────────────────────────────────────────────────
 type Language = "En" | "Ge"
 
 interface User {
@@ -38,7 +25,7 @@ interface Translation {
   logout: string
 }
 
-// ── translations ─────────────────────────────────────────────
+// ── Translations ───────────────────────────────────────────────
 const T: Record<Language, Translation> = {
   Ge: {
     search: "მოძებნე არხები...",
@@ -47,6 +34,8 @@ const T: Record<Language, Translation> = {
       { to: "/",        label: "მთავარი"   },
       { to: "/TV",      label: "ტელევიზია" },
       { to: "/packets", label: "პაკეტები"  },
+      { to: "/radio",   label: "რადიო"     },
+      { to: "/remote",  label: "პულტი"     },
     ],
     profile:  "პროფილი",
     settings: "პარამეტრები",
@@ -56,9 +45,11 @@ const T: Record<Language, Translation> = {
     search: "Search channels or shows...",
     live: "Go Live",
     navLinks: [
-      { to: "/",        label: "Home"  },
-      { to: "/TV",      label: "TV"    },
-      { to: "/packets", label: "Plans" },
+      { to: "/",        label: "Home"   },
+      { to: "/TV",      label: "TV"     },
+      { to: "/packets", label: "Plans"  },
+      { to: "/radio",   label: "Radio"  },
+      { to: "/remote",  label: "Remote" },
     ],
     profile:  "Profile",
     settings: "Settings",
@@ -66,16 +57,16 @@ const T: Record<Language, Translation> = {
   },
 }
 
-// ── icon map for nav links ───────────────────────────────────
+// ── Nav icon map ───────────────────────────────────────────────
 const NAV_ICONS: Record<string, string> = {
   "/":        "home",
   "/TV":      "live_tv",
   "/packets": "subscriptions",
+  "/radio":   "radio",
+  "/remote":  "tv_remote",
 }
 
-// ────────────────────────────────────────────────────────────
-// Icon — Material Symbols Rounded
-// ────────────────────────────────────────────────────────────
+// ── Icon ───────────────────────────────────────────────────────
 interface IconProps {
   name: string
   size?: number
@@ -95,9 +86,7 @@ const Icon = ({ name, size = 22, fill = 0, className = "" }: IconProps) => (
   </span>
 )
 
-// ────────────────────────────────────────────────────────────
-// Avatar
-// ────────────────────────────────────────────────────────────
+// ── Avatar ─────────────────────────────────────────────────────
 interface AvatarProps {
   src?: string | null
   name?: string | null
@@ -112,9 +101,63 @@ const Avatar = ({ src, name }: AvatarProps) => (
   </div>
 )
 
-// ────────────────────────────────────────────────────────────
-// ProfileDropdown
-// ────────────────────────────────────────────────────────────
+// ── Search Panel (dropdown) ────────────────────────────────────
+interface SearchPanelProps {
+  open: boolean
+  onClose: () => void
+  placeholder: string
+}
+
+const SearchPanel = ({ open, onClose, placeholder }: SearchPanelProps) => {
+  const inputRef = useRef<HTMLInputElement>(null)
+
+  useEffect(() => {
+    if (open) setTimeout(() => inputRef.current?.focus(), 50)
+  }, [open])
+
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => { if (e.key === "Escape") onClose() }
+    document.addEventListener("keydown", handler)
+    return () => document.removeEventListener("keydown", handler)
+  }, [onClose])
+
+  return (
+    <>
+      {/* backdrop */}
+      <div
+        onClick={onClose}
+        className={[
+          "fixed inset-0 z-40 bg-black/20 backdrop-blur-[2px] transition-opacity duration-200",
+          open ? "opacity-100" : "opacity-0 pointer-events-none",
+        ].join(" ")}
+      />
+
+      {/* panel — anchored just below navbar */}
+      <div className={[
+        "fixed top-16 left-0 right-0 z-50",
+        "flex justify-center px-4 pt-3",
+        "transition-all duration-200",
+        open ? "opacity-100 translate-y-0" : "opacity-0 -translate-y-2 pointer-events-none",
+      ].join(" ")}>
+        <div className="w-full max-w-lg bg-white dark:bg-zinc-900 rounded-2xl shadow-2xl shadow-black/20 dark:shadow-black/50 border border-black/8 dark:border-white/10 overflow-hidden">
+          <div className="relative flex items-center px-4 py-3">
+            <Icon name="search" size={20} className="text-zinc-400 flex-shrink-0 mr-3" />
+            <input
+              ref={inputRef}
+              placeholder={placeholder}
+              className="flex-1 bg-transparent text-sm text-zinc-900 dark:text-white placeholder:text-zinc-400 focus:outline-none"
+            />
+            <button onClick={onClose} className="ml-3 flex-shrink-0 rounded-full p-1 hover:bg-zinc-100 dark:hover:bg-white/10 transition-colors">
+              <Icon name="close" size={18} className="text-zinc-400" />
+            </button>
+          </div>
+        </div>
+      </div>
+    </>
+  )
+}
+
+// ── ProfileDropdown ────────────────────────────────────────────
 interface ProfileDropdownProps {
   user: User | null
   tx: Translation
@@ -126,9 +169,7 @@ const ProfileDropdown = ({ user, tx }: ProfileDropdownProps) => {
 
   useEffect(() => {
     const handler = (e: MouseEvent) => {
-      if (ref.current && !ref.current.contains(e.target as Node)) {
-        setOpen(false)
-      }
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false)
     }
     document.addEventListener("mousedown", handler)
     return () => document.removeEventListener("mousedown", handler)
@@ -143,29 +184,25 @@ const ProfileDropdown = ({ user, tx }: ProfileDropdownProps) => {
     <div ref={ref} className="relative">
       <button
         onClick={() => setOpen(v => !v)}
-        className="flex items-center gap-2 rounded-full p-1 hover:bg-black/5 dark:hover:bg-white/10 transition-colors focus:outline-none"
+        className="flex items-center gap-1 rounded-full p-1 hover:bg-black/5 dark:hover:bg-white/10 transition-colors focus:outline-none"
       >
         <Avatar src={user?.avatar_url} name={user?.full_name} />
         <Icon
           name="expand_more"
-          size={18}
-          className={`text-zinc-500 dark:text-zinc-400 transition-transform duration-200 ${open ? "rotate-180" : ""}`}
+          size={16}
+          className={`text-zinc-400 transition-transform duration-200 hidden sm:block ${open ? "rotate-180" : ""}`}
         />
       </button>
 
-      {/* dropdown panel */}
-      <div
-        className={[
-          "absolute right-0 top-[calc(100%+10px)] w-52 z-50",
-          "bg-white dark:bg-zinc-900",
-          "border border-black/10 dark:border-white/10",
-          "rounded-2xl shadow-xl shadow-black/10 dark:shadow-black/40",
-          "overflow-hidden",
-          "transition-all duration-200 origin-top-right",
-          open ? "opacity-100 scale-100 pointer-events-auto" : "opacity-0 scale-95 pointer-events-none",
-        ].join(" ")}
-      >
-        {/* user info */}
+      <div className={[
+        "absolute right-0 top-[calc(100%+10px)] w-52 z-50",
+        "bg-white dark:bg-zinc-900",
+        "border border-black/10 dark:border-white/10",
+        "rounded-2xl shadow-xl shadow-black/10 dark:shadow-black/40",
+        "overflow-hidden",
+        "transition-all duration-200 origin-top-right",
+        open ? "opacity-100 scale-100 pointer-events-auto" : "opacity-0 scale-95 pointer-events-none",
+      ].join(" ")}>
         <div className="flex items-center gap-3 px-4 py-3 border-b border-black/8 dark:border-white/8">
           <Avatar src={user?.avatar_url} name={user?.full_name} />
           <div className="min-w-0">
@@ -176,7 +213,6 @@ const ProfileDropdown = ({ user, tx }: ProfileDropdownProps) => {
           </div>
         </div>
 
-        {/* links */}
         <div className="py-1.5">
           {menuItems.map(item => (
             <Link
@@ -191,10 +227,9 @@ const ProfileDropdown = ({ user, tx }: ProfileDropdownProps) => {
           ))}
         </div>
 
-        {/* sign out */}
         <div className="border-t border-black/8 dark:border-white/8 py-1.5">
           <button
-            onClick={() => { setOpen(false) /* call your logout fn */ }}
+            onClick={() => { setOpen(false) }}
             className="flex w-full items-center gap-3 px-4 py-2.5 text-sm text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 transition-colors"
           >
             <Icon name="logout" size={18} />
@@ -206,9 +241,7 @@ const ProfileDropdown = ({ user, tx }: ProfileDropdownProps) => {
   )
 }
 
-// ────────────────────────────────────────────────────────────
-// MobileSidebar
-// ────────────────────────────────────────────────────────────
+// ── MobileSidebar ──────────────────────────────────────────────
 interface MobileSidebarProps {
   open: boolean
   onClose: () => void
@@ -221,14 +254,7 @@ interface MobileSidebarProps {
 }
 
 const MobileSidebar = ({
-  open,
-  onClose,
-  tx,
-  isDark,
-  toggleDark,
-  language,
-  setLanguage,
-  user,
+  open, onClose, tx, isDark, toggleDark, language, setLanguage, user,
 }: MobileSidebarProps) => {
   useEffect(() => {
     document.body.style.overflow = open ? "hidden" : ""
@@ -237,7 +263,6 @@ const MobileSidebar = ({
 
   return (
     <>
-      {/* backdrop */}
       <div
         onClick={onClose}
         className={[
@@ -246,32 +271,25 @@ const MobileSidebar = ({
         ].join(" ")}
       />
 
-      {/* panel */}
-      <aside
-        className={[
-          "fixed top-0 left-0 z-50 h-full w-72",
-          "bg-white dark:bg-zinc-950",
-          "border-r border-black/10 dark:border-white/10",
-          "flex flex-col",
-          "transition-transform duration-300 ease-[cubic-bezier(.32,.72,0,1)]",
-          open ? "translate-x-0" : "-translate-x-full",
-        ].join(" ")}
-      >
+      <aside className={[
+        "fixed top-0 left-0 z-50 h-full w-72",
+        "bg-white dark:bg-zinc-950",
+        "border-r border-black/10 dark:border-white/10",
+        "flex flex-col",
+        "transition-transform duration-300 ease-[cubic-bezier(.32,.72,0,1)]",
+        open ? "translate-x-0" : "-translate-x-full",
+      ].join(" ")}>
+
         {/* header */}
         <div className="flex items-center justify-between px-5 py-4 border-b border-black/8 dark:border-white/8">
           <div className="flex items-center gap-2.5">
             <Avatar src={user?.avatar_url} name={user?.full_name} />
             <div>
-              <p className="text-sm font-semibold text-zinc-900 dark:text-white">
-                {user?.full_name ?? "Guest"}
-              </p>
+              <p className="text-sm font-semibold text-zinc-900 dark:text-white">{user?.full_name ?? "Guest"}</p>
               <p className="text-xs text-zinc-400">{user?.email ?? ""}</p>
             </div>
           </div>
-          <button
-            onClick={onClose}
-            className="rounded-full p-1.5 hover:bg-zinc-100 dark:hover:bg-white/10 transition-colors"
-          >
+          <button onClick={onClose} className="rounded-full p-1.5 hover:bg-zinc-100 dark:hover:bg-white/10 transition-colors">
             <Icon name="close" size={20} className="text-zinc-500 dark:text-zinc-400" />
           </button>
         </div>
@@ -279,11 +297,7 @@ const MobileSidebar = ({
         {/* search */}
         <div className="px-4 py-3 border-b border-black/8 dark:border-white/8">
           <div className="relative">
-            <Icon
-              name="search"
-              size={18}
-              className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400 pointer-events-none"
-            />
+            <Icon name="search" size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400 pointer-events-none" />
             <input
               placeholder={tx.search}
               className="w-full rounded-xl bg-zinc-100 dark:bg-white/8 pl-9 pr-3 py-2.5 text-sm text-zinc-900 dark:text-white placeholder:text-zinc-400 focus:outline-none focus:ring-2 focus:ring-orange-500/40"
@@ -328,24 +342,18 @@ const MobileSidebar = ({
           ))}
         </nav>
 
-        {/* bottom controls */}
+        {/* bottom controls — dark mode + language (only in sidebar on mobile) */}
         <div className="border-t border-black/8 dark:border-white/8 px-4 py-4 space-y-1">
-          {/* dark mode */}
           <button
             onClick={toggleDark}
             className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 hover:bg-zinc-100 dark:hover:bg-white/6 transition-colors"
           >
-            <Icon
-              name={isDark ? "light_mode" : "dark_mode"}
-              size={20}
-              className="text-zinc-400"
-            />
+            <Icon name={isDark ? "light_mode" : "dark_mode"} size={20} className="text-zinc-400" />
             <span className="text-sm text-zinc-700 dark:text-zinc-300">
               {isDark ? "Light mode" : "Dark mode"}
             </span>
           </button>
 
-          {/* language */}
           <button
             onClick={() => setLanguage(language === "En" ? "Ge" : "En")}
             className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 hover:bg-zinc-100 dark:hover:bg-white/6 transition-colors"
@@ -356,9 +364,8 @@ const MobileSidebar = ({
             </span>
           </button>
 
-          {/* sign out */}
           <button
-            onClick={() => { /* call your logout fn */ }}
+            onClick={() => { /* logout */ }}
             className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 hover:bg-red-50 dark:hover:bg-red-500/10 transition-colors"
           >
             <Icon name="logout" size={20} className="text-red-400" />
@@ -370,9 +377,7 @@ const MobileSidebar = ({
   )
 }
 
-// ────────────────────────────────────────────────────────────
-// MAIN NAVBAR
-// ────────────────────────────────────────────────────────────
+// ── MAIN NAVBAR ────────────────────────────────────────────────
 const Navbar = () => {
   const isDark         = useUIStore((s) => s.isDark)
   const toggleDarkMode = useUIStore((s) => s.toggleDarkMode)
@@ -384,35 +389,35 @@ const Navbar = () => {
 
   const tx = T[language]
 
-  const [sidebarOpen, setSidebarOpen] = useState(false)
-  const [user, setUser]               = useState<User | null>(null)
+  const [sidebarOpen,  setSidebarOpen]  = useState(false)
+  const [searchOpen,   setSearchOpen]   = useState(false)
+  const [user,         setUser]         = useState<User | null>(null)
 
   useEffect(() => {
     import("@/lib/axios").then(({ default: api }) => {
-      api.get("/api/user")
-        .then((r) => setUser(r.data as User))
-        .catch(() => {})
+      api.get("/api/user").then((r) => setUser(r.data as User)).catch(() => {})
     }).catch(() => {})
   }, [])
 
   return (
     <>
-      <header className="sticky top-0 z-30 w-full h-16 bg-white/75 dark:bg-zinc-950/80 border-b border-black/10 dark:border-white/10 backdrop-blur-lg transition-colors duration-300 overflow-visible">
-        <div className="flex h-full items-center justify-between gap-2 px-4 sm:px-6 w-full min-w-0">
+      {/* ── Header — fixed height, never overflows ── */}
+      <header className="w-full h-16 bg-white/75 dark:bg-zinc-950/80 border-b border-black/10 dark:border-white/10 backdrop-blur-lg transition-colors duration-300">
+        <div className="flex h-full items-center justify-between px-4 sm:px-6 w-full">
 
-          {/* ── LEFT ── */}
-          <div className="flex items-center gap-2 flex-shrink-0">
+          {/* LEFT: hamburger + logo + desktop nav */}
+          <div className="flex items-center gap-2 flex-shrink-0 min-w-0">
 
             {/* hamburger — mobile only */}
             <button
               onClick={() => setSidebarOpen(true)}
-              className="md:hidden rounded-xl p-2 hover:bg-zinc-100 dark:hover:bg-white/8 transition-colors"
+              className="lg:hidden flex-shrink-0 rounded-xl p-2 hover:bg-zinc-100 dark:hover:bg-white/8 transition-colors"
             >
               <Icon name="menu" size={22} className="text-zinc-700 dark:text-zinc-300" />
             </button>
 
             {/* logo */}
-            <Link to="/" className="flex items-center gap-2 flex-shrink-0">
+            <Link to="/" className="flex-shrink-0 flex items-center gap-2">
               {currentLogo
                 ? <img src={currentLogo} alt="Mediabox" className="h-8 w-auto" />
                 : (
@@ -423,8 +428,8 @@ const Navbar = () => {
               }
             </Link>
 
-            {/* desktop nav */}
-            <nav className="hidden md:flex items-center gap-1 ml-2">
+            {/* desktop nav — hidden below md */}
+            <nav className="hidden lg:flex items-center gap-0.5 ml-3">
               {tx.navLinks.map((link: NavLinkItem) => (
                 <NavLink
                   key={link.to}
@@ -432,7 +437,7 @@ const Navbar = () => {
                   end={link.to === "/"}
                   className={({ isActive }: { isActive: boolean }) =>
                     [
-                      "rounded-full px-4 py-2 text-sm font-medium transition-colors whitespace-nowrap",
+                      "rounded-full px-3 py-1.5 text-sm font-medium transition-colors whitespace-nowrap",
                       isActive
                         ? "bg-orange-500/10 text-orange-500"
                         : "text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white hover:bg-zinc-100 dark:hover:bg-white/6",
@@ -445,32 +450,22 @@ const Navbar = () => {
             </nav>
           </div>
 
-          {/* ── RIGHT ── */}
-          <div className="flex items-center gap-2 flex-shrink-0">
+          {/* RIGHT: controls — never wrap, never overflow */}
+          <div className="flex items-center gap-1 flex-shrink-0">
 
-            {/* search — desktop: shrinks gracefully */}
-            <div className="relative hidden md:flex items-center w-40 lg:w-64 xl:w-72">
-              <Icon
-                name="search"
-                size={18}
-                className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400 pointer-events-none"
-              />
-              <input
-                placeholder={tx.search}
-                className="w-full rounded-full bg-zinc-100 dark:bg-white/8 pl-9 pr-4 py-2 text-sm text-zinc-900 dark:text-white placeholder:text-zinc-400 focus:outline-none focus:ring-2 focus:ring-orange-500/40 transition"
-              />
-            </div>
-
-            {/* search icon — mobile */}
-            <button className="md:hidden rounded-full p-2 hover:bg-zinc-100 dark:hover:bg-white/8 transition-colors flex-shrink-0">
+            {/* search icon — always visible, opens panel */}
+            <button
+              onClick={() => setSearchOpen(true)}
+              className="rounded-full p-2 hover:bg-zinc-100 dark:hover:bg-white/8 transition-colors"
+            >
               <Icon name="search" size={20} className="text-zinc-600 dark:text-zinc-400" />
             </button>
 
-            {/* dark mode */}
+            {/* dark mode — desktop only */}
             <button
               onClick={toggleDarkMode}
               title="Toggle dark mode"
-              className="rounded-full p-2 hover:bg-zinc-100 dark:hover:bg-white/8 transition-colors flex-shrink-0"
+              className="hidden lg:flex rounded-full p-2 hover:bg-zinc-100 dark:hover:bg-white/8 transition-colors"
             >
               <Icon
                 name={isDark ? "light_mode" : "dark_mode"}
@@ -479,11 +474,11 @@ const Navbar = () => {
               />
             </button>
 
-            {/* language */}
+            {/* language — desktop only */}
             <button
               onClick={() => setLanguage(language === "En" ? "Ge" : "En")}
               title="Switch language"
-              className="hidden sm:flex rounded-full px-2.5 py-1.5 items-center gap-1.5 hover:bg-zinc-100 dark:hover:bg-white/8 transition-colors flex-shrink-0"
+              className="hidden lg:flex rounded-full px-2 py-1.5 items-center gap-1 hover:bg-zinc-100 dark:hover:bg-white/8 transition-colors"
             >
               <Icon name="translate" size={18} className="text-zinc-500 dark:text-zinc-400" />
               <span className="text-xs font-semibold text-zinc-600 dark:text-zinc-300">
@@ -491,24 +486,30 @@ const Navbar = () => {
               </span>
             </button>
 
-            {/* go live — desktop */}
+            {/* go live — desktop only */}
+
             <Link
               to="/TV"
-              className="hidden sm:inline-flex items-center gap-2 rounded-full bg-orange-500 hover:bg-orange-600 px-4 py-2 text-sm font-semibold text-white shadow-md shadow-orange-500/25 transition-colors whitespace-nowrap flex-shrink-0"
+              className="hidden xl:inline-flex items-center gap-1.5 rounded-full bg-orange-500 hover:bg-orange-600 px-3 py-1.5 text-sm font-semibold text-white shadow-md shadow-orange-500/25 transition-colors whitespace-nowrap"
             >
-              <Icon name="play_circle" size={18} fill={1} className="text-white" />
+              <Icon name="play_circle" size={17} fill={1} className="text-white" />
               <span>{tx.live}</span>
             </Link>
 
-            {/* profile dropdown */}
-            <div className="flex-shrink-0">
-              <ProfileDropdown user={user} tx={tx} />
-            </div>
+            {/* profile — always visible */}
+            <ProfileDropdown user={user} tx={tx} />
           </div>
         </div>
       </header>
 
-      {/* mobile sidebar */}
+      {/* Search dropdown panel */}
+      <SearchPanel
+        open={searchOpen}
+        onClose={() => setSearchOpen(false)}
+        placeholder={tx.search}
+      />
+
+      {/* Mobile sidebar */}
       <MobileSidebar
         open={sidebarOpen}
         onClose={() => setSidebarOpen(false)}

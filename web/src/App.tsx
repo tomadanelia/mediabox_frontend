@@ -19,6 +19,7 @@ import ForgotPassword from "../pages/authmain/password/forgot"
 import RemotePage from "../pages/remoteC/remotec"
 import RadioPage from "../pages/radio/radioP"
 import api from "./lib/axios"
+
 const App: React.FC = () => {
   const isDark = useUIStore((state: UIStore) => state.isDark);
   const setLogos = useUIStore((state) => state.setLogos);
@@ -51,7 +52,7 @@ const App: React.FC = () => {
   return (
     <div className="app-shell h-screen overflow-hidden flex flex-col">
 
-      <div className="shrink-0 w-full z-50 absolute lg:relative overflow-X-hidden">
+      <div className="shrink-0 w-full z-50 lg:relative overflow-X-hidden">
         <Navbar />
       </div>
 
