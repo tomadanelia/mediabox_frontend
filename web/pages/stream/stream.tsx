@@ -820,7 +820,7 @@ export const Stream: React.FC = () => {
         {/* RIGHT */}
         <div className={`
           lg:relative lg:w-1/5
-          absolute right-0 z-10 flex flex-col h-screen lg:h-[calc(100vh-180px)] bg-yel
+          absolute right-0 z-10 flex flex-col h-screen lg:h-[calc(100vh-128px)] bg-yel
           transition-all duration-300 ease-in-out
           ${isMobile ? (rightExpanded ? 'w-2/5' : 'w-[65px]') : ''}
         `}>
