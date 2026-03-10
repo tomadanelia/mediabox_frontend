@@ -3,7 +3,6 @@ import react from '@vitejs/plugin-react'
 import path from "path"
 import tailwindcss from "@tailwindcss/vite"
 
-// https://vite.dev/config/
 export default defineConfig({
   plugins: [react(), tailwindcss()],
   resolve: {
@@ -19,13 +18,10 @@ export default defineConfig({
         changeOrigin: true,
         configure(proxy) {
           proxy.on('proxyRes', (proxyRes) => {
-            // Overwrite the duplicate `Access-Control-Allow-Origin: *, *`
-            // header that the media server returns — browsers reject duplicates.
             proxyRes.headers['access-control-allow-origin'] = '*'
           })
         },
       },
-      // Proxy archive HLS streams
       '/archive-free': {
         target: 'https://tv-api.telecomm1.com',
         changeOrigin: true,
@@ -35,6 +31,16 @@ export default defineConfig({
           })
         },
       },
+      '/radio-stream': {
+  target: 'https://cdn.streamer.mediabox.ge',
+  changeOrigin: true,
+  rewrite: (path) => path.replace(/^\/radio-stream/, ''),
+  configure(proxy) {
+    proxy.on('proxyRes', (proxyRes) => {
+      proxyRes.headers['access-control-allow-origin'] = '*'
+    })
+  },
+},
     },
   },
 })

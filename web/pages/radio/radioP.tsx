@@ -1,7 +1,9 @@
 'use client'
 
-import { useState, useEffect, useRef, useCallback, useMemo } from 'react'
-import { Search, X, Radio, MapPin, Wifi, WifiOff, Volume2, VolumeX, ChevronUp, ChevronDown } from 'lucide-react'
+import { useState, useEffect, useCallback, useMemo } from 'react'
+import { Search, X, Radio, Wifi, WifiOff, Volume2, VolumeX, ChevronUp, ChevronDown } from 'lucide-react'
+import api from '@/lib/axios'
+import { useMpegtsPlayer } from '@/hooks/useMpegt'
 
 // ─── Hooks ────────────────────────────────────────────────────────────────────
 
@@ -15,338 +17,139 @@ function useIsMobile(): boolean {
   return isMobile
 }
 
-function useOrientation(): boolean {
-  const [isLandscape, setIsLandscape] = useState(
-    () => window.matchMedia('(orientation: landscape)').matches
+function useIsPortrait(): boolean {
+  const [isPortrait, setIsPortrait] = useState(
+    () => !window.matchMedia('(orientation: landscape)').matches
   )
   useEffect(() => {
     const mq = window.matchMedia('(orientation: landscape)')
-    const handler = (e: MediaQueryListEvent) => setIsLandscape(e.matches)
+    const handler = (e: MediaQueryListEvent) => setIsPortrait(!e.matches)
     mq.addEventListener('change', handler)
     return () => mq.removeEventListener('change', handler)
   }, [])
-  return isLandscape
-}
-
-function useIsPortrait(): boolean {
-  return !useOrientation()
+  return isPortrait
 }
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
-type RadioChannel = {
-  CHANNEL_NAME: string
-  CHANNEL_NUMBER: string
-  CHANNEL_LOGO: string
-  POSTER: string | null
-  CITY: string
-  UID: string
-  FREE: boolean
-  STATUS: boolean
-  DESCRIPTION: string | null
+interface RadioChannel {
+  id: number | string
+  name: string
+  logo: string | null
+  is_free: boolean | 0 | 1
+  has_access: boolean | 0 | 1
 }
 
-// ─── Mock Data ────────────────────────────────────────────────────────────────
-
-const MOCK_CHANNELS: RadioChannel[] = [
-  {
-    CHANNEL_NAME: '42 პარალელი',
-    CHANNEL_NUMBER: '1',
-    CHANNEL_LOGO: 'https://img.mediabox.ge/nologo.png',
-    POSTER: 'http://42p.ge/images/logo.png',
-    CITY: 'ქუთაისი',
-    UID: '56',
-    FREE: true,
-    STATUS: true,
-    DESCRIPTION: null,
-  },
-  {
-    CHANNEL_NAME: 'რადიო ძველი ქალაქი',
-    CHANNEL_NUMBER: '3',
-    CHANNEL_LOGO: 'https://img.mediabox.ge/nologo.png',
-    POSTER: 'http://www.radiodk.ge//images/temp/2017/10/19/9749bdf8ad41e83b29938b27018e1597.png',
-    CITY: 'ქუთაისი',
-    UID: '58',
-    FREE: true,
-    STATUS: true,
-    DESCRIPTION: null,
-  },
-  {
-    CHANNEL_NAME: 'რადიო თბილისი',
-    CHANNEL_NUMBER: '4',
-    CHANNEL_LOGO: 'https://img.mediabox.ge/nologo.png',
-    POSTER: null,
-    CITY: 'თბილისი',
-    UID: '59',
-    FREE: true,
-    STATUS: true,
-    DESCRIPTION: null,
-  },
-  {
-    CHANNEL_NAME: 'რადიო ათინათი',
-    CHANNEL_NUMBER: '5',
-    CHANNEL_LOGO: 'https://img.mediabox.ge/5c73d2b76fe97.png',
-    POSTER: 'https://www.radioatinati.ge//images/temp/2019/02/21/de8c569b25587d158a0572fbe6f503b3.png',
-    CITY: 'ბათუმი',
-    UID: '60',
-    FREE: true,
-    STATUS: true,
-    DESCRIPTION: null,
-  },
-  {
-    CHANNEL_NAME: 'ბათუმი',
-    CHANNEL_NUMBER: '6',
-    CHANNEL_LOGO: 'https://img.mediabox.ge/nologo.png',
-    POSTER: null,
-    CITY: 'ბათუმი',
-    UID: '61',
-    FREE: true,
-    STATUS: true,
-    DESCRIPTION: null,
-  },
-  {
-    CHANNEL_NAME: 'რადიო ფორტე',
-    CHANNEL_NUMBER: '7',
-    CHANNEL_LOGO: 'https://img.mediabox.ge/nologo.png',
-    POSTER: null,
-    CITY: 'თბილისი',
-    UID: '62',
-    FREE: true,
-    STATUS: true,
-    DESCRIPTION: null,
-  },
-  {
-    CHANNEL_NAME: 'რადიო ჯეოსტარი',
-    CHANNEL_NUMBER: '8',
-    CHANNEL_LOGO: 'https://img.mediabox.ge/nologo.png',
-    POSTER: null,
-    CITY: 'თბილისი',
-    UID: '63',
-    FREE: false,
-    STATUS: true,
-    DESCRIPTION: null,
-  },
-  {
-    CHANNEL_NAME: 'კომერციული რადიო',
-    CHANNEL_NUMBER: '9',
-    CHANNEL_LOGO: 'https://img.mediabox.ge/nologo.png',
-    POSTER: null,
-    CITY: 'ბათუმი',
-    UID: '64',
-    FREE: true,
-    STATUS: true,
-    DESCRIPTION: null,
-  },
-  {
-    CHANNEL_NAME: 'რადიო მარიამი',
-    CHANNEL_NUMBER: '10',
-    CHANNEL_LOGO: 'https://img.mediabox.ge/nologo.png',
-    POSTER: null,
-    CITY: 'ქუთაისი',
-    UID: '65',
-    FREE: true,
-    STATUS: false,
-    DESCRIPTION: null,
-  },
-  {
-    CHANNEL_NAME: 'რადიო ივერია',
-    CHANNEL_NUMBER: '11',
-    CHANNEL_LOGO: 'https://img.mediabox.ge/nologo.png',
-    POSTER: null,
-    CITY: 'თბილისი',
-    UID: '66',
-    FREE: false,
-    STATUS: true,
-    DESCRIPTION: null,
-  },
-]
-
-const AVAILABLE_IDS = ['59', '61', '56', '60', '62', '64', '66']
-
-const CITIES = ['ყველა', 'თბილისი', 'ქუთაისი', 'ბათუმი']
-
-// ─── Audio Visualizer Bars ────────────────────────────────────────────────────
-
-function AudioBars({ isPlaying, barCount = 28 }: { isPlaying: boolean; barCount?: number }) {
-  const bars = useMemo(() => Array.from({ length: barCount }, (_, i) => i), [barCount])
-
-  return (
-    <div className="flex items-end gap-[2px] h-10" aria-hidden>
-      {bars.map((i) => (
-        <div
-          key={i}
-          className="w-[3px] rounded-full bg-gradient-to-t from-orange-500 to-yellow-400 origin-bottom"
-          style={{
-            height: isPlaying ? undefined : '4px',
-            animation: isPlaying
-              ? `audioBar ${0.6 + (i % 7) * 0.11}s ease-in-out ${(i * 0.04) % 0.5}s infinite alternate`
-              : 'none',
-            minHeight: '4px',
-            opacity: isPlaying ? 1 : 0.25,
-            transition: 'opacity 0.4s',
-          }}
-        />
-      ))}
-      <style>{`
-        @keyframes audioBar {
-          0%   { height: 4px; }
-          25%  { height: ${Math.floor(Math.random() * 10 + 8)}px; }
-          50%  { height: ${Math.floor(Math.random() * 20 + 12)}px; }
-          75%  { height: ${Math.floor(Math.random() * 14 + 6)}px; }
-          100% { height: ${Math.floor(Math.random() * 28 + 16)}px; }
-        }
-      `}</style>
-    </div>
-  )
+interface StreamResponse {
+  url: string
+  type: string
 }
 
-// Inline per-bar randomized heights so animation is unique per bar
+type PlayerStatus = 'idle' | 'loading' | 'playing' | 'paused' | 'error'
+
+const bool = (v: boolean | 0 | 1): boolean => !!v
+const sameId = (a: number | string | null | undefined, b: number | string | null | undefined) =>
+  a != null && b != null && String(a) === String(b)
+
+// ─── Audio Visualizer ─────────────────────────────────────────────────────────
+
 function AudioBarsAnimated({ isPlaying, barCount = 32, small = false }: { isPlaying: boolean; barCount?: number; small?: boolean }) {
-  const bars = useMemo(
-    () =>
-      Array.from({ length: barCount }, (_, i) => ({
-        i,
-        h1: 4 + Math.floor(Math.random() * 6),
-        h2: 8 + Math.floor(Math.random() * 20),
-        h3: 6 + Math.floor(Math.random() * 28),
-        h4: 4 + Math.floor(Math.random() * 14),
-        dur: 0.5 + (i % 9) * 0.08,
-        delay: (i * 0.035) % 0.55,
-      })),
+  const bars = useMemo(() =>
+    Array.from({ length: barCount }, (_, i) => ({
+      i,
+      h1: 4  + Math.floor(Math.random() * 6),
+      h2: 8  + Math.floor(Math.random() * 20),
+      h3: 6  + Math.floor(Math.random() * 28),
+      h4: 4  + Math.floor(Math.random() * 14),
+      dur: 0.5 + (i % 9) * 0.08,
+      delay: (i * 0.035) % 0.55,
+    })),
     [barCount]
   )
-
-  const height = small ? 'h-5' : 'h-10'
-
   return (
-    <div className={`flex items-end gap-[2px] ${height}`} aria-hidden>
+    <div className={`flex items-end gap-[2px] ${small ? 'h-5' : 'h-10'}`} aria-hidden>
       {bars.map(({ i, h1, h2, h3, h4, dur, delay }) => (
-        <div
-          key={i}
-          className="rounded-full bg-gradient-to-t from-orange-500 to-yellow-400 origin-bottom"
+        <div key={i} className="rounded-full bg-gradient-to-t from-orange-500 to-yellow-400 origin-bottom"
           style={{
             width: small ? '2px' : '3px',
             height: isPlaying ? undefined : small ? '2px' : '4px',
-            animation: isPlaying
-              ? `bar${i} ${dur}s ease-in-out ${delay}s infinite alternate`
-              : 'none',
+            animation: isPlaying ? `bar${i} ${dur}s ease-in-out ${delay}s infinite alternate` : 'none',
             opacity: isPlaying ? 0.9 : 0.2,
             transition: 'opacity 0.5s',
           }}
         />
       ))}
-      <style>{bars
-        .map(
-          ({ i, h1, h2, h3, h4 }) =>
-            `@keyframes bar${i}{0%{height:${h1}px}33%{height:${h2}px}66%{height:${h3}px}100%{height:${h4}px}}`
-        )
-        .join('')}</style>
+      <style>{bars.map(({ i, h1, h2, h3, h4 }) =>
+        `@keyframes bar${i}{0%{height:${h1}px}33%{height:${h2}px}66%{height:${h3}px}100%{height:${h4}px}}`
+      ).join('')}</style>
     </div>
   )
 }
 
-// ─── Pulsing ring around logo ─────────────────────────────────────────────────
+// ─── Pulsing ring ─────────────────────────────────────────────────────────────
 
 function PulsingRing({ active }: { active: boolean }) {
   if (!active) return null
   return (
     <>
-      <span
-        className="absolute inset-0 rounded-2xl opacity-40"
-        style={{ animation: 'pulseRing 1.8s ease-out infinite', background: 'radial-gradient(circle, rgba(251,146,60,0.5) 0%, transparent 70%)' }}
-      />
-      <span
-        className="absolute inset-0 rounded-2xl opacity-25"
-        style={{ animation: 'pulseRing 1.8s ease-out 0.6s infinite', background: 'radial-gradient(circle, rgba(251,191,36,0.4) 0%, transparent 70%)' }}
-      />
+      <span className="absolute inset-0 rounded-2xl opacity-40" style={{ animation: 'pulseRing 1.8s ease-out infinite', background: 'radial-gradient(circle, rgba(251,146,60,0.5) 0%, transparent 70%)' }} />
+      <span className="absolute inset-0 rounded-2xl opacity-25" style={{ animation: 'pulseRing 1.8s ease-out 0.6s infinite', background: 'radial-gradient(circle, rgba(251,191,36,0.4) 0%, transparent 70%)' }} />
       <style>{`@keyframes pulseRing{0%{transform:scale(1);opacity:0.4}100%{transform:scale(1.7);opacity:0}}`}</style>
     </>
   )
 }
 
-// ─── Channel Logo with fallback ───────────────────────────────────────────────
+// ─── Channel Logo ─────────────────────────────────────────────────────────────
 
 function ChannelLogo({ ch, size = 'md' }: { ch: RadioChannel; size?: 'sm' | 'md' | 'lg' }) {
-  const [src, setSrc] = useState(ch.POSTER || ch.CHANNEL_LOGO)
-  const dim = size === 'sm' ? 'w-8 h-8' : size === 'md' ? 'w-12 h-12' : 'w-20 h-20'
+  const [errored, setErrored] = useState(false)
+  const dim     = size === 'sm' ? 'w-8 h-8'   : size === 'md' ? 'w-12 h-12' : 'w-20 h-20'
   const rounded = size === 'lg' ? 'rounded-2xl' : 'rounded-xl'
-
   return (
     <div className={`${dim} ${rounded} bg-white dark:bg-white/10 shadow-sm flex items-center justify-center shrink-0 overflow-hidden`}>
-      {src ? (
-        <img
-          src={src}
-          alt={ch.CHANNEL_NAME}
-          className="w-10/12 h-10/12 object-contain"
-          onError={() => setSrc('')}
-        />
-      ) : (
-        <Radio size={size === 'lg' ? 28 : size === 'md' ? 18 : 13} className="text-orange-400 opacity-60" />
-      )}
+      {ch.logo && !errored
+        ? <img src={ch.logo} alt={ch.name} className="w-10/12 h-10/12 object-contain" onError={() => setErrored(true)} />
+        : <Radio size={size === 'lg' ? 28 : size === 'md' ? 18 : 13} className="text-orange-400 opacity-60" />
+      }
     </div>
   )
 }
 
-// ─── NOW PLAYING CARD (desktop center) ───────────────────────────────────────
+// ─── Now Playing Card ─────────────────────────────────────────────────────────
 
-function NowPlayingCard({
-  channel,
-  isPlaying,
-  volume,
-  onVolumeChange,
-  isMuted,
-  onToggleMute,
-}: {
+function NowPlayingCard({ channel, status, volume, onVolumeChange, isMuted, onToggleMute }: {
   channel: RadioChannel | null
-  isPlaying: boolean
+  status: PlayerStatus
   volume: number
   onVolumeChange: (v: number) => void
   isMuted: boolean
   onToggleMute: () => void
 }) {
+  const isPlaying = status === 'playing'
+  const isLoading = status === 'loading'
   return (
     <div className="flex flex-col items-center justify-center h-full gap-6 px-6 py-8 select-none">
-      {/* Big logo with pulse */}
       <div className="relative">
         <PulsingRing active={isPlaying} />
         <div className="relative w-28 h-28 rounded-3xl bg-white/80 dark:bg-white/10 shadow-2xl shadow-orange-400/20 flex items-center justify-center overflow-hidden border border-black/8 dark:border-white/10">
-          {channel ? (
-            <ChannelLogo ch={channel} size="lg" />
-          ) : (
-            <Radio size={40} className="text-orange-400 opacity-40" />
-          )}
-          {isPlaying && (
-            <div className="absolute inset-0 rounded-3xl" style={{ background: 'linear-gradient(135deg, rgba(251,146,60,0.08) 0%, rgba(251,191,36,0.04) 100%)' }} />
-          )}
+          {channel ? <ChannelLogo ch={channel} size="lg" /> : <Radio size={40} className="text-orange-400 opacity-40" />}
+          {isPlaying && <div className="absolute inset-0 rounded-3xl" style={{ background: 'linear-gradient(135deg,rgba(251,146,60,0.08) 0%,rgba(251,191,36,0.04) 100%)' }} />}
         </div>
       </div>
 
-      {/* Name + city */}
       <div className="text-center">
         <h2 className="text-xl font-bold text-black/85 dark:text-white/90 mb-1">
-          {channel?.CHANNEL_NAME ?? 'აირჩიეთ რადიო'}
+          {channel?.name ?? 'Select a station'}
         </h2>
-        {channel?.CITY && (
-          <div className="flex items-center justify-center gap-1 text-sm text-black/40 dark:text-white/35">
-            <MapPin size={11} />
-            <span>{channel.CITY}</span>
-          </div>
-        )}
+        {isLoading && <p className="text-xs text-orange-400 animate-pulse">Connecting…</p>}
+        {status === 'error' && <p className="text-xs text-red-400">Stream unavailable</p>}
       </div>
 
-      {/* Visualizer */}
       <div className="flex flex-col items-center gap-3">
-        {channel ? (
-          <AudioBarsAnimated isPlaying={isPlaying} barCount={36} />
-        ) : (
-          <div className="h-10 flex items-end gap-[2px]">
-            {Array.from({ length: 36 }).map((_, i) => (
-              <div key={i} className="w-[3px] h-[3px] rounded-full bg-black/10 dark:bg-white/10" />
-            ))}
-          </div>
-        )}
-
-        {/* Live badge */}
+        {channel
+          ? <AudioBarsAnimated isPlaying={isPlaying} barCount={36} />
+          : <div className="h-10 flex items-end gap-[2px]">{Array.from({ length: 36 }).map((_, i) => <div key={i} className="w-[3px] h-[3px] rounded-full bg-black/10 dark:bg-white/10" />)}</div>
+        }
         {isPlaying && channel && (
           <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-red-500/10">
             <span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse" />
@@ -355,28 +158,13 @@ function NowPlayingCard({
         )}
       </div>
 
-      {/* Volume */}
       <div className="w-full flex items-center gap-3 px-2">
-        <button
-          onClick={onToggleMute}
-          className="text-black/30 dark:text-white/30 hover:text-orange-400 transition-colors"
-        >
+        <button onClick={onToggleMute} className="text-black/30 dark:text-white/30 hover:text-orange-400 transition-colors">
           {isMuted ? <VolumeX size={16} /> : <Volume2 size={16} />}
         </button>
         <div className="flex-1 relative h-1.5 rounded-full bg-black/8 dark:bg-white/8">
-          <div
-            className="absolute left-0 top-0 h-full rounded-full bg-gradient-to-r from-orange-500 to-yellow-400 transition-all"
-            style={{ width: `${isMuted ? 0 : volume * 100}%` }}
-          />
-          <input
-            type="range"
-            min={0}
-            max={1}
-            step={0.01}
-            value={isMuted ? 0 : volume}
-            onChange={e => onVolumeChange(parseFloat(e.target.value))}
-            className="absolute inset-0 w-full opacity-0 cursor-pointer h-full"
-          />
+          <div className="absolute left-0 top-0 h-full rounded-full bg-gradient-to-r from-orange-500 to-yellow-400 transition-all" style={{ width: `${isMuted ? 0 : volume * 100}%` }} />
+          <input type="range" min={0} max={1} step={0.01} value={isMuted ? 0 : volume} onChange={e => onVolumeChange(parseFloat(e.target.value))} className="absolute inset-0 w-full opacity-0 cursor-pointer h-full" />
         </div>
         <span className="text-[10px] tabular-nums text-black/30 dark:text-white/30 w-7 text-right">
           {isMuted ? '0' : Math.round(volume * 100)}
@@ -388,63 +176,38 @@ function NowPlayingCard({
 
 // ─── Channel Row ──────────────────────────────────────────────────────────────
 
-function ChannelRow({
-  ch,
-  isSelected,
-  isAvailable,
-  isPlaying,
-  iconOnly,
-  onClick,
-}: {
-  ch: RadioChannel
-  isSelected: boolean
-  isAvailable: boolean
-  isPlaying: boolean
-  iconOnly: boolean
-  onClick: () => void
+function ChannelRow({ ch, isSelected, isPlaying, iconOnly, onClick }: {
+  ch: RadioChannel; isSelected: boolean; isPlaying: boolean; iconOnly: boolean; onClick: () => void
 }) {
+  const hasAccess = bool(ch.has_access)
+  const isFree    = bool(ch.is_free)
   return (
     <div
-      onClick={onClick}
-      title={!isAvailable ? 'Not available' : undefined}
+      onClick={hasAccess ? onClick : undefined}
+      title={!hasAccess ? (isFree ? 'Login required' : 'Subscription required') : undefined}
       className={[
         'flex items-center gap-3 px-4 py-2.5 transition-all duration-150 border-l-2',
-        isAvailable ? 'cursor-pointer' : 'cursor-default opacity-35',
-        isSelected
-          ? 'bg-gradient-to-r from-orange-50 to-yellow-50/60 dark:from-orange-500/10 dark:to-yellow-400/5 border-l-orange-400'
-          : 'border-l-transparent hover:bg-black/3 dark:hover:bg-white/4',
+        hasAccess ? 'cursor-pointer' : 'cursor-default opacity-40',
+        isSelected ? 'bg-gradient-to-r from-orange-50 to-yellow-50/60 dark:from-orange-500/10 dark:to-yellow-400/5 border-l-orange-400' : 'border-l-transparent hover:bg-black/3 dark:hover:bg-white/4',
         iconOnly ? 'justify-center px-0' : '',
       ].join(' ')}
     >
       <div className="relative shrink-0">
         <ChannelLogo ch={ch} size="sm" />
-        {!isAvailable && (
-          <span className="absolute -top-1 -right-1 text-[9px]">🔒</span>
-        )}
+        {!hasAccess && <span className="absolute -top-1 -right-1 text-[9px]">🔒</span>}
       </div>
-
       {!iconOnly && (
         <>
-          <span className="text-[10px] font-semibold tabular-nums text-black/30 dark:text-white/25 w-5 text-right shrink-0">
-            {ch.CHANNEL_NUMBER}
-          </span>
           <div className="flex-1 min-w-0">
             <span className="text-sm font-medium truncate text-black/80 dark:text-white/75 block">
-              {ch.CHANNEL_NAME.length > 20 ? ch.CHANNEL_NAME.slice(0, 20) + '…' : ch.CHANNEL_NAME}
+              {ch.name.length > 22 ? ch.name.slice(0, 22) + '…' : ch.name}
             </span>
-            {ch.CITY && (
-              <span className="text-[10px] text-black/30 dark:text-white/25 flex items-center gap-0.5">
-                <MapPin size={8} />
-                {ch.CITY}
-              </span>
-            )}
+            <span className={`text-[10px] px-1.5 py-0.5 rounded-full w-fit mt-0.5 inline-block ${isFree ? 'bg-green-500/10 text-green-600 dark:text-green-400' : 'bg-orange-500/10 text-orange-500'}`}>
+              {isFree ? 'Free' : 'Premium'}
+            </span>
           </div>
-          {isSelected && isPlaying && (
-            <AudioBarsAnimated isPlaying barCount={8} small />
-          )}
-          {isSelected && !isPlaying && (
-            <span className="w-2 h-2 rounded-full bg-orange-400/40 shrink-0" />
-          )}
+          {isSelected && isPlaying  && <AudioBarsAnimated isPlaying barCount={8} small />}
+          {isSelected && !isPlaying && <span className="w-2 h-2 rounded-full bg-orange-400/40 shrink-0" />}
         </>
       )}
     </div>
@@ -453,78 +216,35 @@ function ChannelRow({
 
 // ─── Channel List Panel ───────────────────────────────────────────────────────
 
-function ChannelList({
-  channels,
-  selectedId,
-  isPlaying,
-  iconOnly,
-  onSelect,
-  availableIds,
-}: {
-  channels: RadioChannel[]
-  selectedId: string | null
-  isPlaying: boolean
-  iconOnly: boolean
-  onSelect: (ch: RadioChannel) => void
-  availableIds: string[]
+function ChannelList({ channels, selectedId, isPlaying, iconOnly, onSelect }: {
+  channels: RadioChannel[]; selectedId: number | string | null; isPlaying: boolean; iconOnly: boolean; onSelect: (ch: RadioChannel) => void
 }) {
   const [query, setQuery] = useState('')
-
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase()
-    if (!q) return channels
-    return channels.filter(
-      ch =>
-        ch.CHANNEL_NAME.toLowerCase().includes(q) ||
-        ch.CITY.toLowerCase().includes(q) ||
-        ch.CHANNEL_NUMBER.includes(q)
-    )
+    return q ? channels.filter(ch => ch.name.toLowerCase().includes(q)) : channels
   }, [channels, query])
 
   return (
     <div className="flex-1 flex flex-col h-full overflow-hidden gap-3">
       {!iconOnly && (
         <div className="relative group shrink-0">
-          <span
-            className="pointer-events-none absolute inset-0 rounded-xl opacity-0 group-focus-within:opacity-100 transition-opacity duration-300"
-            style={{ boxShadow: '0 0 0 3px rgba(249,115,22,0.18), 0 0 14px 2px rgba(249,115,22,0.10)' }}
+          <span className="pointer-events-none absolute inset-0 rounded-xl opacity-0 group-focus-within:opacity-100 transition-opacity duration-300" style={{ boxShadow: '0 0 0 3px rgba(249,115,22,0.18),0 0 14px 2px rgba(249,115,22,0.10)' }} />
+          <Search size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-orange-400/70 group-focus-within:text-orange-400 transition-colors" />
+          <input type="text" value={query} onChange={e => setQuery(e.target.value)} placeholder="Search radio…"
+            className="w-full h-10 pl-9 pr-9 rounded-xl text-sm bg-white/70 dark:bg-white/5 border border-black/8 dark:border-white/10 backdrop-blur-md placeholder:text-black/30 dark:placeholder:text-white/25 text-black/80 dark:text-white/80 outline-none transition-all focus:bg-white dark:focus:bg-white/10 focus:border-orange-300/60 dark:focus:border-orange-400/30"
           />
-          <Search size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-orange-400/70 group-focus-within:text-orange-400 transition-colors duration-200" />
-          <input
-            type="text"
-            value={query}
-            onChange={e => setQuery(e.target.value)}
-            placeholder="Search radio…"
-            className="w-full h-10 pl-9 pr-9 rounded-xl text-sm bg-white/70 dark:bg-white/5 border border-black/8 dark:border-white/10 backdrop-blur-md placeholder:text-black/30 dark:placeholder:text-white/25 text-black/80 dark:text-white/80 outline-none transition-all duration-200 focus:bg-white dark:focus:bg-white/10 focus:border-orange-300/60 dark:focus:border-orange-400/30"
-          />
-          {query && (
-            <button onClick={() => setQuery('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-black/30 dark:text-white/30 hover:text-black/60 dark:hover:text-white/60 transition-colors">
-              <X size={13} />
-            </button>
-          )}
+          {query && <button onClick={() => setQuery('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-black/30 dark:text-white/30 hover:text-black/60 dark:hover:text-white/60 transition-colors"><X size={13} /></button>}
         </div>
       )}
-
       <div className="flex-1 rounded-xl border border-black/8 dark:border-white/8 overflow-y-auto min-h-0 bg-white/50 dark:bg-white/3 backdrop-blur-md">
         <div className="divide-y divide-black/5 dark:divide-white/5">
-          {filtered.length > 0 ? (
-            filtered.map(ch => (
-              <ChannelRow
-                key={ch.UID}
-                ch={ch}
-                isSelected={selectedId === ch.UID}
-                isAvailable={availableIds.includes(ch.UID)}
-                isPlaying={selectedId === ch.UID && isPlaying}
-                iconOnly={iconOnly}
-                onClick={() => availableIds.includes(ch.UID) && onSelect(ch)}
-              />
-            ))
-          ) : (
+          {filtered.length > 0 ? filtered.map(ch => (
+            <ChannelRow key={ch.id} ch={ch} isSelected={sameId(selectedId, ch.id)} isPlaying={sameId(selectedId, ch.id) && isPlaying} iconOnly={iconOnly} onClick={() => onSelect(ch)} />
+          )) : (
             <div className="p-10 text-center">
               <Search size={22} className="mx-auto mb-2 text-black/15 dark:text-white/15" />
-              <p className="text-sm text-black/35 dark:text-white/30">
-                {query ? `No results for "${query}"` : 'No channels found.'}
-              </p>
+              <p className="text-sm text-black/35 dark:text-white/30">No results for "{query}"</p>
             </div>
           )}
         </div>
@@ -533,84 +253,29 @@ function ChannelList({
   )
 }
 
-// ─── City Filter Pills ────────────────────────────────────────────────────────
+// ─── Mobile Grid ──────────────────────────────────────────────────────────────
 
-function CityFilter({ cities, selected, onSelect }: { cities: string[]; selected: string; onSelect: (c: string) => void }) {
-  return (
-    <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-none shrink-0">
-      {cities.map(city => (
-        <button
-          key={city}
-          onClick={() => onSelect(city)}
-          className={`shrink-0 h-8 px-3 rounded-full text-xs font-medium transition-all ${
-            selected === city
-              ? 'bg-gradient-to-br from-orange-500 to-yellow-400 text-white shadow-sm shadow-orange-300/30'
-              : 'bg-white/70 dark:bg-white/5 border border-black/10 dark:border-white/10 text-black/50 dark:text-white/40 hover:text-black/70 dark:hover:text-white/60'
-          }`}
-        >
-          {city}
-        </button>
-      ))}
-    </div>
-  )
-}
-
-// ─── Mobile Portrait Grid ─────────────────────────────────────────────────────
-
-function MobileChannelGrid({
-  channels,
-  selectedId,
-  isPlaying,
-  onSelect,
-  availableIds,
-}: {
-  channels: RadioChannel[]
-  selectedId: string | null
-  isPlaying: boolean
-  onSelect: (ch: RadioChannel) => void
-  availableIds: string[]
+function MobileChannelGrid({ channels, selectedId, isPlaying, onSelect }: {
+  channels: RadioChannel[]; selectedId: number | string | null; isPlaying: boolean; onSelect: (ch: RadioChannel) => void
 }) {
   const [search, setSearch] = useState('')
-  const [city, setCity] = useState('ყველა')
-
-  const filtered = useMemo(() => {
-    return channels.filter(ch => {
-      const matchCity = city === 'ყველა' || ch.CITY === city
-      const matchSearch = ch.CHANNEL_NAME.toLowerCase().includes(search.toLowerCase())
-      return matchCity && matchSearch
-    })
-  }, [channels, city, search])
+  const filtered = useMemo(() => channels.filter(ch => ch.name.toLowerCase().includes(search.toLowerCase())), [channels, search])
 
   return (
     <div className="flex flex-col gap-3 p-3">
-      <input
-        type="text"
-        value={search}
-        onChange={e => setSearch(e.target.value)}
-        placeholder="Search…"
+      <input type="text" value={search} onChange={e => setSearch(e.target.value)} placeholder="Search…"
         className="w-full h-9 px-3 rounded-xl text-sm bg-white/70 dark:bg-white/5 border border-black/10 dark:border-white/10 text-black/80 dark:text-white/80 placeholder:text-black/30 dark:placeholder:text-white/30 outline-none focus:ring-2 focus:ring-orange-400/40"
       />
-      <CityFilter cities={CITIES} selected={city} onSelect={setCity} />
       <div className="grid grid-cols-3 gap-2">
         {filtered.map(ch => {
-          const isSelected = selectedId === ch.UID
-          const isAvailable = availableIds.includes(ch.UID)
+          const isSelected = sameId(selectedId, ch.id)
+          const hasAccess  = bool(ch.has_access)
+          const isFree     = bool(ch.is_free)
           return (
-            <div
-              key={ch.UID}
-              onClick={() => isAvailable && onSelect(ch)}
-              className={[
-                'relative flex flex-col items-center gap-1.5 p-2.5 rounded-2xl cursor-pointer transition-all duration-150 active:scale-95',
-                isSelected
-                  ? 'bg-gradient-to-br from-orange-500/20 to-yellow-400/10 border border-orange-400/40 shadow-sm shadow-orange-300/20'
-                  : 'bg-white/60 dark:bg-white/5 border border-black/8 dark:border-white/8',
-                !isAvailable ? 'opacity-40 cursor-default' : '',
-              ].join(' ')}
+            <div key={ch.id} onClick={() => hasAccess && onSelect(ch)}
+              className={['relative flex flex-col items-center gap-1.5 p-2.5 rounded-2xl transition-all duration-150 active:scale-95', hasAccess ? 'cursor-pointer' : 'cursor-default opacity-40', isSelected ? 'bg-gradient-to-br from-orange-500/20 to-yellow-400/10 border border-orange-400/40 shadow-sm shadow-orange-300/20' : 'bg-white/60 dark:bg-white/5 border border-black/8 dark:border-white/8'].join(' ')}
             >
-              {!isAvailable && <span className="absolute top-1.5 right-1.5 text-[9px]">🔒</span>}
-              <span className="absolute top-1.5 left-1.5 text-[8px] font-bold text-black/25 dark:text-white/20">
-                {ch.CHANNEL_NUMBER}
-              </span>
+              {!hasAccess && <span className="absolute top-1.5 right-1.5 text-[9px]">🔒</span>}
               <div className="relative">
                 <ChannelLogo ch={ch} size="md" />
                 {isSelected && isPlaying && (
@@ -619,12 +284,8 @@ function MobileChannelGrid({
                   </div>
                 )}
               </div>
-              <span className={`text-[10px] font-medium text-center leading-tight line-clamp-2 ${isSelected ? 'text-orange-500 dark:text-orange-400' : 'text-black/60 dark:text-white/50'}`}>
-                {ch.CHANNEL_NAME}
-              </span>
-              <span className="text-[8px] text-black/25 dark:text-white/20 flex items-center gap-0.5">
-                <MapPin size={7} />{ch.CITY}
-              </span>
+              <span className={`text-[10px] font-medium text-center leading-tight line-clamp-2 ${isSelected ? 'text-orange-500 dark:text-orange-400' : 'text-black/60 dark:text-white/50'}`}>{ch.name}</span>
+              <span className={`text-[8px] px-1.5 py-0.5 rounded-full ${isFree ? 'bg-green-500/10 text-green-500' : 'bg-orange-500/10 text-orange-400'}`}>{isFree ? 'Free' : 'Premium'}</span>
             </div>
           )
         })}
@@ -633,95 +294,141 @@ function MobileChannelGrid({
   )
 }
 
+// ─── Spinner ──────────────────────────────────────────────────────────────────
+
+function Spinner() {
+  return (
+    <div className="flex flex-col items-center justify-center gap-3 py-16">
+      <div className="w-8 h-8 rounded-full border-2 border-orange-500/20 border-t-orange-500 animate-spin" />
+      <span className="text-sm text-black/35 dark:text-white/30">Loading stations…</span>
+    </div>
+  )
+}
+
+// ─── Play Button ──────────────────────────────────────────────────────────────
+
+function PlayButton({ status, onClick, disabled }: { status: PlayerStatus; onClick: () => void; disabled: boolean }) {
+  const isPlaying = status === 'playing'
+  const isLoading = status === 'loading'
+  return (
+    <button onClick={onClick} disabled={disabled || isLoading}
+      className={['mt-2 w-16 h-16 rounded-2xl flex items-center justify-center transition-all duration-200', isPlaying ? 'bg-gradient-to-br from-orange-500 to-yellow-400 text-white shadow-xl shadow-orange-400/40 scale-105' : 'bg-white/80 dark:bg-white/8 border border-black/8 dark:border-white/10 text-black/50 dark:text-white/40 hover:scale-105 hover:shadow-lg', 'disabled:opacity-30 disabled:scale-100 disabled:shadow-none'].join(' ')}
+    >
+      {isLoading ? <div className="w-6 h-6 rounded-full border-2 border-current border-t-transparent animate-spin" />
+        : isPlaying ? <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></svg>
+        : <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><polygon points="5,3 19,12 5,21"/></svg>
+      }
+    </button>
+  )
+}
+
 // ─── Main Page ────────────────────────────────────────────────────────────────
 
 export default function RadioPage() {
-  const [selectedChannel, setSelectedChannel] = useState<RadioChannel | null>(MOCK_CHANNELS[2])
-  const [isPlaying, setIsPlaying] = useState(false)
-  const [volume, setVolume] = useState(0.75)
-  const [isMuted, setIsMuted] = useState(false)
-  const [selectedCity, setSelectedCity] = useState('ყველა')
+  const [channels,     setChannels]     = useState<RadioChannel[]>([])
+  const [loading,      setLoading]      = useState(true)
+  const [fetchError,   setFetchError]   = useState<string | null>(null)
+  const [selected,     setSelected]     = useState<RadioChannel | null>(null)
+  const [playerStatus, setPlayerStatus] = useState<PlayerStatus>('idle')
+  const [volume,       setVolume]       = useState(0.75)
+  const [isMuted,      setIsMuted]      = useState(false)
   const [leftExpanded, setLeftExpanded] = useState(false)
   const [playerExpanded, setPlayerExpanded] = useState(false)
 
-  const audioRef = useRef<HTMLAudioElement | null>(null)
-  const isMobile = useIsMobile()
-  const isPortrait = useIsPortrait()
+  const isMobile        = useIsMobile()
+  const isPortrait      = useIsPortrait()
   const isMobilePortrait = isMobile && isPortrait
 
-  const filteredChannels = useMemo(() =>
-    selectedCity === 'ყველა'
-      ? MOCK_CHANNELS
-      : MOCK_CHANNELS.filter(ch => ch.CITY === selectedCity),
-    [selectedCity]
-  )
+  const { audioRef, load, destroy } = useMpegtsPlayer({
+    onStatus: setPlayerStatus,
+    volume,
+    muted: isMuted,
+  })
 
-  const handleSelect = useCallback((ch: RadioChannel) => {
-    setSelectedChannel(ch)
-    setIsPlaying(true)
+  // ── Fetch channel list ─────────────────────────────────────────────────────
+  useEffect(() => {
+    setLoading(true)
+    api.get<RadioChannel[]>('/api/radio')
+      .then(res => setChannels(res.data))
+      .catch(() => setFetchError('Failed to load stations. Please refresh.'))
+      .finally(() => setLoading(false))
   }, [])
 
-  const togglePlay = useCallback(() => {
-    if (!selectedChannel) return
-    setIsPlaying(v => !v)
-  }, [selectedChannel])
+  // ── Play a channel ─────────────────────────────────────────────────────────
+  const playChannel = useCallback(async (ch: RadioChannel) => {
+    if (!bool(ch.has_access)) return
 
-  // Simulate audio (no real stream URL in demo)
-  useEffect(() => {
-    if (!audioRef.current) return
-    if (isPlaying) {
-      audioRef.current.volume = isMuted ? 0 : volume
+    // Same channel + playing → pause
+    if (sameId(selected?.id, ch.id) && playerStatus === 'playing') {
+      audioRef.current?.pause()
+      setPlayerStatus('paused')
+      return
     }
-  }, [isPlaying, volume, isMuted])
+    // Same channel + paused → resume (no re-fetch)
+    if (sameId(selected?.id, ch.id) && playerStatus === 'paused') {
+      audioRef.current?.play().catch(() => setPlayerStatus('error'))
+      setPlayerStatus('playing')
+      return
+    }
 
-  // ── MOBILE PORTRAIT ───────────────────────────────────────────────────────
+    // New channel — fetch fresh stream URL then hand off to mpegts player
+    setSelected(ch)
+    setPlayerStatus('loading')
 
+    try {
+      const res = await api.get<StreamResponse>(`/api/radio/${ch.id}/stream`)
+      await load(res.data.url, res.data.type)
+    } catch {
+      setPlayerStatus('error')
+    }
+  }, [selected, playerStatus, audioRef, load])
+
+  // ── Toggle play/pause ──────────────────────────────────────────────────────
+  const togglePlay = useCallback(() => {
+    if (!selected) return
+    if (playerStatus === 'playing') {
+      audioRef.current?.pause()
+      setPlayerStatus('paused')
+    } else if (playerStatus === 'paused') {
+      audioRef.current?.play().catch(() => setPlayerStatus('error'))
+      setPlayerStatus('playing')
+    } else {
+      playChannel(selected)
+    }
+  }, [selected, playerStatus, audioRef, playChannel])
+
+  // Cleanup on unmount
+  useEffect(() => () => destroy(), [destroy])
+
+  const isPlaying = playerStatus === 'playing'
+  const isLoading = playerStatus === 'loading'
+
+  // ── MOBILE PORTRAIT ────────────────────────────────────────────────────────
   if (isMobilePortrait) {
     return (
-      <div className="flex flex-col w-full h-[calc(100vh-80px)] bg-gray-50 dark:bg-zinc-950 overflow-hidden">
-        <audio ref={audioRef} />
+      <div className="flex flex-col w-full h-full bg-gray-50 dark:bg-zinc-950 overflow-hidden">
+        <audio ref={audioRef} style={{ display: 'none' }} />
 
-        {/* Mini now-playing bar */}
-        <div
-          className="shrink-0 bg-white/80 dark:bg-zinc-900/90 border-b border-black/8 dark:border-white/8 backdrop-blur-md"
-          style={{ transition: 'all 0.3s' }}
-        >
+        <div className="shrink-0 bg-white/80 dark:bg-zinc-900/90 border-b border-black/8 dark:border-white/8 backdrop-blur-md">
           <div className="flex items-center gap-3 px-3 py-2.5">
             <div className="relative shrink-0">
-              {selectedChannel && <ChannelLogo ch={selectedChannel} size="sm" />}
+              {selected && <ChannelLogo ch={selected} size="sm" />}
               <PulsingRing active={isPlaying} />
             </div>
             <div className="flex-1 min-w-0">
-              <p className="text-[13px] font-semibold text-black/80 dark:text-white/80 truncate">
-                {selectedChannel?.CHANNEL_NAME ?? 'Select a station'}
-              </p>
-              {selectedChannel?.CITY && (
-                <p className="text-[10px] text-black/35 dark:text-white/30 flex items-center gap-0.5">
-                  <MapPin size={8} />{selectedChannel.CITY}
-                </p>
-              )}
+              <p className="text-[13px] font-semibold text-black/80 dark:text-white/80 truncate">{selected?.name ?? 'Select a station'}</p>
+              {isLoading && <p className="text-[10px] text-orange-400 animate-pulse">Connecting…</p>}
+              {playerStatus === 'error' && <p className="text-[10px] text-red-400">Stream error</p>}
             </div>
-
-            {selectedChannel && (
-              <AudioBarsAnimated isPlaying={isPlaying} barCount={10} small />
-            )}
-
-            <button
-              onClick={togglePlay}
-              disabled={!selectedChannel}
-              className={`w-9 h-9 flex items-center justify-center rounded-xl transition-all ${
-                isPlaying
-                  ? 'bg-gradient-to-br from-orange-500 to-yellow-400 text-white shadow-md shadow-orange-400/30'
-                  : 'bg-black/6 dark:bg-white/8 text-black/50 dark:text-white/40'
-              } disabled:opacity-30`}
+            {selected && <AudioBarsAnimated isPlaying={isPlaying} barCount={10} small />}
+            <button onClick={togglePlay} disabled={!selected || isLoading}
+              className={`w-9 h-9 flex items-center justify-center rounded-xl transition-all disabled:opacity-30 ${isPlaying ? 'bg-gradient-to-br from-orange-500 to-yellow-400 text-white shadow-md shadow-orange-400/30' : 'bg-black/6 dark:bg-white/8 text-black/50 dark:text-white/40'}`}
             >
-              {isPlaying ? (
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></svg>
-              ) : (
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><polygon points="5,3 19,12 5,21"/></svg>
-              )}
+              {isLoading ? <div className="w-4 h-4 rounded-full border-2 border-current border-t-transparent animate-spin" />
+                : isPlaying ? <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></svg>
+                : <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><polygon points="5,3 19,12 5,21"/></svg>
+              }
             </button>
-
             {isPlaying && (
               <div className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-red-500/10 shrink-0">
                 <span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse" />
@@ -730,7 +437,6 @@ export default function RadioPage() {
             )}
           </div>
 
-          {/* Volume strip */}
           {playerExpanded && (
             <div className="flex items-center gap-3 px-3 pb-3">
               <button onClick={() => setIsMuted(v => !v)} className="text-black/30 dark:text-white/30 hover:text-orange-400">
@@ -742,47 +448,30 @@ export default function RadioPage() {
               </div>
             </div>
           )}
-
-          <button
-            onClick={() => setPlayerExpanded(v => !v)}
-            className="w-full flex justify-center pb-1 text-black/20 dark:text-white/15 hover:text-orange-400 transition-colors"
-          >
+          <button onClick={() => setPlayerExpanded(v => !v)} className="w-full flex justify-center pb-1 text-black/20 dark:text-white/15 hover:text-orange-400 transition-colors">
             {playerExpanded ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
           </button>
         </div>
 
-        {/* Channel grid */}
         <div className="flex-1 overflow-y-auto overscroll-contain">
-          <MobileChannelGrid
-            channels={MOCK_CHANNELS}
-            selectedId={selectedChannel?.UID ?? null}
-            isPlaying={isPlaying}
-            onSelect={ch => { handleSelect(ch) }}
-            availableIds={AVAILABLE_IDS}
-          />
+          {loading ? <Spinner /> : fetchError
+            ? <div className="p-8 text-center text-sm text-red-400">{fetchError}</div>
+            : <MobileChannelGrid channels={channels} selectedId={selected?.id ?? null} isPlaying={isPlaying} onSelect={playChannel} />
+          }
         </div>
       </div>
     )
   }
 
   // ── DESKTOP + LANDSCAPE ────────────────────────────────────────────────────
-
   return (
-    <div className="flex w-full h-[calc(100vh-80px)] bg-gray-50 dark:bg-zinc-950 overflow-hidden">
-      <audio ref={audioRef} />
+    <div className="flex w-full h-full bg-gray-50 dark:bg-zinc-950 overflow-hidden">
+      <audio ref={audioRef} style={{ display: 'none' }} />
 
-      {/* LEFT: channel list */}
-      <div className={`
-        lg:relative lg:w-1/4 xl:w-1/5
-        absolute z-20 flex flex-col h-full
-        transition-all duration-300 ease-in-out
-        ${isMobile ? (leftExpanded ? 'w-56' : 'w-[65px]') : ''}
-      `}>
+      {/* LEFT */}
+      <div className={`lg:relative lg:w-1/4 xl:w-1/5 absolute z-20 flex flex-col h-full transition-all duration-300 ${isMobile ? (leftExpanded ? 'w-56' : 'w-[65px]') : ''}`}>
         {isMobile && (
-          <button
-            onClick={() => setLeftExpanded(v => !v)}
-            className="absolute -right-3 top-1/2 -translate-y-1/2 z-30 w-6 h-10 flex items-center justify-center bg-white dark:bg-zinc-800 border border-black/10 dark:border-white/10 rounded-r-lg shadow-md text-black/40 dark:text-white/40 hover:text-orange-400 transition-colors"
-          >
+          <button onClick={() => setLeftExpanded(v => !v)} className="absolute -right-3 top-1/2 -translate-y-1/2 z-30 w-6 h-10 flex items-center justify-center bg-white dark:bg-zinc-800 border border-black/10 dark:border-white/10 rounded-r-lg shadow-md text-black/40 dark:text-white/40 hover:text-orange-400 transition-colors">
             {leftExpanded
               ? <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="15,18 9,12 15,6"/></svg>
               : <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="9,18 15,12 9,6"/></svg>
@@ -790,133 +479,66 @@ export default function RadioPage() {
           </button>
         )}
         <div className="flex-1 flex flex-col h-full p-3 gap-3 overflow-hidden">
-          {!isMobile && (
-            <CityFilter cities={CITIES} selected={selectedCity} onSelect={setSelectedCity} />
-          )}
-          <ChannelList
-            channels={filteredChannels}
-            selectedId={selectedChannel?.UID ?? null}
-            isPlaying={isPlaying}
-            iconOnly={isMobile && !leftExpanded}
-            onSelect={handleSelect}
-            availableIds={AVAILABLE_IDS}
-          />
+          {loading ? <Spinner /> : fetchError
+            ? <div className="p-4 text-center text-sm text-red-400">{fetchError}</div>
+            : <ChannelList channels={channels} selectedId={selected?.id ?? null} isPlaying={isPlaying} iconOnly={isMobile && !leftExpanded} onSelect={playChannel} />
+          }
         </div>
       </div>
 
-      {/* LEFT spacer on mobile */}
       {isMobile && <div className="w-[65px] shrink-0" />}
 
-      {/* CENTER: now playing */}
+      {/* CENTER */}
       <div className="flex-1 flex flex-col h-full overflow-hidden">
         <div className="flex-1 flex flex-col items-center justify-center relative">
-
-          {/* Background glow */}
-          {isPlaying && selectedChannel && (
-            <div
-              className="absolute inset-0 pointer-events-none"
-              style={{
-                background: 'radial-gradient(ellipse 60% 50% at 50% 50%, rgba(251,146,60,0.07) 0%, transparent 70%)',
-              }}
-            />
-          )}
-
-          <NowPlayingCard
-            channel={selectedChannel}
-            isPlaying={isPlaying}
-            volume={volume}
-            onVolumeChange={setVolume}
-            isMuted={isMuted}
-            onToggleMute={() => setIsMuted(v => !v)}
-          />
-
-          {/* Play / Pause button */}
-          <button
-            onClick={togglePlay}
-            disabled={!selectedChannel}
-            className={`
-              mt-2 w-16 h-16 rounded-2xl flex items-center justify-center transition-all duration-200
-              ${isPlaying
-                ? 'bg-gradient-to-br from-orange-500 to-yellow-400 text-white shadow-xl shadow-orange-400/40 scale-105'
-                : 'bg-white/80 dark:bg-white/8 border border-black/8 dark:border-white/10 text-black/50 dark:text-white/40 hover:scale-105 hover:shadow-lg'
-              }
-              disabled:opacity-30 disabled:scale-100 disabled:shadow-none
-            `}
-          >
-            {isPlaying ? (
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></svg>
-            ) : (
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><polygon points="5,3 19,12 5,21"/></svg>
-            )}
-          </button>
-
-          {/* City filter on desktop center-bottom */}
-          {!isMobile && (
-            <div className="absolute bottom-4 w-full flex justify-center">
-              <CityFilter cities={CITIES} selected={selectedCity} onSelect={setSelectedCity} />
-            </div>
-          )}
+          {isPlaying && selected && <div className="absolute inset-0 pointer-events-none" style={{ background: 'radial-gradient(ellipse 60% 50% at 50% 50%,rgba(251,146,60,0.07) 0%,transparent 70%)' }} />}
+          <NowPlayingCard channel={selected} status={playerStatus} volume={volume} onVolumeChange={setVolume} isMuted={isMuted} onToggleMute={() => setIsMuted(v => !v)} />
+          <PlayButton status={playerStatus} onClick={togglePlay} disabled={!selected} />
         </div>
       </div>
 
-      {/* RIGHT: signal / station info */}
-      <div className={`
-        lg:relative lg:w-1/4 xl:w-1/5
-        hidden lg:flex flex-col h-full p-3 gap-3 overflow-hidden
-      `}>
+      {/* RIGHT */}
+      <div className="hidden lg:flex flex-col h-full w-1/4 xl:w-1/5 p-3 gap-3 overflow-hidden">
         <div className="rounded-xl border border-black/8 dark:border-white/8 bg-white/50 dark:bg-white/3 backdrop-blur-md p-4 flex flex-col gap-4">
           <div className="flex items-center gap-2">
-            {isPlaying
-              ? <Wifi size={14} className="text-green-500" />
-              : <WifiOff size={14} className="text-black/25 dark:text-white/25" />
-            }
+            {isPlaying ? <Wifi size={14} className="text-green-500" /> : <WifiOff size={14} className="text-black/25 dark:text-white/25" />}
             <span className="text-xs font-medium text-black/50 dark:text-white/40">
-              {isPlaying ? 'Streaming' : 'Offline'}
+              {playerStatus === 'loading' ? 'Connecting…' : isPlaying ? 'Streaming' : playerStatus === 'error' ? 'Error' : 'Offline'}
             </span>
           </div>
-
-          {selectedChannel && (
+          {selected && (
             <>
               <div className="flex flex-col gap-1">
                 <span className="text-[10px] text-black/30 dark:text-white/25 uppercase tracking-widest">Station</span>
-                <span className="text-sm font-semibold text-black/80 dark:text-white/80">{selectedChannel.CHANNEL_NAME}</span>
-              </div>
-              <div className="flex flex-col gap-1">
-                <span className="text-[10px] text-black/30 dark:text-white/25 uppercase tracking-widest">City</span>
-                <span className="text-sm text-black/60 dark:text-white/50 flex items-center gap-1">
-                  <MapPin size={11} />{selectedChannel.CITY}
-                </span>
-              </div>
-              <div className="flex flex-col gap-1">
-                <span className="text-[10px] text-black/30 dark:text-white/25 uppercase tracking-widest">Channel No.</span>
-                <span className="text-sm text-black/60 dark:text-white/50">#{selectedChannel.CHANNEL_NUMBER}</span>
+                <span className="text-sm font-semibold text-black/80 dark:text-white/80">{selected.name}</span>
               </div>
               <div className="flex flex-col gap-1">
                 <span className="text-[10px] text-black/30 dark:text-white/25 uppercase tracking-widest">Access</span>
-                <span className={`text-xs font-medium px-2 py-0.5 rounded-full w-fit ${selectedChannel.FREE ? 'bg-green-500/10 text-green-600 dark:text-green-400' : 'bg-orange-500/10 text-orange-600 dark:text-orange-400'}`}>
-                  {selectedChannel.FREE ? 'Free' : 'Premium'}
+                <span className={`text-xs font-medium px-2 py-0.5 rounded-full w-fit ${bool(selected.is_free) ? 'bg-green-500/10 text-green-600 dark:text-green-400' : 'bg-orange-500/10 text-orange-600 dark:text-orange-400'}`}>
+                  {bool(selected.is_free) ? 'Free' : 'Premium'}
                 </span>
               </div>
             </>
           )}
         </div>
 
-        {/* All stations count */}
         <div className="rounded-xl border border-black/8 dark:border-white/8 bg-white/50 dark:bg-white/3 backdrop-blur-md p-4">
           <div className="flex items-center gap-2 mb-3">
             <Radio size={13} className="text-orange-400" />
             <span className="text-xs font-semibold text-black/50 dark:text-white/40 uppercase tracking-widest">Stations</span>
           </div>
           <div className="space-y-2">
-            {CITIES.filter(c => c !== 'ყველა').map(city => {
-              const count = MOCK_CHANNELS.filter(ch => ch.CITY === city).length
-              return (
-                <div key={city} className="flex items-center justify-between">
-                  <span className="text-xs text-black/50 dark:text-white/40">{city}</span>
-                  <span className="text-xs font-semibold tabular-nums text-black/60 dark:text-white/50">{count}</span>
-                </div>
-              )
-            })}
+            {[
+              { label: 'Total',      value: channels.length,                                color: 'text-black/60 dark:text-white/50' },
+              { label: 'Free',       value: channels.filter(c => bool(c.is_free)).length,    color: 'text-green-600 dark:text-green-400' },
+              { label: 'Premium',    value: channels.filter(c => !bool(c.is_free)).length,   color: 'text-orange-500' },
+              { label: 'Accessible', value: channels.filter(c => bool(c.has_access)).length, color: 'text-black/60 dark:text-white/50' },
+            ].map(({ label, value, color }) => (
+              <div key={label} className="flex items-center justify-between">
+                <span className="text-xs text-black/50 dark:text-white/40">{label}</span>
+                <span className={`text-xs font-semibold tabular-nums ${color}`}>{value}</span>
+              </div>
+            ))}
           </div>
         </div>
       </div>

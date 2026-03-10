@@ -36,6 +36,7 @@
     "lucide-react": "^0.561.0",
     "material-symbols": "^0.40.2",
     "motion": "^12.23.26",
+    "mpegts.js": "^1.8.0",
     "pusher-js": "^8.4.0",
     "react": "^19.2.0",
     "react-aria-components": "^1.14.0",
