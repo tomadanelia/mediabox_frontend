@@ -44,22 +44,10 @@ export function useMpegtsPlayer({ onStatus, volume, muted }: Options) {
       return
     }
 
-    // Web Workers can't resolve relative URLs — must be absolute.
-    // Route the CDN stream through the Vite proxy using window.location.origin
-    // so the worker gets a full URL like http://localhost:5173/radio-stream/...
-    const proxiedUrl = url.replace(
-      /^https?:\/\/cdn\.streamer\.mediabox\.ge/,
-      `${window.location.origin}/radio-stream`
-    )
-
     const mediaType = (type === 'flv' ? 'flv' : 'mpegts') as 'mpegts' | 'flv'
 
     const player = mpegts.createPlayer(
-      {
-        type: mediaType,
-        url: proxiedUrl,
-        isLive: true,
-      },
+      { type: mediaType, url, isLive: true },
       {
         enableWorker: true,
         liveBufferLatencyChasing: true,
@@ -71,14 +59,11 @@ export function useMpegtsPlayer({ onStatus, volume, muted }: Options) {
     player.attachMediaElement(audioRef.current)
     player.load()
 
-    player.on(mpegts.Events.ERROR, () => {
-      onStatus('error')
-    })
+    player.on(mpegts.Events.ERROR, () => onStatus('error'))
 
     audioRef.current.oncanplay = () => {
       audioRef.current!.volume = muted ? 0 : volume
-      audioRef.current!
-        .play()
+      audioRef.current!.play()
         .then(() => onStatus('playing'))
         .catch(() => onStatus('error'))
     }

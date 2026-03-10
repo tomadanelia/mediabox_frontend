@@ -9,7 +9,7 @@ interface Device {
   device_id: string
   name: string
   is_ready: boolean
-  channel: string
+  socket_token: string
 }
 
 type ConnectionStatus = 'idle' | 'fetching' | 'not_ready' | 'connecting' | 'connected' | 'error'
@@ -240,40 +240,56 @@ export default function RemotePage() {
   const [selectedDevice, setSelectedDevice]     = useState<Device | null>(null)
   const [errorMsg, setErrorMsg]                 = useState<string | null>(null)
   const [showDevicePicker, setShowDevicePicker] = useState(false)
-  const echoRef    = useRef<any>(null)
-  const channelRef = useRef<any>(null)
+  const socketRef  = useRef<any>(null)
   const [lastAction, setLastAction] = useState<string | null>(null)
   const actionTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
 
-  const getToken = () => localStorage.getItem('token') ?? localStorage.getItem('access_token')
-
-  const bootEcho = useCallback(async (): Promise<any> => {
-    if (echoRef.current) return echoRef.current
-    const token = getToken()
-    // @ts-ignore
-    const [{ default: Echo }, pusherModule] = await Promise.all([import('laravel-echo'), import('pusher-js')])
-    ;(window as any).Pusher = pusherModule.default ?? pusherModule
-    echoRef.current = new Echo({
-      broadcaster:'reverb', key: import.meta.env.VITE_REVERB_APP_KEY,
-      wsHost: import.meta.env.VITE_REVERB_HOST, wsPort:443, wssPort:443,
-      forceTLS:true, enabledTransports:['ws','wss'],
-      authEndpoint:'/api/broadcasting/auth',
-      auth:{ headers:{ Authorization: token ? `Bearer ${token}` : '', Accept:'application/json' } },
-    })
-    return echoRef.current
+  /* ── Disconnect helper ── */
+  const disconnectSocket = useCallback(() => {
+    if (socketRef.current) {
+      try { socketRef.current.disconnect() } catch {}
+      socketRef.current = null
+    }
   }, [])
 
+  /* ── Connect to a specific device via Socket.IO ── */
   const connectToDevice = useCallback(async (device: Device) => {
+    disconnectSocket()
     setStatus('connecting')
     try {
-      const echo = await bootEcho()
-      const ch = echo.private(device.channel)
-      channelRef.current = ch
-      ch.subscribed(() => { setSelectedDevice(device); setStatus('connected') })
-      ch.error((err: any) => { console.error('Channel auth error:', err); setStatus('error') })
-    } catch (e: any) { setStatus('error') }
-  }, [bootEcho])
+      const { io } = await import('socket.io-client')
+      const socket = io('https://tv-api.telecomm1.com', {
+        auth: { token: device.socket_token },
+        transports: ['websocket'],
+        reconnectionAttempts: 3,
+        timeout: 8000,
+      })
+      socketRef.current = socket
 
+      socket.on('connect', () => {
+        setSelectedDevice(device)
+        setStatus('connected')
+      })
+
+      socket.on('connect_error', (err: any) => {
+        console.error('Socket connect error:', err)
+        setStatus('error')
+        setErrorMsg(err?.message ?? 'Connection failed')
+      })
+
+      socket.on('disconnect', (reason: string) => {
+        if (reason !== 'io client disconnect') {
+          setStatus('error')
+          setErrorMsg(`Disconnected: ${reason}`)
+        }
+      })
+    } catch (e: any) {
+      setStatus('error')
+      setErrorMsg(e?.message ?? 'Failed to connect')
+    }
+  }, [disconnectSocket])
+
+  /* ── Fetch devices ── */
   const fetchDevices = useCallback(async () => {
     setStatus('fetching'); setErrorMsg(null)
     try {
@@ -284,26 +300,27 @@ export default function RemotePage() {
       if (ready.length === 0) { setStatus('not_ready'); return }
       if (ready.length === 1) { await connectToDevice(ready[0]) }
       else { setStatus('not_ready'); setShowDevicePicker(true) }
-    } catch (e: any) { setStatus('error'); setErrorMsg(e?.message ?? 'Failed to fetch devices') }
+    } catch (e: any) {
+      setStatus('error'); setErrorMsg(e?.message ?? 'Failed to fetch devices')
+    }
   }, [connectToDevice])
 
-  useEffect(() => () => {
-    if (echoRef.current && channelRef.current)
-      try { echoRef.current.leave(channelRef.current.name ?? '') } catch {}
-  }, [])
+  /* ── Cleanup on unmount ── */
+  useEffect(() => () => { disconnectSocket() }, [disconnectSocket])
 
-  const whisperKey = useCallback((buttonId: string) => {
-    if (status !== 'connected' || !channelRef.current) return
+  /* ── Send keypress via Socket.IO ── */
+  const sendKey = useCallback((buttonId: string) => {
+    if (status !== 'connected' || !socketRef.current) return
     const key = KEY_MAP[buttonId]; if (!key) return
-    channelRef.current.whisper('keypress', { key })
+    socketRef.current.emit('keypress', { key })
   }, [status])
 
   const handlePress = useCallback((id: string) => {
     press(id); setLastAction(id)
     if (actionTimer.current) clearTimeout(actionTimer.current)
     actionTimer.current = setTimeout(() => setLastAction(null), 1800)
-    whisperKey(id)
-  }, [press, whisperKey])
+    sendKey(id)
+  }, [press, sendKey])
 
   const buttonsDisabled = status !== 'connected'
   const isSpinning = status === 'fetching' || status === 'connecting'
