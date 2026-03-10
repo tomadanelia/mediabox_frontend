@@ -252,7 +252,6 @@ export default function RemotePage() {
     }
   }, [])
 
-  /* ── Connect to a specific device via Socket.IO ── */
   const connectToDevice = useCallback(async (device: Device) => {
     disconnectSocket()
     setStatus('connecting')
