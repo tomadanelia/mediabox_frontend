@@ -32,6 +32,16 @@ interface PurchaseResult {
   remaining_balance?: number
 }
 
+interface Channel {
+  id: string
+  external_id: string
+  number: number
+  name_ka: string
+  name_en: string
+  icon_url: string | null
+  is_active: boolean
+}
+
 // ─── Translations ─────────────────────────────────────────────────────────────
 const translations = {
   Ge: {
@@ -52,6 +62,14 @@ const translations = {
     purchasing: 'იყიდება...',
     topUp: 'ბალანსის შევსება',
     buy: 'ყიდვა',
+    viewChannels: 'არხები',
+    channelsTitle: 'არხები',
+    channelsLoading: 'იტვირთება...',
+    channelsError: 'შეცდომა არხების ჩატვირთვისას',
+    channelsEmpty: 'არხები არ მოიძებნა',
+    channelCount: (n: number) => `${n} არხი`,
+    close: 'დახურვა',
+    channel: 'არხი',
   },
   En: {
     subscriptionLabel: 'SUBSCRIPTION',
@@ -71,6 +89,14 @@ const translations = {
     purchasing: 'Purchasing...',
     topUp: 'Top Up Balance',
     buy: 'Buy',
+    viewChannels: 'Channels',
+    channelsTitle: 'Channels',
+    channelsLoading: 'Loading...',
+    channelsError: 'Failed to load channels',
+    channelsEmpty: 'No channels found',
+    channelCount: (n: number) => `${n} channels`,
+    close: 'Close',
+    channel: 'CH',
   },
 } as const
 
@@ -90,14 +116,172 @@ function getScenario(
   return 'ready'
 }
 
+// ─── Channel Modal ────────────────────────────────────────────────────────────
+const ChannelModal = ({
+  plan,
+  lang,
+  tx,
+  isDark,
+  onClose,
+}: {
+  plan: Plan
+  lang: 'en' | 'ka'
+  tx: typeof translations['En']
+  isDark: boolean
+  onClose: () => void
+}) => {
+  const [channels, setChannels] = useState<Channel[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState(false)
+  const [search, setSearch] = useState('')
+
+  useEffect(() => {
+    const fetchChannels = async () => {
+      try {
+        const res = await api.get(`/api/plans/${plan.id}/channels`)
+        setChannels(res.data.channels ?? [])
+      } catch {
+        setError(true)
+      } finally {
+        setLoading(false)
+      }
+    }
+    fetchChannels()
+
+    // close on Escape
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose() }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [plan.id])
+
+  // lock body scroll while open
+  useEffect(() => {
+    document.body.style.overflow = 'hidden'
+    return () => { document.body.style.overflow = '' }
+  }, [])
+
+  const filtered = channels.filter(ch => {
+    const q = search.toLowerCase()
+    return (
+      ch[`name_${lang}` as const].toLowerCase().includes(q) ||
+      String(ch.number).includes(q)
+    )
+  })
+
+  const overlay = 'fixed inset-0 z-50 flex items-center justify-center p-4'
+  const backdrop = isDark ? 'bg-black/70 backdrop-blur-sm' : 'bg-black/40 backdrop-blur-sm'
+  const modal = isDark
+    ? 'relative w-full max-w-lg rounded-2xl border border-white/10 bg-[#0f0f17] shadow-2xl flex flex-col'
+    : 'relative w-full max-w-lg rounded-2xl bg-white shadow-2xl flex flex-col'
+  const headerBorder = isDark ? 'border-b border-white/10' : 'border-b border-slate-100'
+  const searchCls = isDark
+    ? 'w-full rounded-xl bg-white/5 border border-white/10 px-4 py-2.5 text-sm text-white placeholder:text-gray-500 focus:outline-none focus:border-emerald-500/50 transition-colors'
+    : 'w-full rounded-xl bg-slate-100 border border-slate-200 px-4 py-2.5 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-emerald-400 transition-colors'
+  const rowCls = isDark
+    ? 'flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-white/5 transition-colors'
+    : 'flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-slate-50 transition-colors'
+  const numBadge = isDark
+    ? 'w-9 h-9 rounded-lg bg-white/8 border border-white/10 flex items-center justify-center text-xs font-bold text-gray-400 shrink-0'
+    : 'w-9 h-9 rounded-lg bg-slate-100 border border-slate-200 flex items-center justify-center text-xs font-bold text-slate-500 shrink-0'
+  const nameText = isDark ? 'text-sm text-gray-200' : 'text-sm text-slate-800'
+  const subText = isDark ? 'text-xs text-gray-500' : 'text-xs text-slate-400'
+
+  return (
+    <div className={`${overlay} ${backdrop}`} onClick={onClose}>
+      <div className={modal} style={{ maxHeight: '80vh' }} onClick={e => e.stopPropagation()}>
+
+        {/* Header */}
+        <div className={`px-5 py-4 ${headerBorder} flex items-start justify-between gap-3 shrink-0`}>
+          <div>
+            <h2 className={`text-base font-semibold ${isDark ? 'text-white' : 'text-slate-900'}`}>
+              {plan[`name_${lang}` as const]} — {tx.channelsTitle}
+            </h2>
+            {!loading && !error && (
+              <p className="text-xs text-emerald-500 mt-0.5">{tx.channelCount(channels.length)}</p>
+            )}
+          </div>
+          <button
+            onClick={onClose}
+            className={`shrink-0 w-8 h-8 rounded-lg flex items-center justify-center transition-colors ${
+              isDark ? 'hover:bg-white/10 text-gray-400 hover:text-white' : 'hover:bg-slate-100 text-slate-400 hover:text-slate-700'
+            }`}
+          >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+
+        {/* Search */}
+        {!loading && !error && channels.length > 0 && (
+          <div className="px-5 pt-3 pb-2 shrink-0">
+            <input
+              className={searchCls}
+              placeholder={`${tx.channel} #, ${lang === 'en' ? 'name' : 'სახელი'}...`}
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+              autoFocus
+            />
+          </div>
+        )}
+
+        {/* Body */}
+        <div className="overflow-y-auto flex-1 px-3 py-2">
+          {loading ? (
+            <div className="flex items-center justify-center py-16">
+              <span className="w-6 h-6 border-2 border-emerald-500/30 border-t-emerald-500 rounded-full animate-spin" />
+              <span className={`ml-3 text-sm ${isDark ? 'text-gray-400' : 'text-slate-500'}`}>{tx.channelsLoading}</span>
+            </div>
+          ) : error ? (
+            <div className="flex flex-col items-center justify-center py-16 gap-2">
+              <span className="text-2xl">⚠️</span>
+              <p className={`text-sm ${isDark ? 'text-gray-400' : 'text-slate-500'}`}>{tx.channelsError}</p>
+            </div>
+          ) : filtered.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-16 gap-2">
+              <span className="text-2xl">📺</span>
+              <p className={`text-sm ${isDark ? 'text-gray-400' : 'text-slate-500'}`}>{tx.channelsEmpty}</p>
+            </div>
+          ) : (
+            <ul className="space-y-0.5">
+              {filtered.map(ch => (
+                <li key={ch.id} className={rowCls}>
+                  {/* Icon or number badge */}
+                  {ch.icon_url ? (
+                    <img
+                      src={ch.icon_url}
+                      alt={ch[`name_${lang}` as const]}
+                      className="w-9 h-9 rounded-lg object-contain bg-white/5 border border-white/5 shrink-0"
+                      onError={e => { (e.currentTarget as HTMLImageElement).style.display = 'none' }}
+                    />
+                  ) : (
+                    <div className={numBadge}>{ch.number}</div>
+                  )}
+                  <div className="min-w-0 flex-1">
+                    <p className={`${nameText} truncate`}>{ch[`name_${lang}` as const]}</p>
+                    <p className={subText}>
+                      {tx.channel} {ch.number}
+                      {!ch.is_active && (
+                        <span className="ml-2 text-red-400">●</span>
+                      )}
+                    </p>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      </div>
+    </div>
+  )
+}
+
 const Plans = () => {
   const { isDark, language } = useUIStore()
   const { user, isAuthenticated, isLoading: authLoading, fetchUser, setUser } = useAuthStore()
   const navigate = useNavigate()
 
-  // Shorthand for the current translation table
   const tx = translations[language]
-  // Shorthand for plan field language suffix
   const lang = language === 'En' ? 'en' : 'ka'
 
   const [plans, setPlans] = useState<Plan[]>([])
@@ -106,7 +290,9 @@ const Plans = () => {
   const [purchasing, setPurchasing] = useState<string | null>(null)
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null)
 
-  // Balance is owned by AuthStore — single source of truth
+  // ─── Channel modal state ───────────────────────────────────────────────────
+  const [channelModalPlan, setChannelModalPlan] = useState<Plan | null>(null)
+
   const balance = user?.account?.balance != null ? parseFloat(user.account.balance) : null
   const isLowBalance = balance !== null && balance < 1.00
 
@@ -198,6 +384,9 @@ const Plans = () => {
       : 'bg-emerald-100 border-emerald-300 text-emerald-800',
     priceColor: isDark ? 'text-white' : 'text-slate-900',
     priceMuted: isDark ? 'text-gray-400' : 'text-slate-500',
+    channelBtn: isDark
+      ? 'flex items-center gap-1.5 text-xs text-gray-400 hover:text-emerald-400 transition-colors cursor-pointer'
+      : 'flex items-center gap-1.5 text-xs text-slate-500 hover:text-emerald-600 transition-colors cursor-pointer',
   }
 
   // ─── Per-plan cascading button ────────────────────────────────────────────
@@ -284,6 +473,17 @@ const Plans = () => {
         </div>
       )}
 
+      {/* Channel Modal */}
+      {channelModalPlan && (
+        <ChannelModal
+          plan={channelModalPlan}
+          lang={lang}
+          tx={tx}
+          isDark={isDark}
+          onClose={() => setChannelModalPlan(null)}
+        />
+      )}
+
       <div className="max-w-7xl mx-auto px-4 py-16 sm:px-6 lg:px-8">
 
         {/* ── Header + Balance/Login widget ── */}
@@ -357,8 +557,8 @@ const Plans = () => {
 
               return (
                 <div
-                  key={plan.id}
-                  className={`relative rounded-2xl transition-all duration-300 group ${popular ? t.cardPopular : t.cardDefault}`}
+                  key={plan.id} onClick={() => setChannelModalPlan(plan)}
+                  className={`relative cursor-pointer rounded-2xl transition-all duration-300 group ${popular ? t.cardPopular : t.cardDefault}`}
                 >
                   {popular && (
                     <div className="absolute -top-3 left-1/2 -translate-x-1/2 z-10">
@@ -386,7 +586,7 @@ const Plans = () => {
                       {plan[`description_${lang}` as const]}
                     </p>
 
-                    <ul className="space-y-1.5 mb-6">
+                    <ul className="space-y-1.5 mb-3">
                       <li className={`flex items-center gap-2 text-xs ${t.featureText}`}>
                         <span className={`w-4 h-4 rounded-full flex items-center justify-center flex-shrink-0 text-[10px] ${popular ? 'bg-emerald-500/20 text-emerald-500' : t.featureBadge}`}>✓</span>
                         {tx.durationFeature(plan.duration_days)}
@@ -396,6 +596,19 @@ const Plans = () => {
                         {tx.fullAccess}
                       </li>
                     </ul>
+
+                    {/* ── View Channels button ── */}
+                    <button
+                      type="button"
+                      onClick={() => setChannelModalPlan(plan)}
+                      className={`${t.channelBtn} mb-4`}
+                    >
+                      <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <rect x="2" y="3" width="20" height="14" rx="2" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                        <path d="M8 21h8M12 17v4" strokeWidth="2" strokeLinecap="round" />
+                      </svg>
+                      <span className='font-bold'>{tx.viewChannels}</span>
+                    </button>
 
                     {owned && activePlan && (
                       <div className={`mb-3 px-3 py-2 rounded-lg border text-xs ${t.activeChip}`}>
