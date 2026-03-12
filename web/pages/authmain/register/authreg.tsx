@@ -92,8 +92,6 @@ type ContactMethod = 'email' | 'phone'
 const AuthReg: React.FC = () => {
   const [contactMethod, setContactMethod] = useState<ContactMethod>('email')
   const [form, setForm] = useState({
-    full_name: '',
-    username: '',
     email: '',
     phone: '',
     password: '',
@@ -120,8 +118,6 @@ const AuthReg: React.FC = () => {
     await api.get('/sanctum/csrf-cookie');
 
     const payload = {
-      full_name: form.full_name,
-      username: form.username,
       password: form.password,
       password_confirmation: form.password_confirmation,
       ...(contactMethod === 'email' ? { email: form.email } : { phone: form.phone }),
@@ -147,7 +143,7 @@ if (data.code) {
 }
 
   return (
-<div className="flex min-h-svh items-start justify-center mt-3 p-3 pt-0 dark:bg-gray-950 bg-gray-50 overflow-hidden">
+<div className="flex min-h-svh items-start justify-center mt-6 p-3 pt-0 dark:bg-gray-950 bg-gray-50 overflow-hidden">
         <div className="w-full max-w-100  rounded-xl border border-emerald-500/20 bg-white dark:bg-gray-900 shadow-xl shadow-emerald-500/5 px-8 py-10">
 
         {/* Header */}
@@ -184,29 +180,6 @@ if (data.code) {
               {tx.phone}
             </button>
           </div>
-
-          {/* Full Name */}
-          <IconInput
-            icon={UserIcon}
-            placeholder={tx.fullname}
-            autoComplete="name"
-
-            name="full_name"
-            value={form.full_name}
-            onChange={e => handleChange('full_name', e.target.value)}
-          />
-
-          {/* Username */}
-          <IconInput
-            icon={UserIcon}
-            placeholder={tx.username}
-            autoComplete="username"
-
-            name="username"
-            value={form.username}
-            onChange={e => handleChange('username', e.target.value)}
-          />
-
           {/* Email or Phone */}
           {contactMethod === 'email' ? (
             <IconInput
@@ -247,16 +220,12 @@ if (data.code) {
 
           {/* Terms */}
           <div className="flex items-center gap-2 pt-1">
-            <input className="mt-2 cursor-pointer" type='checkbox' checked={remember} onChange={e => setRemember(e.target.checked)} />
-            <span className="text-sm text-muted-foreground">
-              I agree to the{' '}
-              <a href="#" className="font-semibold text-emerald-500 hover:text-emerald-400 transition-colors">
-                Terms
-              </a>{' '}
-              &{' '}
-              <a href="#" className="font-semibold text-emerald-500 hover:text-emerald-400 transition-colors">
-                Privacy Policy
-              </a>
+            <input className="mt-1 cursor-pointer" type='checkbox' checked={remember} onChange={e => setRemember(e.target.checked)} />
+            <span className="text-sm text-muted-foreground">{tx.remember}</span>
+            <span className="text-muted-foreground">
+             <a href="#" className="text-sm text-emerald-500 hover:text-emerald-400 transition-colors whitespace-nowrap">
+      გაეცანი წესებსა და პირობებს
+    </a>
             </span>
           </div>
 
