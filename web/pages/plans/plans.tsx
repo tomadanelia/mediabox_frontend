@@ -70,6 +70,7 @@ const translations = {
     channelCount: (n: number) => `${n} არხი`,
     close: 'დახურვა',
     channel: 'არხი',
+    packetIncludes: 'პაკეტში შედის ყველა უფასო არხი და შემდეგი'
   },
   En: {
     subscriptionLabel: 'SUBSCRIPTION',
@@ -97,6 +98,7 @@ const translations = {
     channelCount: (n: number) => `${n} channels`,
     close: 'Close',
     channel: 'CH',
+    packetIncludes:'plan includes all free channels and folllowing'
   },
 } as const
 
@@ -126,7 +128,7 @@ const ChannelModal = ({
 }: {
   plan: Plan
   lang: 'en' | 'ka'
-  tx: typeof translations['En']
+  tx: typeof translations['En'] | typeof translations['Ge']
   isDark: boolean
   onClose: () => void
 }) => {
@@ -197,7 +199,7 @@ const ChannelModal = ({
               {plan[`name_${lang}` as const]} — {tx.channelsTitle}
             </h2>
             {!loading && !error && (
-              <p className="text-xs text-emerald-500 mt-0.5">{tx.channelCount(channels.length)}</p>
+              <p className="text-xs text-emerald-500 mt-0.5">{tx.packetIncludes} {tx.channelCount(channels.length)}</p>
             )}
           </div>
           <button
