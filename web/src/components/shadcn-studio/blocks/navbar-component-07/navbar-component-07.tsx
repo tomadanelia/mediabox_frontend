@@ -402,7 +402,7 @@ const Navbar = () => {
   return (
     <>
       {/* ── Header — fixed height, never overflows ── */}
-      <header className="w-full h-16 bg-white/75 dark:bg-zinc-950/80 border-b border-black/10 dark:border-white/10 backdrop-blur-lg transition-colors duration-300">
+      <header className="w-full h-16 bg-white/75 dark:bg-[#21262c]  border-black/10 dark:border-white/10 backdrop-blur-lg transition-colors duration-300">
         <div className="flex h-full items-center justify-between px-4 sm:px-6 w-full">
 
           {/* LEFT: hamburger + logo + desktop nav */}
@@ -422,7 +422,7 @@ const Navbar = () => {
                 ? <img src={currentLogo} alt="Mediabox" className="h-8 w-auto" />
                 : (
                   <span className="text-lg font-bold tracking-tight text-zinc-900 dark:text-white">
-                    media<span className="text-orange-500">box</span>
+                    media<span className="text-[#d52b1e]">box</span>
                   </span>
                 )
               }
@@ -439,7 +439,7 @@ const Navbar = () => {
                     [
                       "rounded-full px-3 py-1.5 text-sm font-medium transition-colors whitespace-nowrap",
                       isActive
-                        ? "bg-orange-500/10 text-orange-500"
+                        ? "bg-[#d52b1e1a] text-[#d52b1e]"
                         : "text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white hover:bg-zinc-100 dark:hover:bg-white/6",
                     ].join(" ")
                   }
@@ -490,7 +490,7 @@ const Navbar = () => {
 
             <Link
               to="/TV"
-              className="hidden xl:inline-flex items-center gap-1.5 rounded-full bg-orange-500 hover:bg-orange-600 px-3 py-1.5 text-sm font-semibold text-white shadow-md shadow-orange-500/25 transition-colors whitespace-nowrap"
+              className="hidden xl:inline-flex items-center gap-1.5 rounded-full bg-[#d52b1e] hover:bg-[#b03830] px-3 py-1.5 text-sm font-semibold text-white shadow-md shadow-[#d52b1e40] transition-colors whitespace-nowrap"
             >
               <Icon name="play_circle" size={17} fill={1} className="text-white" />
               <span>{tx.live}</span>

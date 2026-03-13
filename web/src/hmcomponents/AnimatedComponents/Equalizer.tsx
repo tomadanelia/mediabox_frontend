@@ -24,7 +24,7 @@ export function Equalizer() {
             flex: 1,
             height: "60%",
             borderRadius: 3,
-            backgroundColor: "#fb923c",
+            backgroundColor: "#d52b1e",
             transform: `scaleY(${scale})`,
             animation: `eq-wave ${duration}s ease-in-out ${-delay}s infinite alternate`,
           }}

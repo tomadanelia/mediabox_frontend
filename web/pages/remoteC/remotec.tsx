@@ -228,7 +228,7 @@ function useFullscreen() {
    MAIN COMPONENT
 ═══════════════════════════════════════════════════════════════════════════ */
 export default function RemotePage() {
-  const isDark = useUIStore((s) => s.isDark)
+  const isDark = useUIStore((s: { isDark: any }) => s.isDark)
   const C = makeTheme(isDark)
   const SS = statusStyles(C)
 
@@ -361,12 +361,7 @@ export default function RemotePage() {
           padding:'16px 20px 8px',
           paddingTop:'max(16px,env(safe-area-inset-top))',
         }}>
-          <div style={{ display:'flex', alignItems:'center', gap:6 }}>
-            <Icon name="live_tv" size={20} fill={1} color={C.primary} />
-            <span style={{ fontSize:15, fontWeight:800, letterSpacing:'-0.02em', color:C.text }}>
-              media<span style={{ color:C.primary }}>box</span>
-            </span>
-          </div>
+
 
           <div style={{ flex:1, textAlign:'center', padding:'0 8px' }}>
             {lastAction && (
