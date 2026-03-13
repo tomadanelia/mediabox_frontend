@@ -326,6 +326,7 @@ export const Stream: React.FC = () => {
   const [selectedCategory, setselectedCategory] = useState<string>("");
 
   const [channels, setChannels] = useState<Channel[]>([]);
+  const [accessibleIds, setAccessibleIds] = useState<string[]>([]);
   const [selectedChannel, setSelectedChannel] = useState<Channel | null>(null);
 
   const [streamUrl, setStreamUrl] = useState<string>('');
@@ -366,20 +367,24 @@ export const Stream: React.FC = () => {
   }
 
   const handleChannelSelect = async (channel: Channel) => {
-    try {
-      const res = await api.get(`/api/channels/${channel.id}/plans`);
-      const data = res.data;
-      if (data.is_free) {
-        setSelectedChannel(channel);
-        return;
-      }
-      if (data.required_plans && data.required_plans.length > 0) {
-        setPendingChannel({ ...channel, is_free: data.is_free, plans: data.required_plans } as ChannelWithPlans);
-      }
-    } catch (err) {
-      console.error('Failed to fetch channel plans:', err);
-    }
-  };
+  const hasAccess = accessibleIds.includes(channel.id);
+
+  if (hasAccess) {
+    setSelectedChannel(channel);
+    return;
+  }
+  try {
+    const res = await api.get(`/api/channels/${channel.id}/plans`);
+    const data = res.data;
+    setPendingChannel({ 
+        ...channel, 
+        is_free: data.is_free, 
+        plans: data.required_plans 
+    } as ChannelWithPlans);
+  } catch (err) {
+    console.error('Failed to fetch channel plans:', err);
+  }
+};
 
   const [categories, setCategories] = useState<Category[]>([]);
 
@@ -470,20 +475,25 @@ export const Stream: React.FC = () => {
 
   // ─── Effects ─────────────────────────────────────────────────────────────────
 
-  useEffect(() => {
-    (async () => {
-      try {
-        const res = await api.get('/api/channels');
-        const data = res.data;
-        const channelList: Channel[] = data.channels ?? (Array.isArray(data) ? data : []);
-        setChannels(channelList);
-        const firstFree = channelList.find((ch: any) => ch.is_free) ?? channelList[0];
-        if (firstFree) setSelectedChannel(firstFree);
-      } catch (e) {
-        console.error('[fetchChannels]', e);
-      }
-    })();
-  }, []);
+ useEffect(() => {
+  (async () => {
+    try {
+      const res = await api.get('/api/channels');
+      const data = res.data;
+      
+      setChannels(data.channels || []);
+      setAccessibleIds(data.accessible_external_ids || []); 
+
+      const firstAccessible = data.channels.find((ch:Channel) => 
+        data.accessible_external_ids.includes(ch.id)
+      ) ?? data.channels[0];
+
+      if (firstAccessible) setSelectedChannel(firstAccessible);
+    } catch (e) {
+      console.error('[fetchChannels]', e);
+    }
+  })();
+}, []);
 
   useEffect(() => {
     if (!selectedChannel) return;
