@@ -561,7 +561,7 @@ export const Stream: React.FC = () => {
 
   if (isMobilePortrait) {
     return (
-      <div className="flex flex-col w-full h-[calc(100vh-80px)] bg-gray-50 dark:bg-zinc-950 overflow-hidden">
+      <div className="flex flex-col w-full h-[calc(100vh-80px)] bg-gray-50 dark:bg-[#21262c] overflow-hidden">
 
         {pendingChannel && (
           <div className="absolute inset-0 bg-black/50 z-30">
@@ -697,7 +697,7 @@ export const Stream: React.FC = () => {
   // ════════════════════════════════════════════════════════════
 
   return (
-    <div className="flex flex-col justify-between w-full h-[calc(100vh-80px)] relative">
+    <div className="flex flex-col justify-between w-full h-[calc(100vh-80px)] bg-[#21262c] relative">
       {pendingChannel && (
         <div className='absolute w-full h-full bg-black/50 z-30'>
           <PlansModal
@@ -788,7 +788,7 @@ export const Stream: React.FC = () => {
                           relative flex items-center gap-1.5 h-10 px-3 rounded-lg cursor-pointer
                           text-xs font-medium transition-all duration-150
                           ${isSelected
-                            ? 'bg-gradient-to-br from-orange-500 to-yellow-400 text-white shadow-sm shadow-orange-300/30'
+                            ? 'bg-linear-to-br from-[#f82719] to-[#da2b1e] text-white '
                             : 'bg-white/70 dark:bg-white/5 border-black/8 dark:border-white/10 backdrop-blur-md text-black/50 dark:text-white/40 hover:text-black/70 dark:hover:text-white/60 hover:bg-white dark:hover:bg-white/10'
                           }
                         `}

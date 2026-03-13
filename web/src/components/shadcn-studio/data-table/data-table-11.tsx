@@ -64,7 +64,7 @@ const DataTableDemo = ({
           />
           <Search
             size={15}
-            className='absolute left-3.5 top-1/2 -translate-y-1/2 text-orange-400/70 group-focus-within:text-orange-400 transition-colors duration-200'
+            className='absolute left-3.5 top-1/2 -translate-y-1/2 text-[#d52b1eb3] group-focus-within:text-[d52b1e] transition-colors duration-200'
           />
           <input
             type='text'
@@ -81,7 +81,7 @@ const DataTableDemo = ({
               outline-none
               transition-all duration-200
               focus:bg-white dark:focus:bg-white/10
-              focus:border-orange-300/60 dark:focus:border-orange-400/30
+              focus:border-orange-300/60 dark:focus:border-[#d52b1e4d]
             '
           />
           {query && (
@@ -120,7 +120,7 @@ const DataTableDemo = ({
                     transition-all duration-150
                     ${iconOnly ? 'justify-center px-0' : ''}
                     ${isSelected
-                      ? 'bg-gradient-to-r from-orange-50 to-yellow-50/60 dark:from-orange-500/10 dark:to-yellow-400/5 border-l-2 border-l-orange-400'
+                      ? 'bg-linear-to-r from-red-500/30 to-yellow-50/0 dark:from-[#d52b1e1a] dark:to-black/5 border-l-2 border-l-[#d52b1e]'
                       : 'border-l-2 border-l-transparent hover:bg-black/3 dark:hover:bg-white/4'
                     }
                   `}

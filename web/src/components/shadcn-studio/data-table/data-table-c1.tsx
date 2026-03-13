@@ -116,7 +116,7 @@ const ChannelScheduleCL = ({
                     'flex items-center gap-3 px-4 py-2.5 transition-all duration-150 border-l-2',
                     clickable ? 'cursor-pointer' : 'cursor-default',
                     isCurrent
-                      ? 'bg-gradient-to-r from-orange-50 to-yellow-50/60 dark:from-orange-500/10 dark:to-yellow-400/5 border-l-orange-400'
+                      ? 'bg-gradient-to-r from-orange-50 to-yellow-50/60 dark:from-[#d52b1e1a] dark:to-black/5 border-l-[#d52b1e]'
                       : isPast
                       ? 'border-l-transparent opacity-50 hover:opacity-80 hover:bg-black/3 dark:hover:bg-white/4'
                       : 'border-l-transparent opacity-40',
@@ -124,7 +124,7 @@ const ChannelScheduleCL = ({
                 >
                   <span className={cn(
                     'text-sm font-medium w-10 shrink-0 tabular-nums',
-                    isCurrent ? 'text-orange-400' : 'text-black/30 dark:text-white/25'
+                    isCurrent ? 'text-[#d52b1e]' : 'text-black/30 dark:text-white/25'
                   )}>
                     {formatUnix(p.START_TIME)}
                   </span>
@@ -136,7 +136,7 @@ const ChannelScheduleCL = ({
                   )}
 
                   {!iconOnly && isCurrent && (
-                    <span className='w-2 h-2 rounded-full bg-orange-400 shrink-0 animate-pulse' />
+                    <span className='w-2 h-2 rounded-full bg-[#d52b1e] shrink-0 animate-pulse' />
                   )}
 
                   {!iconOnly && isFuture && (
