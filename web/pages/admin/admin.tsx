@@ -1247,7 +1247,7 @@ useEffect(() => {
                   className="w-full sm:w-64 bg-zinc-900 border border-zinc-800 rounded-xl px-4 py-2 text-sm focus:outline-none focus:border-zinc-600 transition-colors"
                 />
               </div>
-                  <AdminUsersExtended />
+              <AdminUsersExtended plans={plans} />
               {/* Table */}
               <div className="bg-zinc-900 border border-zinc-800 rounded-2xl overflow-x-auto">
                 {usersLoading ? (
