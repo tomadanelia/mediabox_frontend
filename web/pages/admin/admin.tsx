@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { API_BASE_URL } from '../../src/config';
+import AdminUsersExtended from "./AdminUsersExtended";
 import api from "../../src/lib/axios";
 import {CategoryIcon} from "../../src/hmcomponents/IconMapper";
 type AdminSection = "Overview" | "Users" | "Category-Channels" | "Categories" | "Plans" | "Plan-Channels" | "Support" | "Settings";
@@ -1220,7 +1220,7 @@ useEffect(() => {
                   className="w-full sm:w-64 bg-zinc-900 border border-zinc-800 rounded-xl px-4 py-2 text-sm focus:outline-none focus:border-zinc-600 transition-colors"
                 />
               </div>
-
+                  <AdminUsersExtended />
               {/* Table */}
               <div className="bg-zinc-900 border border-zinc-800 rounded-2xl overflow-hidden">
                 {usersLoading ? (
