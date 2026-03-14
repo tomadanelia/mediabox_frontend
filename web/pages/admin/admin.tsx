@@ -1,8 +1,9 @@
 import { useState, useEffect, useRef } from "react";
 import AdminUsersExtended from "./AdminUsersExtended";
+import AdminChannelsSection from "./AdminChannelsSection";
 import api from "../../src/lib/axios";
 import {CategoryIcon} from "../../src/hmcomponents/IconMapper";
-type AdminSection = "Overview" | "Users" | "Category-Channels" | "Categories" | "Plans" | "Plan-Channels" | "Support" | "Settings";
+type AdminSection = "Overview" | "Users" | "Category-Channels" | "Categories" | "Plans" | "Plan-Channels" |"Channels"| "Support" | "Settings";
 const adminSectionLabels: Record<AdminSection, string> = {
   "Overview": "მთავარი",
   "Users": "მომხმარებლები",
@@ -12,6 +13,7 @@ const adminSectionLabels: Record<AdminSection, string> = {
   "Plan-Channels": "პაკეტების შევსება",
   "Support": "მხარდაჭერა",
   "Settings": "პარამეტრები",
+  "Channels": "არხები",
 };
 
 
@@ -699,7 +701,7 @@ useEffect(() => {
       <aside className="hidden lg:flex flex-col w-56 bg-zinc-900 border-r border-zinc-800 shrink-0">
         <div className="p-5 border-b border-zinc-800 font-bold text-zinc-100 tracking-tight">ადმინ პანელი</div>
         <nav className="p-3 flex flex-col gap-1">
-      {(["Overview",  "Categories","Category-Channels", "Plans", "Plan-Channels", "Users", "Settings"] as AdminSection[]).map(s => (
+      {(["Overview",  "Channels","Categories","Category-Channels", "Plans", "Plan-Channels", "Users", "Settings"] as AdminSection[]).map(s => (
         <button
           key={s}
           onClick={() => setSection(s)}
@@ -756,7 +758,7 @@ useEffect(() => {
           )}
         </header>
 
-        <main className="flex-1 overflow-y-auto p-6 space-y-5">
+        <main className="flex-1 overflow-y-auto p-6 pb-25 space-y-5">
 
           {/* ══════════════════════════════════════════
               OVERVIEW SECTION
@@ -950,8 +952,13 @@ useEffect(() => {
               </div>
             );
           })()}
-
-          {/* ── CHANNELS ── */}
+          {section === "Channels" && (
+               <AdminChannelsSection
+                channels={channels}
+                channelsLoading={channelsLoading}
+                fetchChannels={fetchChannels}
+                 />
+          )}
           {section === "Category-Channels" && (
             <div className="space-y-4">
               <input
@@ -1161,7 +1168,7 @@ useEffect(() => {
                 onChange={e => setPlanChannelsSectionSearch(e.target.value)}
                 className="w-full bg-zinc-900 border border-zinc-800 rounded-xl px-4 py-2 focus:outline-none focus:border-zinc-600 transition-colors"
               />
-              <div className="bg-zinc-900 border border-zinc-800 rounded-2xl overflow-hidden">
+              <div className="bg-zinc-900 border border-zinc-800 rounded-2xl overflow-x-auto">
                 {channelsLoading ? (
                   <div className="flex items-center justify-center gap-2 py-16 text-zinc-500 text-sm"><IconSpinner /><span>Loading…</span></div>
                 ) : (
@@ -1242,7 +1249,7 @@ useEffect(() => {
               </div>
                   <AdminUsersExtended />
               {/* Table */}
-              <div className="bg-zinc-900 border border-zinc-800 rounded-2xl overflow-hidden">
+              <div className="bg-zinc-900 border border-zinc-800 rounded-2xl overflow-x-auto">
                 {usersLoading ? (
                   <div className="flex items-center justify-center gap-2 py-20 text-zinc-500 text-sm">
                     <IconSpinner /><span>Loading…</span>
