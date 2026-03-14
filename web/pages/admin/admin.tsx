@@ -963,39 +963,49 @@ useEffect(() => {
                 <table className="w-full text-left">
                   <thead className="bg-zinc-800/50 text-[0.6rem] uppercase tracking-widest text-zinc-500">
                     <tr>
-                      <th className="p-4 w-10">
-                        <input type="checkbox" className="cursor-pointer accent-violet-500"
-                          checked={filteredChannels.length > 0 && filteredChannels.every(c => selectedChannelUuids.includes(c.uuid))}
-                          onChange={e => e.target.checked ? setSelectedChannelUuids(filteredChannels.map(c => c.uuid)) : setSelectedChannelUuids([])}
-                        />
-                      </th>
+                      <th className="p-4 w-10"></th>
                       <th className="p-4">არხი</th>
                       <th className="p-4">ID</th>
                       <th className="p-4">კატეგორია</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {filteredChannels.map(c => (
-                      <tr key={c.id} className={`border-t border-zinc-800 hover:bg-zinc-800/30 transition-colors ${selectedChannelUuids.includes(c.uuid) ? "bg-violet-500/5" : ""}`}>
-                        <td className="p-4">
-                          <input type="checkbox" className="cursor-pointer accent-violet-500"
-                            checked={selectedChannelUuids.includes(c.uuid)}
-                            onChange={() => toggleSelectChannel(c.uuid)}
-                          />
-                        </td>
-                        <td className="p-4">
-                          <div className="flex items-center gap-3">
-                            <img src={c.logo} className="w-8 h-8 rounded bg-zinc-800 object-contain" />
-                            <span className="text-zinc-200">{c.name}</span>
-                          </div>
-                        </td>
-                        <td className="p-4 font-mono text-[0.65rem] text-zinc-500">{c.uuid}</td>
-                        <td className="p-4">
-                          <span className="inline-block bg-violet-600/20 text-violet-300 px-2 py-1 rounded-md text-xs font-medium">{c.category}</span>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
+  {filteredChannels.map(c => (
+    <tr
+      key={c.id}
+      onClick={() => toggleSelectChannel(c.uuid)}
+      className={`border-t border-zinc-800 cursor-pointer transition-colors select-none ${
+        selectedChannelUuids.includes(c.uuid)
+          ? "bg-violet-500/10 hover:bg-violet-500/15"
+          : "hover:bg-zinc-800/30"
+      }`}
+    >
+      <td className="p-4">
+        <div className={`w-4 h-4 rounded border-2 flex items-center justify-center transition-colors ${
+          selectedChannelUuids.includes(c.uuid)
+            ? "border-violet-500 bg-violet-500"
+            : "border-zinc-600"
+        }`}>
+          {selectedChannelUuids.includes(c.uuid) && (
+            <svg width="9" height="9" viewBox="0 0 10 10" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M1.5 5l2.5 2.5 4.5-4.5"/>
+            </svg>
+          )}
+        </div>
+      </td>
+      <td className="p-4">
+        <div className="flex items-center gap-3">
+          <img src={c.logo} className="w-8 h-8 rounded bg-zinc-800 object-contain" />
+          <span className="text-zinc-200">{c.name}</span>
+        </div>
+      </td>
+      <td className="p-4 font-mono text-[0.65rem] text-zinc-500">{c.uuid}</td>
+      <td className="p-4">
+        <span className="inline-block bg-violet-600/20 text-violet-300 px-2 py-1 rounded-md text-xs font-medium">{c.category}</span>
+      </td>
+    </tr>
+  ))}
+</tbody>
                 </table>
               </div>
             </div>
@@ -1158,39 +1168,49 @@ useEffect(() => {
                   <table className="w-full text-left">
                     <thead className="bg-zinc-800/50 text-[0.6rem] uppercase tracking-widest text-zinc-500">
                       <tr>
-                        <th className="p-4 w-10">
-                          <input type="checkbox" className="cursor-pointer accent-emerald-500"
-                            checked={filteredPlanChannels.length > 0 && filteredPlanChannels.every(c => planChannelsSelectedUuids.includes(c.uuid))}
-                            onChange={e => e.target.checked ? setPlanChannelsSelectedUuids(filteredPlanChannels.map(c => c.uuid)) : setPlanChannelsSelectedUuids([])}
-                          />
-                        </th>
+                        <th className="p-4 w-10"></th>
                         <th className="p-4">არხი</th>
                         <th className="p-4">ID</th>
                         <th className="p-4">კატეგორია</th>
                       </tr>
                     </thead>
                     <tbody>
-                      {filteredPlanChannels.map(c => (
-                        <tr key={c.id} className={`border-t border-zinc-800 hover:bg-zinc-800/30 transition-colors ${planChannelsSelectedUuids.includes(c.uuid) ? "bg-emerald-500/5" : ""}`}>
-                          <td className="p-4">
-                            <input type="checkbox" className="cursor-pointer accent-emerald-500"
-                              checked={planChannelsSelectedUuids.includes(c.uuid)}
-                              onChange={() => toggleSelectPlanChannel(c.uuid)}
-                            />
-                          </td>
-                          <td className="p-4">
-                            <div className="flex items-center gap-3">
-                              <img src={c.logo} className="w-8 h-8 rounded bg-zinc-800 object-contain" />
-                              <span className="text-zinc-200">{c.name}</span>
-                            </div>
-                          </td>
-                          <td className="p-4 font-mono text-[0.65rem] text-zinc-500">{c.uuid}</td>
-                          <td className="p-4">
-                            <span className="inline-block bg-violet-600/20 text-violet-300 px-2 py-1 rounded-md text-xs font-medium">{c.category}</span>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
+  {filteredPlanChannels.map(c => (
+    <tr
+      key={c.id}
+      onClick={() => toggleSelectPlanChannel(c.uuid)}
+      className={`border-t border-zinc-800 cursor-pointer transition-colors select-none ${
+        planChannelsSelectedUuids.includes(c.uuid)
+          ? "bg-emerald-500/8 hover:bg-emerald-500/12"
+          : "hover:bg-zinc-800/30"
+      }`}
+    >
+      <td className="p-4">
+        <div className={`w-4 h-4 rounded border-2 flex items-center justify-center transition-colors ${
+          planChannelsSelectedUuids.includes(c.uuid)
+            ? "border-emerald-500 bg-emerald-500"
+            : "border-zinc-600"
+        }`}>
+          {planChannelsSelectedUuids.includes(c.uuid) && (
+            <svg width="9" height="9" viewBox="0 0 10 10" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M1.5 5l2.5 2.5 4.5-4.5"/>
+            </svg>
+          )}
+        </div>
+      </td>
+      <td className="p-4">
+        <div className="flex items-center gap-3">
+          <img src={c.logo} className="w-8 h-8 rounded bg-zinc-800 object-contain" />
+          <span className="text-zinc-200">{c.name}</span>
+        </div>
+      </td>
+      <td className="p-4 font-mono text-[0.65rem] text-zinc-500">{c.uuid}</td>
+      <td className="p-4">
+        <span className="inline-block bg-violet-600/20 text-violet-300 px-2 py-1 rounded-md text-xs font-medium">{c.category}</span>
+      </td>
+    </tr>
+  ))}
+</tbody>
                   </table>
                 )}
               </div>
