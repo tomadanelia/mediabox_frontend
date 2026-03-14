@@ -29,10 +29,18 @@ interface SearchResult {
     email: string;
     full_name?: string;
     username?: string;
+    phone?: string;
+    role?: string;
+    created_at?: string;
     avatar_url?: string;
   };
-  account: { balance: string };
+  account: { balance: string; status?: string } | null;
   active_plans: { name: string; expires_at: string; days_left: number }[];
+  meta: {
+    is_verified: boolean;
+    has_account: boolean;
+    has_plans: boolean;
+  };
 }
 
 /* ════════════════════════════════════════
@@ -175,19 +183,73 @@ function BalanceSearchPanel({ onClose }: { onClose: () => void }) {
       {result && (
         <div className="space-y-4">
           {/* User info row */}
-          <div className="flex items-center gap-3 bg-zinc-800/60 border border-zinc-700/50 rounded-xl p-3">
-            <div className="w-10 h-10 rounded-full bg-zinc-700 flex items-center justify-center shrink-0 text-zinc-300 text-sm font-bold select-none">
-              {(result.user.full_name ?? result.user.username ?? result.user.email ?? "?")[0].toUpperCase()}
-            </div>
-            <div className="flex-1 min-w-0">
-              <p className="text-zinc-100 font-semibold text-sm truncate">{result.user.full_name ?? result.user.username ?? "—"}</p>
-              <p className="text-[0.65rem] text-zinc-500 truncate">{result.user.email}{result.user.numeric_id ? ` · #${result.user.numeric_id}` : ""}</p>
-            </div>
-            <div className="text-right shrink-0">
-              <p className="text-lg font-bold text-emerald-400 leading-none">{parseFloat(result.account.balance).toFixed(2)} ₾</p>
-              <p className="text-[0.6rem] text-zinc-600 mt-0.5">ბალანსი</p>
-            </div>
-          </div>
+<div className="bg-zinc-800/60 border border-zinc-700/50 rounded-xl p-3 space-y-2.5">
+  <div className="flex items-center gap-3">
+    <div className="w-10 h-10 rounded-full bg-zinc-700 flex items-center justify-center shrink-0 text-zinc-300 text-sm font-bold select-none">
+      {(result.user.full_name ?? result.user.username ?? result.user.email ?? "?")[0].toUpperCase()}
+    </div>
+    <div className="flex-1 min-w-0">
+      <div className="flex items-center gap-2 flex-wrap">
+        <p className="text-zinc-100 font-semibold text-sm truncate">
+          {result.user.full_name ?? result.user.username ?? "—"}
+        </p>
+        {result.user.role === "admin" && (
+          <span className="text-[0.55rem] bg-violet-500/15 text-violet-300 border border-violet-500/25 px-1.5 py-0.5 rounded-md font-semibold">ადმინი</span>
+        )}
+        {result.meta.is_verified
+          ? <span className="text-[0.55rem] bg-sky-500/10 text-sky-400 border border-sky-500/20 px-1.5 py-0.5 rounded-md font-medium flex items-center gap-1">
+              <svg width="8" height="8" viewBox="0 0 10 10" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M1.5 5l2.5 2.5 4.5-4.5"/></svg>
+              დადასტურებული
+            </span>
+          : <span className="text-[0.55rem] bg-zinc-800 text-zinc-600 border border-zinc-700 px-1.5 py-0.5 rounded-md font-medium">დაუდასტურებელი</span>
+        }
+      </div>
+      <p className="text-[0.65rem] text-zinc-500 truncate mt-0.5">
+        {result.user.email}
+        {result.user.numeric_id ? ` · #${result.user.numeric_id}` : ""}
+        {result.user.phone ? ` · ${result.user.phone}` : ""}
+      </p>
+      {result.user.created_at && (
+        <p className="text-[0.58rem] text-zinc-700 mt-0.5">
+          რეგისტრაცია: {new Date(result.user.created_at).toLocaleDateString("ka-GE")}
+        </p>
+      )}
+    </div>
+    <div className="text-right shrink-0">
+      {result.account ? (
+        <>
+          <p className="text-lg font-bold text-emerald-400 leading-none">
+            {parseFloat(result.account.balance).toFixed(2)} ₾
+          </p>
+          <p className="text-[0.6rem] mt-0.5">
+            {result.account.status === "active"
+              ? <span className="text-emerald-500">● აქტიური</span>
+              : <span className="text-zinc-600">● {result.account.status ?? "—"}</span>
+            }
+          </p>
+        </>
+      ) : (
+        <span className="text-[0.65rem] text-zinc-600 italic">ანგარიში არ აქვს</span>
+      )}
+{!result.account && (
+  <p className="text-[0.65rem] text-zinc-600 italic px-1">ბალანსის შეცვლა შეუძლებელია — ანგარიში არ მოიძებნა</p>
+)}
+    </div>
+  </div>
+
+  {/* Meta badges row*/}
+  <div className="flex items-center gap-2 pt-1 border-t border-zinc-700/40 flex-wrap">
+    <span className={`text-[0.58rem] px-2 py-0.5 rounded-md border font-medium ${result.meta.has_account ? "bg-emerald-500/8 text-emerald-500 border-emerald-500/20" : "bg-zinc-800 text-zinc-600 border-zinc-700"}`}>
+      {result.meta.has_account ? "✓ ანგარიში" : "✗ ანგარიში"}
+    </span>
+    <span className={`text-[0.58rem] px-2 py-0.5 rounded-md border font-medium ${result.meta.has_plans ? "bg-emerald-500/8 text-emerald-500 border-emerald-500/20" : "bg-zinc-800 text-zinc-600 border-zinc-700"}`}>
+      {result.meta.has_plans ? "✓ აქტიური პაკეტი" : "✗ პაკეტი"}
+    </span>
+    <span className={`text-[0.58rem] px-2 py-0.5 rounded-md border font-medium ${result.meta.is_verified ? "bg-sky-500/8 text-sky-400 border-sky-500/20" : "bg-zinc-800 text-zinc-600 border-zinc-700"}`}>
+      {result.meta.is_verified ? "✓ ვერიფიცირებული" : "✗ ვერიფიცირებული"}
+    </span>
+  </div>
+</div>
 
           {/* Active plans */}
           {result.active_plans.length > 0 && (

@@ -1275,7 +1275,7 @@ const isActive =
                                 <div className="min-w-0">
                                   <p className="text-zinc-200 font-medium truncate leading-tight">{u.full_name ?? u.username}</p>
                                   {u.full_name && u.username && (
-                                    <p className="text-[0.6rem] text-zinc-600 truncate mt-0.5">@{u.username}</p>
+                                    <p className="text-[0.6rem] text-zinc-600 truncate mt-0.5">{u.username}</p>
                                   )}
                                 </div>
                               </div>
