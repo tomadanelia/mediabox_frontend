@@ -16,7 +16,7 @@ export interface User {
   role: 'user' | 'admin'; 
     email_verified_at: string | null; 
   phone_verified_at: string | null;
-  
+  numeric_id:string;
   created_at: string;
   updated_at: string;
   account?: Account | null; 

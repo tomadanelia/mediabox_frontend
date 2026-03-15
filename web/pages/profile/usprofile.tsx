@@ -3,7 +3,7 @@ import api from "../../src/lib/axios";
 import useUIStore from "@/store/ui-store";
 import useAuthStore from "@/store/AuthStore";
 import type { User, Account } from "@/types/user";
-import EditProfileModal from "./EditModal"; // ← new import
+import EditProfileModal from "./EditModal";
 
 interface WatchedChannel {
   id: number | string;
@@ -48,7 +48,7 @@ const translations = {
       accountBalance: "Account Balance", copyBalance: "Copy", copiedBalance: "Copied",
       accountId: "Account ID", noAccount: "No account linked.",
       interpayNote: "To top up your balance, copy your <strong>username</strong> and visit the Interpay website. Enter the username in the recipient field and specify the desired amount.",
-      copyStep: "Copy Username", copiedStep: "Copied!", interpayLink: "Open Interpay ↗",
+      copyStep: "Copy Account Id", copiedStep: "Copied!", interpayLink: "Open Interpay ↗",
     },
     plans: { cardTitle: "Active Plans", expires: "Expires", daysLeft: "days left", empty: "No active plans." },
     history: { cardTitle: "Watch History", channel: "Channel", watchedAt: "Watched", empty: "No watch history." },
@@ -71,7 +71,7 @@ const translations = {
       accountBalance: "ბალანსი", copyBalance: "კოპირება", copiedBalance: "კოპირებულია",
       accountId: "ანგარიშის ID", noAccount: "ანგარიში არ არის.",
       interpayNote: "ბალანსის შესავსებად დააკოპირე <strong>მომხმარებლის სახელი</strong> და გადადი Interpay-ს საიტზე. შეიყვანე სახელი მიმღების ველში და მიუთითე სასურველი თანხა.",
-      copyStep: "სახელის კოპირება", copiedStep: "კოპირებულია!", interpayLink: "Interpay-ზე გადასვლა ↗",
+      copyStep: "ანგარიშის ნომრის კოპირება", copiedStep: "კოპირებულია!", interpayLink: "Interpay-ზე გადასვლა ↗",
     },
     plans: { cardTitle: "აქტიური პაკეტები", expires: "ვადა", daysLeft: "დღე დარჩა", empty: "აქტიური პაკეტი არ არის." },
     history: { cardTitle: "ნანახი არხები", channel: "არხი", watchedAt: "ნანახია", empty: "სანახავი ისტორია არ არის." },
@@ -198,19 +198,11 @@ export default function UserProfile() {
   };
 
   /* ── Copy helpers ── */
-  const copyUsername = () => {
+  const copyNumericId = () => {
     if (!user?.username) return;
-    navigator.clipboard.writeText(user.username).then(() => {
+    navigator.clipboard.writeText(user.numeric_id).then(() => {
       setCopiedUsername(true);
       setTimeout(() => setCopiedUsername(false), 2000);
-    });
-  };
-  const copyBalance = () => {
-    const bal = user?.account?.balance;
-    if (bal == null) return;
-    navigator.clipboard.writeText(String(bal)).then(() => {
-      setCopiedBalance(true);
-      setTimeout(() => setCopiedBalance(false), 2000);
     });
   };
 
@@ -291,7 +283,7 @@ export default function UserProfile() {
 
           <div className="flex items-center gap-2 mt-2">
             <span className={`inline-block text-[0.6rem] font-semibold uppercase tracking-widest px-2 py-0.5 rounded-full ${c.rolePill}`}>
-              {user?.role ?? "user"}
+              {user?.numeric_id ?? "user"}
             </span>
           </div>
 
@@ -397,11 +389,11 @@ export default function UserProfile() {
             <div className="flex flex-col min-h-full">
 
               {/* Balance hero */}
-              <div className={`${c.balanceBg} px-8 py-10 lg:px-14 lg:py-14 flex-shrink-0`}>
+              <div className={`${c.balanceBg} px-8 py-10  lg:px-14 lg:py-14 flex-shrink-0`}>
                 <p className={`text-[0.65rem] uppercase tracking-[0.2em] font-semibold ${c.sub} mb-3`}>
                   {tx.overview.accountBalance}
                 </p>
-                <div className="flex items-end gap-4 flex-wrap">
+                <div className="flex items-end ml-4 gap-4 flex-wrap">
                   <span
                     className={`text-6xl lg:text-7xl font-bold tracking-tight ${c.balanceNum}`}
                     style={{ fontVariantNumeric: "tabular-nums" }}
@@ -409,12 +401,6 @@ export default function UserProfile() {
                     {balance ?? "—"}
                   </span>
                   <span className={`text-2xl font-medium pb-2 ${c.sub}`}>{currency}</span>
-                  <button
-                    onClick={copyBalance}
-                    className={`mb-2 text-xs px-3 py-1.5 rounded-lg font-medium transition-all duration-200 cursor-pointer ${copiedBalance ? c.btnCopied : c.btnGhost}`}
-                  >
-                    {copiedBalance ? tx.overview.copiedBalance : tx.overview.copyBalance}
-                  </button>
                 </div>
 
                 {/* Interpay */}
@@ -425,7 +411,7 @@ export default function UserProfile() {
                   />
                   <div className="flex flex-wrap gap-3">
                     <button
-                      onClick={copyUsername}
+                      onClick={copyNumericId}
                       className={`text-xs font-medium px-4 py-2 rounded-lg transition-all duration-200 cursor-pointer ${copiedUsername ? c.btnCopied : c.btnGhost}`}
                     >
                       {copiedUsername ? tx.overview.copiedStep : tx.overview.copyStep}
