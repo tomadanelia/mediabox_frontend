@@ -42,23 +42,58 @@ const IconCheck = () => (
     <path d="M2 7l3.5 3.5L12 3"/>
   </svg>
 );
-
+const Field = ({
+  label, value, onChange, type = "text", placeholder,
+}: {
+  label: string;
+  value: string;
+  onChange: (v: string) => void;
+  type?: string;
+  placeholder?: string;
+}) => (
+  <div>
+    <label className="text-[0.6rem] text-zinc-500 uppercase tracking-widest block mb-1">
+      {label}
+    </label>
+    <input
+      type={type}
+      placeholder={placeholder}
+      value={value}
+      onChange={e => onChange(e.target.value)}
+      className="w-full bg-zinc-800 border border-zinc-700 p-2.5 rounded-xl text-sm focus:outline-none focus:border-zinc-500 transition-colors"
+    />
+  </div>
+);
 /* ════════════════════════════════════════
    ADD USER PANEL — unchanged
 ════════════════════════════════════════ */
 function AddUserPanel({ onDone }: { onDone: () => void }) {
-  const [form, setForm] = useState({ email: "", password: "" });
+  const [form, setForm] = useState({
+    email: "",
+    phone: "",
+    numeric_id: "",
+    password: "",
+    full_name: "",
+    username: "",
+  });
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState<string | null>(null);
   const [ok, setOk] = useState(false);
 
   const handle = async () => {
-    if (!form.email || !form.password) return;
+    if (!form.password) return;
     setLoading(true); setErr(null); setOk(false);
     try {
-      await api.post("/api/admin/users", form);
+      const payload: Record<string, string> = { password: form.password };
+      if (form.email.trim())      payload.email      = form.email.trim();
+      if (form.phone.trim())      payload.phone      = form.phone.trim();
+      if (form.numeric_id.trim()) payload.numeric_id = form.numeric_id.trim();
+      if (form.full_name.trim())  payload.full_name  = form.full_name.trim();
+      if (form.username.trim())   payload.username   = form.username.trim();
+
+      await api.post("/api/admin/users", payload);
       setOk(true);
-      setForm({ email: "", password: "" });
+      setForm({ email: "", phone: "", numeric_id: "", password: "", full_name: "", username: "" });
       setTimeout(() => { setOk(false); onDone(); }, 1200);
     } catch (e: any) {
       setErr(e.response?.data?.message || "შეცდომა");
@@ -66,30 +101,41 @@ function AddUserPanel({ onDone }: { onDone: () => void }) {
   };
 
   return (
-    <div className="bg-zinc-900 border border-zinc-700 rounded-2xl p-5 space-y-3 shadow-lg">
-      <p className="text-[0.65rem] font-semibold text-zinc-400 uppercase tracking-widest">ახალი მომხმარებელი</p>
+    <div className="bg-zinc-900 border border-zinc-700 rounded-2xl p-5 space-y-4 shadow-lg">
+      <p className="text-[0.65rem] font-semibold text-zinc-400 uppercase tracking-widest">
+        ახალი მომხმარებელი
+      </p>
+
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-        <input
-          type="email" placeholder="ელ-ფოსტა"
-          value={form.email} onChange={e => setForm({ ...form, email: e.target.value })}
-          className="bg-zinc-800 border border-zinc-700 p-2.5 rounded-xl text-sm focus:outline-none focus:border-zinc-500 transition-colors"
-        />
-        <input
-          type="password" placeholder="პაროლი"
-          value={form.password} onChange={e => setForm({ ...form, password: e.target.value })}
-          className="bg-zinc-800 border border-zinc-700 p-2.5 rounded-xl text-sm focus:outline-none focus:border-zinc-500 transition-colors"
-        />
+        <Field label="ელ-ფოსტა"            value={form.email}      onChange={v => setForm(f => ({ ...f, email: v }))}      type="email"    placeholder="user@example.com" />
+        <Field label="სრული სახელი"         value={form.full_name}  onChange={v => setForm(f => ({ ...f, full_name: v }))}              placeholder="John Doe" />
+        <Field label="მომხმარებლის სახელი"  value={form.username}   onChange={v => setForm(f => ({ ...f, username: v }))}              placeholder="johndoe" />
+        <Field label="ტელეფონი"             value={form.phone}      onChange={v => setForm(f => ({ ...f, phone: v }))}                 placeholder="555123456" />
+        <Field label="ID ნომერი *"          value={form.numeric_id} onChange={v => setForm(f => ({ ...f, numeric_id: v }))}            placeholder="12345" />
+        <Field label="პაროლი *"             value={form.password}   onChange={v => setForm(f => ({ ...f, password: v }))}   type="password" placeholder="••••••••" />
       </div>
-      {err && <p className="text-xs text-red-400">{err}</p>}
+
+      {err && (
+        <p className="text-xs text-red-400 bg-red-500/10 border border-red-500/20 rounded-xl px-3 py-2">
+          {err}
+        </p>
+      )}
+
       <div className="flex gap-2 items-center pt-1">
         <button
           onClick={handle}
-          disabled={loading || !form.email || !form.password}
+          disabled={loading || !form.password || !form.numeric_id.trim()}
           className="cursor-pointer flex items-center gap-2 bg-violet-600 hover:bg-violet-500 disabled:opacity-40 disabled:cursor-not-allowed text-white text-xs font-medium px-5 py-2 rounded-xl transition-colors"
         >
           {loading ? <><Spinner />შექმნა…</> : ok ? <><IconCheck />შეიქმნა!</> : "შექმნა"}
         </button>
-        <button onClick={onDone} className="cursor-pointer text-xs text-zinc-500 hover:text-zinc-300 px-3 py-2 rounded-xl hover:bg-zinc-800 transition-colors">გაუქმება</button>
+        <button
+          onClick={onDone}
+          className="cursor-pointer text-xs text-zinc-500 hover:text-zinc-300 px-3 py-2 rounded-xl hover:bg-zinc-800 transition-colors"
+        >
+          გაუქმება
+        </button>
+        <p className="text-[0.6rem] text-zinc-700 ml-1">* სავალდებულო</p>
       </div>
     </div>
   );
@@ -110,7 +156,10 @@ function UserManagePanel({
   const [result, setResult] = useState<SearchResult | null>(null);
   const [searchErr, setSearchErr] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
-
+  const [confirm, setConfirm] = useState<{
+  message: string;
+  onConfirm: () => void;
+} | null>(null);
   /* balance */
   const [amount, setAmount] = useState("");
   const [adjusting, setAdjusting] = useState(false);
@@ -386,13 +435,19 @@ function UserManagePanel({
                       value={grantDays} onChange={e => setGrantDays(e.target.value)}
                       className="w-24 bg-zinc-800 border border-zinc-700 px-2.5 py-1.5 rounded-lg text-xs focus:outline-none focus:border-zinc-500 transition-colors"
                     />
-                    <button
-                      onClick={doGrant}
-                      disabled={granting || !grantPlanId || !grantDays}
-                      className="cursor-pointer flex-1 flex items-center justify-center gap-1.5 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-40 disabled:cursor-not-allowed text-white text-xs font-medium py-1.5 rounded-lg transition-colors"
-                    >
-                      {granting ? <><Spinner />მინიჭება…</> : <><IconCheck />მინიჭება</>}
-                    </button>
+                     <button
+                      onClick={() => {
+    if (!grantPlanId || !grantDays) return;
+    const plan = plans.find(p => p.id === grantPlanId);
+    setConfirm({
+      message: `"${plan?.name_en ?? "პაკეტი"}" მიენიჭება ${grantDays} დღით.`,
+      onConfirm: doGrant,
+    });
+  }}
+  disabled={granting || !grantPlanId || !grantDays}
+  className="cursor-pointer flex-1 flex items-center justify-center gap-1.5 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-40 disabled:cursor-not-allowed text-white text-xs font-medium py-1.5 rounded-lg transition-colors">
+  {granting ? <Spinner /> : <><IconCheck />მინიჭება</>}
+</button>
                     <button onClick={() => { setShowGrantForm(false); setGrantPlanId(""); }} className="cursor-pointer text-zinc-600 hover:text-zinc-300 text-lg leading-none">✕</button>
                   </div>
                   {grantErr && <p className="text-xs text-red-400">{grantErr}</p>}
@@ -404,13 +459,20 @@ function UserManagePanel({
                 <div className="pt-1 border-t border-zinc-700/40 space-y-2">
                   <p className="text-[0.6rem] text-zinc-600">აირჩიეთ გასაუქმებელი პაკეტი ↑</p>
                   <div className="flex gap-2">
-                    <button
-                      onClick={doRevoke}
-                      disabled={revoking || !revokePlanId}
-                      className="cursor-pointer flex-1 flex items-center justify-center gap-1.5 bg-red-600 hover:bg-red-500 disabled:opacity-40 disabled:cursor-not-allowed text-white text-xs font-medium py-1.5 rounded-lg transition-colors"
-                    >
-                      {revoking ? <><Spinner />გაუქმება…</> : "გაუქმება"}
-                    </button>
+                  <button
+  onClick={() => {
+    if (!revokePlanId) return;
+    const plan = result?.active_plans.find(p => p.id === revokePlanId);
+    setConfirm({
+      message: `"${plan?.name ?? "პაკეტი"}" გაუუქმდება მომხმარებელს.`,
+      onConfirm: doRevoke,
+    });
+  }}
+  disabled={!revokePlanId}
+  className="cursor-pointer flex-1 flex items-center justify-center bg-red-600 hover:bg-red-500 disabled:opacity-40 disabled:cursor-not-allowed text-white text-xs font-medium py-1.5 rounded-lg transition-colors"
+>
+  {revoking ? <Spinner /> : "გაუქმება"}
+</button>
                     <button onClick={() => { setShowRevokeConfirm(false); setRevokePlanId(""); }} className="cursor-pointer text-zinc-600 hover:text-zinc-300 text-lg leading-none px-1">✕</button>
                   </div>
                   {revokeErr && <p className="text-xs text-red-400">{revokeErr}</p>}
@@ -438,22 +500,34 @@ function UserManagePanel({
                     className="w-full bg-zinc-800 border border-zinc-700 px-3 py-2 rounded-xl text-sm focus:outline-none focus:border-zinc-500 transition-colors"
                   />
                   <div className="grid grid-cols-2 gap-2">
-                    <button
-                      onClick={() => doAdjust(1)}
-                      disabled={adjusting || !amount || parseFloat(amount) <= 0}
-                      className="cursor-pointer flex items-center justify-center gap-1 bg-emerald-600/80 hover:bg-emerald-500 disabled:opacity-40 disabled:cursor-not-allowed text-white text-xs font-medium py-2 rounded-xl transition-colors"
-                    >
-                      {adjusting ? <Spinner /> : <svg width="10" height="10" viewBox="0 0 10 10" fill="none"><path d="M5 1v8M1 5h8" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/></svg>}
-                      დამატება
-                    </button>
-                    <button
-                      onClick={() => doAdjust(-1)}
-                      disabled={adjusting || !amount || parseFloat(amount) <= 0}
-                      className="cursor-pointer flex items-center justify-center gap-1 bg-red-600/80 hover:bg-red-500 disabled:opacity-40 disabled:cursor-not-allowed text-white text-xs font-medium py-2 rounded-xl transition-colors"
-                    >
-                      {adjusting ? <Spinner /> : <svg width="10" height="10" viewBox="0 0 10 10" fill="none"><path d="M1 5h8" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/></svg>}
-                      გამოკლება
-                    </button>
+                      <button
+                    onClick={() => {
+          if (!amount || parseFloat(amount) <= 0) return;
+                   setConfirm({
+            message: `+${parseFloat(amount).toFixed(2)} ₾ დაემატება მომხმარებლის ბალანსს.`,
+                 onConfirm: () => doAdjust(1),
+                      });
+              }}
+                  disabled={adjusting || !amount || parseFloat(amount) <= 0}
+                  className="cursor-pointer flex items-center justify-center gap-1 bg-emerald-600/80 hover:bg-emerald-500 disabled:opacity-40 disabled:cursor-not-allowed text-white text-xs font-medium py-2 rounded-xl transition-colors"
+                   >
+                  <svg width="10" height="10" viewBox="0 0 10 10" fill="none"><path d="M5 1v8M1 5h8" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/></svg>
+                  დამატება
+                  </button>
+
+                  <button
+                   onClick={() => {
+                   if (!amount || parseFloat(amount) <= 0) return;
+                   setConfirm({
+                   message: `-${parseFloat(amount).toFixed(2)} ₾ გამოაკლდება მომხმარებლის ბალანსს.`,
+                   onConfirm: () => doAdjust(-1),
+                       });
+                    }}
+                    disabled={adjusting || !amount || parseFloat(amount) <= 0}
+                   className="cursor-pointer flex items-center justify-center gap-1 bg-red-600/80 hover:bg-red-500 disabled:opacity-40 disabled:cursor-not-allowed text-white text-xs font-medium py-2 rounded-xl transition-colors">
+                  <svg width="10" height="10" viewBox="0 0 10 10" fill="none"><path d="M1 5h8" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/></svg>
+                   გამოკლება
+                 </button>
                   </div>
                   {adjustOk && <p className="text-xs text-emerald-400 flex items-center gap-1.5"><IconCheck />{adjustOk}</p>}
                   {adjustErr && <p className="text-xs text-red-400">{adjustErr}</p>}
@@ -465,6 +539,36 @@ function UserManagePanel({
           </div>
         </div>
       )}
+      {confirm && (
+  <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4">
+    <div className="bg-zinc-900 border border-zinc-800 rounded-2xl w-full max-w-xs shadow-2xl overflow-hidden">
+      <div className="p-5 text-center space-y-3">
+        <div className="w-11 h-11 rounded-xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center mx-auto">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#fbbf24" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M12 9v4M12 17h.01"/>
+            <path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/>
+          </svg>
+        </div>
+        <p className="text-zinc-100 font-semibold text-sm">დარწმუნებული ხარ?</p>
+        <p className="text-zinc-500 text-xs leading-relaxed">{confirm.message}</p>
+      </div>
+      <div className="px-5 pb-5 flex gap-2">
+        <button
+          onClick={() => setConfirm(null)}
+          className="cursor-pointer flex-1 py-2.5 rounded-xl text-sm bg-zinc-800 hover:bg-zinc-700 text-zinc-300 transition-colors"
+        >
+          არა
+        </button>
+        <button
+          onClick={() => { confirm.onConfirm(); setConfirm(null); }}
+          className="cursor-pointer flex-1 py-2.5 rounded-xl text-sm bg-amber-600 hover:bg-amber-500 text-white font-medium transition-colors"
+        >
+          დიახ
+        </button>
+      </div>
+    </div>
+  </div>
+)}
     </div>
   );
 }
