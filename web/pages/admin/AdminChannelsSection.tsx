@@ -175,6 +175,23 @@ export default function AdminChannelsSection({ channels, channelsLoading, fetchC
   const [search, setSearch] = useState("");
   const [editTarget, setEditTarget] = useState<Channel | null>(null);
   const [selected, setSelected] = useState<Channel | null>(null);
+  const [syncing, setSyncing] = useState(false);
+  const [syncMsg, setSyncMsg] = useState<string | null>(null);
+  const [syncErr, setSyncErr] = useState<string | null>(null);
+  const [confirm, setConfirm] = useState<{ message: string; onConfirm: () => void } | null>(null);
+
+const doSync = async () => {
+  setSyncing(true); setSyncMsg(null); setSyncErr(null);
+  try {
+    const res = await api.post("/api/admin/channels/sync");
+    setSyncMsg(res.data.message ?? `${res.data.count} არხი სინქრონიზებულია`);
+    await fetchChannels();
+    setTimeout(() => setSyncMsg(null), 4000);
+  } catch (e: any) {
+    setSyncErr(e.response?.data?.message || "სინქრონიზაცია ვერ მოხერხდა");
+    setTimeout(() => setSyncErr(null), 4000);
+  } finally { setSyncing(false); }
+};
   const filtered = channels.filter(c =>
     c.name.toLowerCase().includes(search.toLowerCase()) ||
     c.uuid.toLowerCase().includes(search.toLowerCase())
@@ -184,17 +201,47 @@ export default function AdminChannelsSection({ channels, channelsLoading, fetchC
     <div className="space-y-4">
       {/* Top bar */}
       <div className="flex items-center justify-between gap-3">
-        <p className="text-zinc-400 text-xs">
-          სულ <span className="text-zinc-200 font-semibold">{channels.length}</span> არხი
-        </p>
-        <input
-          type="text"
-          placeholder="სახელი ან UUID…"
-          value={search}
-          onChange={e => setSearch(e.target.value)}
-          className="w-64 bg-zinc-900 border border-zinc-800 rounded-xl px-4 py-2 text-sm focus:outline-none focus:border-zinc-600 transition-colors"
-        />
-      </div>
+  <p className="text-zinc-400 text-xs">
+    სულ <span className="text-zinc-200 font-semibold">{channels.length}</span> არხი
+  </p>
+  <div className="flex items-center gap-2">
+    {syncMsg && (
+      <span className="text-xs text-emerald-400 flex items-center gap-1.5">
+        <IconCheck />{syncMsg}
+      </span>
+    )}
+    {syncErr && (
+      <span className="text-xs text-red-400">{syncErr}</span>
+    )}
+    <input
+      type="text"
+      placeholder="სახელი ან UUID…"
+      value={search}
+      onChange={e => setSearch(e.target.value)}
+      className="w-64 bg-zinc-900 border border-zinc-800 rounded-xl px-4 py-2 text-sm focus:outline-none focus:border-zinc-600 transition-colors"
+    />
+    <button
+      onClick={() => setConfirm({
+  message: "ამ მოქმედებით Legacy სერვერიდან არხების სინქრონიზაცია მოხდება. ახალი არხები დაემატება სისტემაში.",
+  onConfirm: doSync,
+})}
+      disabled={syncing}
+      className="cursor-pointer flex items-center gap-1.5 bg-zinc-800 hover:bg-zinc-700 border border-zinc-700 hover:border-zinc-600 disabled:opacity-40 disabled:cursor-not-allowed text-zinc-300 text-xs font-medium px-4 py-2 rounded-xl transition-colors shrink-0"
+    >
+      {syncing ? (
+        <><Spinner />სინქრონიზაცია…</>
+      ) : (
+        <>
+          <svg width="11" height="11" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M1 7A6 6 0 0112.5 4M13 7a6 6 0 01-11.5 3"/>
+            <path d="M11 4h2V2M3 10H1v2"/>
+          </svg>
+          სინქრონიზაცია
+        </>
+      )}
+    </button>
+  </div>
+</div>
 
       {/* Table */}
       <div className="bg-zinc-900 border border-zinc-800 rounded-2xl overflow-x-auto min-w-0">
@@ -281,6 +328,36 @@ export default function AdminChannelsSection({ channels, channelsLoading, fetchC
           onSaved={fetchChannels}
         />
       )}
+      {confirm && (
+  <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4">
+    <div className="bg-zinc-900 border border-zinc-800 rounded-2xl w-full max-w-xs shadow-2xl overflow-hidden">
+      <div className="p-5 text-center space-y-3">
+        <div className="w-11 h-11 rounded-xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center mx-auto">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#fbbf24" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M12 9v4M12 17h.01"/>
+            <path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/>
+          </svg>
+        </div>
+        <p className="text-zinc-100 font-semibold text-sm">დარწმუნებული ხარ?</p>
+        <p className="text-zinc-500 text-xs leading-relaxed">{confirm.message}</p>
+      </div>
+      <div className="px-5 pb-5 flex gap-2">
+        <button
+          onClick={() => setConfirm(null)}
+          className="cursor-pointer flex-1 py-2.5 rounded-xl text-sm bg-zinc-800 hover:bg-zinc-700 text-zinc-300 transition-colors"
+        >
+          არა
+        </button>
+        <button
+          onClick={() => { confirm.onConfirm(); setConfirm(null); }}
+          className="cursor-pointer flex-1 py-2.5 rounded-xl text-sm bg-amber-600 hover:bg-amber-500 text-white font-medium transition-colors"
+        >
+          დიახ
+        </button>
+      </div>
+    </div>
+  </div>
+)}
     </div>
   );
 }
