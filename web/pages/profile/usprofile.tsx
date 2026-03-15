@@ -2,7 +2,8 @@ import { useState, useEffect, useCallback } from "react";
 import api from "../../src/lib/axios";
 import useUIStore from "@/store/ui-store";
 import useAuthStore from "@/store/AuthStore";
-import type { User, Account } from "@/types/user"
+import type { User, Account } from "@/types/user";
+import EditProfileModal from "./EditModal"; // ← new import
 
 interface WatchedChannel {
   id: number | string;
@@ -36,6 +37,7 @@ const translations = {
     sidebar: {
       memberSince: "Member Since",
       notVerified: "Account not verified",
+      editProfile: "Edit Profile",
     },
     overview: {
       balanceCard: "Balance & Payments",
@@ -58,6 +60,7 @@ const translations = {
     sidebar: {
       memberSince: "დარეგისტრირების თარიღი",
       notVerified: "ანგარიში დაუდასტურებელია",
+      editProfile: "პროფილის რედაქტირება",
     },
     overview: {
       balanceCard: "ბალანსი და გადახდები",
@@ -86,7 +89,6 @@ export default function UserProfile() {
 
   /* ── theme ── */
   const c = {
-    // Light mode: crisp white/gray base. Dark mode: deep charcoal.
     page:          isDark ? "bg-[#0d0d12] text-zinc-300"              : "bg-gray-50 text-gray-600",
     sidebar:       isDark ? "bg-[#111116]"                             : "bg-white",
     sidebarBorder: isDark ? "border-white/5"                          : "border-gray-200",
@@ -103,7 +105,6 @@ export default function UserProfile() {
       : "border-transparent text-gray-400 hover:text-gray-700 hover:bg-gray-50",
     verifiedText:  "text-emerald-500",
     unverifiedText: isDark ? "text-zinc-600" : "text-gray-400",
-    // balance hero
     balanceBg:     isDark
       ? "bg-gradient-to-br from-violet-950/60 to-[#0d0d12]"
       : "bg-gradient-to-br from-violet-50 to-gray-50",
@@ -114,7 +115,6 @@ export default function UserProfile() {
       : "border border-gray-200 text-gray-500 hover:border-gray-400 hover:text-gray-900 bg-white",
     btnCopied:     "border border-emerald-500/40 text-emerald-500",
     btnInterpay:   "bg-violet-600 hover:bg-violet-500 text-white",
-    // rows
     planRow:       isDark ? "border-white/5"                           : "border-gray-100",
     planHover:     isDark ? "hover:bg-white/[0.02]"                    : "hover:bg-gray-50",
     expiringSoon:  "text-red-400",
@@ -129,10 +129,15 @@ export default function UserProfile() {
     avatarRing:    isDark ? "ring-white/10"                            : "ring-gray-200",
     spinnerColor:  isDark ? "border-violet-400 border-t-transparent"   : "border-violet-500 border-t-transparent",
     mobileTopbar:  isDark ? "bg-[#111116] border-white/5"              : "bg-white border-gray-200",
+    // edit button
+    editBtn:       isDark
+      ? "border border-white/8 text-zinc-500 hover:text-zinc-300 hover:border-white/15 bg-white/[0.02]"
+      : "border border-gray-200 text-gray-400 hover:text-gray-600 hover:border-gray-300 bg-gray-50",
   };
 
   const [tab, setTab] = useState<Tab>("Overview");
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [editModalOpen, setEditModalOpen] = useState(false); // ← new
   const [user, setUser] = useState<User | null>(null);
   const [activePlans, setActivePlans] = useState<ActivePlan[]>([]);
   const [watchHistory, setWatchHistory] = useState<WatchedChannel[]>([]);
@@ -144,21 +149,21 @@ export default function UserProfile() {
   const { user: storeUser, fetchUser, isLoading: authLoading } = useAuthStore();
 
   useEffect(() => {
-  if (!storeUser) fetchUser();
-}, []);
+    if (!storeUser) fetchUser();
+  }, []);
 
-useEffect(() => {
-  if (storeUser) {
-    setUser(storeUser);
-    setLoading(false);
-  }
-}, [storeUser]);
+  useEffect(() => {
+    if (storeUser) {
+      setUser(storeUser);
+      setLoading(false);
+    }
+  }, [storeUser]);
 
-useEffect(() => {
-  api.get("/api/plans/my")
-    .then((res) => setActivePlans(Array.isArray(res.data) ? res.data : []))
-    .catch(() => setActivePlans([]));
-}, []);
+  useEffect(() => {
+    api.get("/api/plans/my")
+      .then((res) => setActivePlans(Array.isArray(res.data) ? res.data : []))
+      .catch(() => setActivePlans([]));
+  }, []);
 
   /* ── Fetch watch history ── */
   useEffect(() => {
@@ -220,7 +225,7 @@ useEffect(() => {
       )
     : "—";
   const balance = user?.account?.balance ?? null;
-  const currency =  "GEL";
+  const currency = "GEL";
 
   const emailVerified = !!user?.email_verified_at;
   const phoneVerified = !!user?.phone_verified_at;
@@ -245,7 +250,7 @@ useEffect(() => {
       )}
 
       {/* ════════════════════════════════════════
-          SIDEBAR — fixed, does NOT scroll with page
+          SIDEBAR
       ════════════════════════════════════════ */}
       <aside className={`
         fixed top-0 left-0 z-30 h-full w-64 flex flex-col
@@ -257,11 +262,12 @@ useEffect(() => {
 
         {/* Avatar + Identity */}
         <div className="px-6 pt-7 pb-5 flex-shrink-0">
-          <div className="mb-4">
+          {/* Avatar with edit overlay */}
+          <div className="mb-4 relative group w-14">
             {user?.avatar_url ? (
               <img
                 src={user.avatar_url}
-                alt={user.full_name||undefined}
+                alt={user.full_name || undefined}
                 className={`w-14 h-14 rounded-2xl object-cover ring-2 ${c.avatarRing}`}
               />
             ) : (
@@ -269,6 +275,15 @@ useEffect(() => {
                 {initials}
               </div>
             )}
+            {/* Subtle edit overlay on avatar hover */}
+            <button
+              onClick={() => setEditModalOpen(true)}
+              className="absolute inset-0 rounded-2xl flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-150 cursor-pointer"
+              style={{ background: "rgba(0,0,0,0.5)" }}
+              title={tx.sidebar.editProfile}
+            >
+              <span style={{ fontSize: "0.85rem" }}>✎</span>
+            </button>
           </div>
 
           <h2 className={`text-base font-semibold leading-tight ${c.heading}`}>{user?.full_name ?? "—"}</h2>
@@ -284,6 +299,15 @@ useEffect(() => {
             {tx.sidebar.memberSince}:{" "}
             <span className={`${c.heading} font-medium`}>{memberSince}</span>
           </p>
+
+          {/* ── Edit Profile button ── */}
+          <button
+            onClick={() => setEditModalOpen(true)}
+            className={`mt-4 w-full flex items-center justify-center gap-2 py-2 rounded-xl text-xs font-medium transition-all duration-150 cursor-pointer ${c.editBtn}`}
+          >
+            <span style={{ fontSize: "0.75rem" }}>✎</span>
+            {tx.sidebar.editProfile}
+          </button>
         </div>
 
         {/* Divider */}
@@ -326,7 +350,7 @@ useEffect(() => {
           )}
         </div>
 
-        {/* Nav — directly after verification */}
+        {/* Nav */}
         <div className={`border-t ${c.divider} flex-shrink-0`}>
           {(["Overview", "History", "Favourites"] as Tab[]).map((t) => (
             <button
@@ -348,7 +372,7 @@ useEffect(() => {
       </aside>
 
       {/* ════════════════════════════════════════
-          MAIN CONTENT — only this area scrolls
+          MAIN CONTENT
       ════════════════════════════════════════ */}
       <div className="flex-1 flex flex-col min-w-0 h-full overflow-hidden">
 
@@ -356,9 +380,16 @@ useEffect(() => {
         <div className={`lg:hidden flex-shrink-0 flex items-center gap-4 px-5 py-4 border-b ${c.mobileTopbar}`}>
           <button onClick={() => setSidebarOpen(true)} className={`${c.sub} text-xl leading-none`}>☰</button>
           <span className={`text-sm font-medium ${c.heading}`}>{tx.tabs[tab]}</span>
+          {/* mobile edit shortcut */}
+          <button
+            onClick={() => setEditModalOpen(true)}
+            className={`ml-auto text-xs px-3 py-1.5 rounded-lg font-medium transition-all duration-150 cursor-pointer ${c.editBtn}`}
+          >
+            ✎
+          </button>
         </div>
 
-        {/* Scrollable content zone — ONLY this scrolls */}
+        {/* Scrollable content zone */}
         <div className="flex-1 overflow-y-auto">
 
           {/* ════ OVERVIEW ════ */}
@@ -566,6 +597,21 @@ useEffect(() => {
 
         </div>{/* end scrollable zone */}
       </div>{/* end main content */}
+
+      {/* ════ EDIT PROFILE MODAL ════ */}
+      <EditProfileModal
+        isOpen={editModalOpen}
+        onClose={() => setEditModalOpen(false)}
+        currentFullName={user?.full_name ?? ""}
+        currentUsername={user?.username ?? ""}
+        currentAvatarUrl={user?.avatar_url ?? ""}
+        isDark={isDark}
+        language={language}
+        onSuccess={(updatedUser) => {
+          // Local optimistic update while fetchUser re-validates in background
+          setUser((prev) => prev ? { ...prev, ...updatedUser } as User : prev);
+        }}
+      />
     </div>
   );
 }
