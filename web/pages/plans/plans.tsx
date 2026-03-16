@@ -1,6 +1,5 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { API_BASE_URL } from '@/config'
 import api from '../../src/lib/axios'
 import useUIStore from '../../src/store/ui-store'
 import useAuthStore from '../../src/store/AuthStore'
@@ -317,8 +316,8 @@ const Plans = () => {
 
     const fetchPlans = async () => {
       try {
-        const res = await fetch(`${API_BASE_URL}/api/plans`)
-        const data = await res.json()
+        const res = await api.get(`/api/plans`)
+        const data = res.data;
         setPlans(data.filter((p: Plan) => p.is_active))
       } catch {
         console.error('Failed to fetch plans')

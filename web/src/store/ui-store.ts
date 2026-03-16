@@ -25,7 +25,11 @@ const useUIStore = create<UIStore>()(
       selectedChannelId: "22",
       logoLight: logoLight,   
       logoDark: logoDark,     
-      toggleDarkMode: () => set((state) => ({ isDark: !state.isDark })),
+      toggleDarkMode: () => set((state) => {
+      const next = !state.isDark
+      document.documentElement.classList.toggle('dark', next)
+      return { isDark: next }
+      }),
       setLanguage: (language) => set({ language }),
       setSelectedChannelId: (selectedChannelId) => set({ selectedChannelId }),
       setLogos: (light, dark) => set({ logoLight: light, logoDark: dark }),

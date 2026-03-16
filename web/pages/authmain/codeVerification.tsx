@@ -169,7 +169,7 @@ if (savedTvCode) {
                   border-emerald-500/40 bg-transparent
                   focus-visible:ring-emerald-500/30 focus-visible:border-emerald-500
                   transition-colors
-                  ${digit ? 'border-emerald-500 text-emerald-500' : ''}
+                  ${digit ? 'border-form-highlights text-emerald-500' : ''}
                 `}
               />
             ))}
@@ -181,7 +181,7 @@ if (savedTvCode) {
               <button
                 type="button"
                 onClick={handleResend}
-                className="font-semibold text-emerald-500 hover:text-emerald-400 transition-colors cursor-pointer"
+                className="font-semibold text-form-highlights hover:text-emerald-400 transition-colors cursor-pointer"
               >
                 {tx.resend_code}
               </button>
@@ -197,7 +197,7 @@ if (savedTvCode) {
           <button
             type="submit"
             disabled={loading || code.join('').length < 6}
-            className="cursor-pointer flex w-full justify-center rounded-lg bg-emerald-500 px-3 py-2.5 text-sm font-semibold text-white shadow-md shadow-emerald-500/20 hover:bg-emerald-400 active:scale-[0.98] transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+            className="cursor-pointer flex w-full justify-center rounded-lg bg-form-highlights px-3 py-2.5 text-sm font-semibold text-white shadow-md shadow-emerald-500/20 hover:bg-emerald-400 active:scale-[0.98] transition-all disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {loading ? (
               <span className="flex items-center gap-2">
@@ -216,7 +216,7 @@ if (savedTvCode) {
           <p className="text-center text-sm text-muted-foreground">
             <a
               href="/authentication/login"
-              className="font-semibold text-emerald-500 hover:text-emerald-400 transition-colors"
+              className="font-semibold text-form-highlights hover:text-emerald-400 transition-colors"
             >
               {tx.topText}
             </a>

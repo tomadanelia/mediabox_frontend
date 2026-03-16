@@ -1,10 +1,10 @@
 import React, { useState } from 'react'
-import { UserIcon, MailIcon, PhoneIcon, EyeIcon, EyeOffIcon } from 'lucide-react'
+import {MailIcon, PhoneIcon, EyeIcon, EyeOffIcon } from 'lucide-react'
 import { Input } from '../../../src/components/ui/input'
 import { Button } from '../../../src/components/ui/button'
-import api from '@/lib/axios'
-import useAuthStore from '@/store/AuthStore'
-import useUIStore from '@/store/ui-store'
+import api from '../../../src/lib/axios'
+import useAuthStore from '../../../src/store/AuthStore'
+import useUIStore from '../../../src/store/ui-store'
 import {Link}  from "react-router-dom"
 const IconInput = ({
   icon: Icon,
@@ -17,13 +17,13 @@ const IconInput = ({
   type?: string
 } & React.ComponentProps<typeof Input>) => (
   <div className="relative w-full">
-    <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3 text-emerald-500">
+    <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3 text-form-highlights">
       <Icon className="size-4" />
     </div>
     <Input
       type={type}
       placeholder={placeholder}
-      className="pl-9 border-emerald-500/40 bg-transparent focus-visible:ring-emerald-500/30 focus-visible:border-emerald-500 placeholder:text-muted-foreground/50 transition-colors"
+      className="pl-9 border-emerald-500/40 bg-transparent focus-visible:ring-emerald-500/30 focus-visible:border-form-highlights placeholder:text-muted-foreground/50 transition-colors"
       {...props}
     />
   </div>
@@ -41,7 +41,7 @@ const PasswordInput = ({
         type={visible ? 'text' : 'password'}
         placeholder={placeholder}
         autoComplete={autoComplete}
-        className="pr-9 border-emerald-500/40 bg-transparent focus-visible:ring-emerald-500/30 focus-visible:border-emerald-500 placeholder:text-muted-foreground/50 transition-colors"
+        className="pr-9 border-emerald-500/40 bg-transparent focus-visible:ring-emerald-500/30 focus-visible:border-form-highlights placeholder:text-muted-foreground/50 transition-colors"
         {...props}
       />
       <Button
@@ -49,9 +49,9 @@ const PasswordInput = ({
         variant="ghost"
         size="icon"
         onClick={() => setVisible(v => !v)}
-        className="absolute inset-y-0 right-0 text-emerald-500/70 hover:text-emerald-500 hover:bg-transparent"
+        className="absolute cursor-pointer inset-y-0 right-0 text-emerald-500/70 hover:text-form-highlights hover:bg-transparent"
       >
-        {visible ? <EyeOffIcon className="size-4" /> : <EyeIcon className="size-4" />}
+        {visible ? <EyeOffIcon className="size-4 " /> : <EyeIcon className="size-4" />}
         <span className="sr-only">{visible ? 'Hide' : 'Show'} password</span>
       </Button>
     </div>
@@ -143,8 +143,8 @@ if (data.code) {
 }
 
   return (
-<div className="flex min-h-svh items-start justify-center mt-6 p-3 pt-0 dark:bg-gray-950 bg-gray-50 overflow-hidden">
-        <div className="w-full max-w-100  rounded-xl border border-emerald-500/20 bg-white dark:bg-gray-900 shadow-xl shadow-emerald-500/5 px-8 py-10">
+<div className="flex min-h-svh items-start justify-center  p-3 pt-0 dark:bg-gray-950 bg-gray-50 overflow-hidden">
+        <div className="w-full max-w-100  mt-6 rounded-xl border border-emerald-500/20 bg-white dark:bg-gray-900 shadow-xl shadow-emerald-500/5 px-8 py-10">
 
         {/* Header */}
         <div className="mb-8 text-center">
@@ -162,7 +162,7 @@ if (data.code) {
               onClick={() => setContactMethod('email')}
               className={`cursor-pointer flex-1 py-2 transition-all ${
                 contactMethod === 'email'
-                  ? 'bg-emerald-500 text-white'
+                  ? 'bg-form-highlights text-white'
                   : 'bg-transparent dark:text-gray-400 text-gray-500 hover:bg-emerald-500/5'
               }`}
             >
@@ -173,7 +173,7 @@ if (data.code) {
               onClick={() => setContactMethod('phone')}
               className={`cursor-pointer flex-1 py-2 transition-all ${
                 contactMethod === 'phone'
-                  ? 'bg-emerald-500 text-white'
+                  ? 'bg-form-highlights text-white'
                   : 'bg-transparent dark:text-gray-400 text-gray-500 hover:bg-emerald-500/5'
               }`}
             >
@@ -223,7 +223,7 @@ if (data.code) {
             <input className="mt-1 cursor-pointer" type='checkbox' checked={remember} onChange={e => setRemember(e.target.checked)} />
             <span className="text-sm text-muted-foreground">{tx.remember}</span>
             <span className="text-muted-foreground">
-             <a href="#" className="text-sm text-emerald-500 hover:text-emerald-400 transition-colors whitespace-nowrap">
+             <a href="#" className="text-sm text-form-highlights hover:text-emerald-400 transition-colors whitespace-nowrap">
       გაეცანი წესებსა და პირობებს
     </a>
             </span>
@@ -233,7 +233,7 @@ if (data.code) {
           <button
             type="submit"
             disabled={loading}
-            className="mt-2 flex w-full cursor-pointer justify-center rounded-lg bg-emerald-500 px-3 py-2.5 text-sm font-semibold text-white shadow-md shadow-emerald-500/20 hover:bg-emerald-400 active:scale-[0.98] transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+            className="mt-2 flex w-full cursor-pointer justify-center rounded-lg bg-form-highlights px-3 py-2.5 text-sm font-semibold text-white shadow-md shadow-emerald-500/20 hover:bg-emerald-400 active:scale-[0.98] transition-all disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {loading ? (
               <span className="flex items-center gap-2">
@@ -244,14 +244,14 @@ if (data.code) {
                 Creating account...
               </span>
             ) : (
-              'რეგისტრაცია'
+              tx.register
             )}
           </button>
 
           {/* Sign in link */}
           <p className="text-center text-sm text-muted-foreground pt-1">
             {tx.already_account}{' '}
-            <Link to="/authentication/login" className="font-semibold text-emerald-500 hover:text-emerald-400 transition-colors">
+            <Link to="/authentication/login" className="font-semibold text-form-highlights hover:text-emerald-400 transition-colors">
               {tx.topText}
             </Link>
           </p>

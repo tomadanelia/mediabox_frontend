@@ -1,13 +1,10 @@
 import React, { useState } from 'react'
-import { UserIcon, MailIcon, PhoneIcon, EyeIcon, EyeOffIcon, LogInIcon } from 'lucide-react'
+import {  MailIcon, PhoneIcon, EyeIcon, EyeOffIcon } from 'lucide-react'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
-import CheckboxDemo from '../../../src/components/shadcn-studio/checkbox/checkbox-01'
-import { API_BASE_URL } from '@/config'
 import api from '@/lib/axios'
-import { set } from 'date-fns'
 import useAuthStore from '@/store/AuthStore'
-import { Navigate ,Link} from 'react-router-dom'
+import {Link} from 'react-router-dom'
 import useUIStore from '@/store/ui-store'
 const translations = {
   En: {
@@ -44,13 +41,13 @@ const IconInput = ({
   type?: string
 } & React.ComponentProps<typeof Input>) => (
   <div className="relative w-full">
-    <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3 text-emerald-500">
+    <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3 text-form-highlights">
       <Icon className="size-4" />
     </div>
     <Input
       type={type}
       placeholder={placeholder}
-      className="pl-9 border-emerald-500/40 bg-transparent focus-visible:ring-emerald-500/30 focus-visible:border-emerald-500 placeholder:text-muted-foreground/50 transition-colors"
+      className="pl-9 border-emerald-500/40 bg-transparent focus-visible:ring-emerald-500/30 focus-visible:border-form-highlights placeholder:text-muted-foreground/50 transition-colors"
       {...props}
     />
   </div>
@@ -69,7 +66,7 @@ const PasswordInput = ({
         type={visible ? 'text' : 'password'}
         placeholder={placeholder}
         autoComplete={autoComplete}
-        className="pr-9 border-emerald-500/40 bg-transparent focus-visible:ring-emerald-500/30 focus-visible:border-emerald-500 placeholder:text-muted-foreground/50 transition-colors"
+        className="pr-9 border-emerald-500/40 bg-transparent focus-visible:ring-emerald-500/30 focus-visible:border-form-highlights placeholder:text-muted-foreground/50 transition-colors"
         {...props}
       />
       <Button
@@ -77,7 +74,7 @@ const PasswordInput = ({
         variant="ghost"
         size="icon"
         onClick={() => setVisible(v => !v)}
-        className="absolute inset-y-0 right-0 text-emerald-500/70 hover:text-emerald-500 hover:bg-transparent"
+        className="cursor-pointer absolute inset-y-0 right-0 text-emerald-500/70 hover:text-form-highlights hover:bg-transparent"
       >
         {visible ? <EyeOffIcon className="size-4" /> : <EyeIcon className="size-4" />}
         <span className="sr-only">{visible ? 'Hide' : 'Show'} password</span>
@@ -108,11 +105,6 @@ const AuthLog: React.FC = () => {
     setForm(prev => ({ ...prev, login: '' }))
   }
 
-  const getCookie = (name: string) => {
-  const value = `; ${document.cookie}`;
-  const parts = value.split(`; ${name}=`);
-  if (parts.length === 2) return decodeURIComponent(parts.pop()?.split(';').shift() || '');
-};
 
 const handleSubmit = async (e: React.FormEvent) => {
   e.preventDefault();
@@ -141,8 +133,8 @@ if (err.response?.status === 403 && err.response?.data?.message === 'Account not
 };
 
   return (
-    <div className="flex h-screen mt-8 items-start justify-center p-3 pt-0 dark:bg-gray-950 bg-gray-50 overflow-hidden">
-      <div className="w-full max-w-100 rounded-xl border border-emerald-500/20 bg-white dark:bg-gray-900 shadow-xl shadow-emerald-500/5 px-8 py-10">
+    <div className="flex h-screen  items-start justify-center p-3 pt-0 dark:bg-gray-950 bg-gray-50 overflow-hidden">
+      <div className="w-full max-w-100 mt-9 rounded-xl border border-emerald-500/20 bg-white dark:bg-gray-900 shadow-xl shadow-emerald-500/5 px-8 py-10">
 
         {/* Header */}
         <div className="mb-8 text-center">
@@ -158,13 +150,13 @@ if (err.response?.status === 403 && err.response?.data?.message === 'Account not
         <form className="space-y-4" onSubmit={handleSubmit}>
 
           {/* Email / Phone toggle */}
-          <div className="flex rounded-lg overflow-hidden border border-emerald-500/30 text-sm font-medium">
+          <div className="flex rounded-lg overflow-hidden border form-highlights text-sm font-medium">
             <button
               type="button"
               onClick={() => handleMethodSwitch('email')}
               className={`cursor-pointer flex-1 py-2 transition-all ${
                 loginMethod === 'email'
-                  ? 'bg-emerald-500 text-white'
+                  ? 'bg-form-highlights text-white'
                   : 'bg-transparent dark:text-gray-400 text-gray-500 hover:bg-emerald-500/5'
               }`}
             >
@@ -175,7 +167,7 @@ if (err.response?.status === 403 && err.response?.data?.message === 'Account not
               onClick={() => handleMethodSwitch('phone')}
               className={`cursor-pointer flex-1 py-2 transition-all ${
                 loginMethod === 'phone'
-                  ? 'bg-emerald-500 text-white'
+                  ? 'bg-form-highlights text-white'
                   : 'bg-transparent dark:text-gray-400 text-gray-500 hover:bg-emerald-500/5'
               }`}
             >
@@ -192,7 +184,7 @@ if (err.response?.status === 403 && err.response?.data?.message === 'Account not
               name="login"
               autoComplete="email"
               value={form.login}
-              onChange={e => handleChange('login', e.target.value)}
+              onChange={(e: { target: { value: string } }) => handleChange('login', e.target.value)}
             />
           ) : (
             <IconInput
@@ -202,7 +194,7 @@ if (err.response?.status === 403 && err.response?.data?.message === 'Account not
               name="login"
               autoComplete="tel"
               value={form.login}
-              onChange={e => handleChange('login', e.target.value)}
+              onChange={(e: { target: { value: string } }) => handleChange('login', e.target.value)}
             />
           )}
 
@@ -211,7 +203,7 @@ if (err.response?.status === 403 && err.response?.data?.message === 'Account not
             placeholder={tx.password}
             name="password"
             value={form.password}
-            onChange={e => handleChange('password', e.target.value)}
+            onChange={(e: { target: { value: string } }) => handleChange('password', e.target.value)}
           />
 
           {/* Remember me + Forgot password */}
@@ -222,7 +214,7 @@ if (err.response?.status === 403 && err.response?.data?.message === 'Account not
             </div>
             <Link
               to="/authentication/forgot-password"
-              className="text-sm font-semibold text-emerald-500 hover:text-emerald-400 transition-colors"
+              className="text-sm font-semibold text-form-highlights hover:text-emerald-400 transition-colors"
             >
              {tx.forgot}
             </Link>
@@ -232,7 +224,7 @@ if (err.response?.status === 403 && err.response?.data?.message === 'Account not
           <button
             type="submit"
             disabled={loading}
-            className="mt-2 cursor-pointer flex w-full justify-center rounded-lg bg-emerald-500 px-3 py-2.5 text-sm font-semibold text-white shadow-md shadow-emerald-500/20 hover:bg-emerald-400 active:scale-[0.98] transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+            className="mt-2 cursor-pointer flex w-full justify-center rounded-lg bg-form-highlights px-3 py-2.5 text-sm font-semibold text-white shadow-md shadow-emerald-500/20 hover:bg-emerald-400 active:scale-[0.98] transition-all disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {loading ? (
               <span className="flex items-center gap-2">
@@ -258,7 +250,7 @@ if (err.response?.status === 403 && err.response?.data?.message === 'Account not
           {/* Sign up link */}
           <p className="text-center text-sm text-muted-foreground pt-1">
             {tx.no_account}{' '}
-            <Link to="/authentication/register" className="font-semibold text-emerald-500 hover:text-emerald-400 transition-colors">
+            <Link to="/authentication/register" className="font-semibold text-form-highlights hover:text-emerald-400 transition-colors">
               {tx.register}
             </Link>
           </p>
