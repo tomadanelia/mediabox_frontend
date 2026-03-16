@@ -46,10 +46,19 @@
 
 
   --color-form-highlights:var(--form-highlight);
+  --color-form-highlights: var(--form-highlight);
+  --color-form-highlight-subtle: var(--form-highlight-subtle);
+  --color-form-border: var(--form-border);
+  --color-form-shadow: var(--form-shadow);
+  --color-auth-page-bg: var(--auth-page-bg);
+  --color-auth-card-bg: var(--auth-card-bg);
+  --color-auth-heading: var(--auth-heading); 
+  --color-button-hover: var(--button-hover); 
+  --color-eye-icon:     var(--eye-icon);
 }
 
 :root {
-  --form-highlight:#0d90b1;
+ 
   
 
 
@@ -85,11 +94,32 @@
   --sidebar-accent-foreground: oklch(0.208 0.042 265.755);
   --sidebar-border: oklch(0.929 0.013 255.508);
   --sidebar-ring: oklch(0.704 0.04 256.788);
+
+
+   --form-highlight:#0d90b1;
+   -form-highlight: #0d90b1;
+  --form-highlight-subtle: #0d90b111;
+  --form-border: #0d90b166;
+  --form-shadow: #0d90b10d;
+  --auth-page-bg: oklch(0.968 0.007 247.896);
+  --auth-card-bg: oklch(1 0 0);
+  --auth-heading: oklch(0.129 0.042 264.695);
+  --button-hover: #a3115a;
+  --eye-icon: #0d90b166;
+
 }
 
 .dark {
   --form-highlight:#d70f0f76;
-
+  --form-highlight: #0d90b1;
+  --form-highlight-subtle: #0d90b111;
+  --form-border: #0d90b166;
+  --form-shadow: #0d90b10d;
+  --auth-page-bg: oklch(0.05 0.042 264.695);
+  --auth-card-bg: oklch(0.208 0.042 265.755);
+  --auth-heading: oklch(0.984 0.003 247.858);
+  --button-hover: #9d09e2;
+  --eye-icon: #0d90b166;
 
 
 

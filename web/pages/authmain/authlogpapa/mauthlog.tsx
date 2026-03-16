@@ -47,7 +47,7 @@ const IconInput = ({
     <Input
       type={type}
       placeholder={placeholder}
-      className="pl-9 border-emerald-500/40 bg-transparent focus-visible:ring-emerald-500/30 focus-visible:border-form-highlights placeholder:text-muted-foreground/50 transition-colors"
+      className="pl-9 border-form-border bg-transparent focuse-visible-:ring-form-border focus-visible:border-form-highlights placeholder:text-muted-foreground/50 transition-colors"
       {...props}
     />
   </div>
@@ -66,7 +66,7 @@ const PasswordInput = ({
         type={visible ? 'text' : 'password'}
         placeholder={placeholder}
         autoComplete={autoComplete}
-        className="pr-9 border-emerald-500/40 bg-transparent focus-visible:ring-emerald-500/30 focus-visible:border-form-highlights placeholder:text-muted-foreground/50 transition-colors"
+        className="pr-9 border-form-border bg-transparent focuse-visible-:ring-form-border focus-visible:border-form-highlights placeholder:text-muted-foreground/50 transition-colors"
         {...props}
       />
       <Button
@@ -74,7 +74,7 @@ const PasswordInput = ({
         variant="ghost"
         size="icon"
         onClick={() => setVisible(v => !v)}
-        className="cursor-pointer absolute inset-y-0 right-0 text-emerald-500/70 hover:text-form-highlights hover:bg-transparent"
+        className="cursor-pointer absolute inset-y-0 right-0 text-eye-icon hover:text-form-highlights hover:bg-transparent"
       >
         {visible ? <EyeOffIcon className="size-4" /> : <EyeIcon className="size-4" />}
         <span className="sr-only">{visible ? 'Hide' : 'Show'} password</span>
@@ -133,8 +133,8 @@ if (err.response?.status === 403 && err.response?.data?.message === 'Account not
 };
 
   return (
-    <div className="flex h-screen  items-start justify-center p-3 pt-0 dark:bg-gray-950 bg-gray-50 overflow-hidden">
-      <div className="w-full max-w-100 mt-9 rounded-xl border border-emerald-500/20 bg-white dark:bg-gray-900 shadow-xl shadow-emerald-500/5 px-8 py-10">
+    <div className="flex h-screen  items-start justify-center p-3 pt-0 bg-auth-page-bg overflow-hidden">
+      <div className="w-full max-w-100 mt-9 rounded-xl border border-form-border bg-auth-card-bg shadow-xl shadow-form-shadow px-8 py-10">
 
         {/* Header */}
         <div className="mb-8 text-center">
@@ -149,7 +149,6 @@ if (err.response?.status === 403 && err.response?.data?.message === 'Account not
 
         <form className="space-y-4" onSubmit={handleSubmit}>
 
-          {/* Email / Phone toggle */}
           <div className="flex rounded-lg overflow-hidden border form-highlights text-sm font-medium">
             <button
               type="button"
@@ -157,7 +156,7 @@ if (err.response?.status === 403 && err.response?.data?.message === 'Account not
               className={`cursor-pointer flex-1 py-2 transition-all ${
                 loginMethod === 'email'
                   ? 'bg-form-highlights text-white'
-                  : 'bg-transparent dark:text-gray-400 text-gray-500 hover:bg-emerald-500/5'
+                  : 'bg-transparent text-auth-heading hover:bg-form-highlight-subtle'
               }`}
             >
             {tx.email}
@@ -168,7 +167,7 @@ if (err.response?.status === 403 && err.response?.data?.message === 'Account not
               className={`cursor-pointer flex-1 py-2 transition-all ${
                 loginMethod === 'phone'
                   ? 'bg-form-highlights text-white'
-                  : 'bg-transparent dark:text-gray-400 text-gray-500 hover:bg-emerald-500/5'
+                  : 'bg-transparent text-auth-heading hover:bg-form-highlight-subtle'
               }`}
             >
               {tx.phone}
@@ -214,7 +213,7 @@ if (err.response?.status === 403 && err.response?.data?.message === 'Account not
             </div>
             <Link
               to="/authentication/forgot-password"
-              className="text-sm font-semibold text-form-highlights hover:text-emerald-400 transition-colors"
+              className="text-sm font-semibold text-form-highlights hover:text-button-hover transition-colors"
             >
              {tx.forgot}
             </Link>
@@ -224,7 +223,7 @@ if (err.response?.status === 403 && err.response?.data?.message === 'Account not
           <button
             type="submit"
             disabled={loading}
-            className="mt-2 cursor-pointer flex w-full justify-center rounded-lg bg-form-highlights px-3 py-2.5 text-sm font-semibold text-white shadow-md shadow-emerald-500/20 hover:bg-emerald-400 active:scale-[0.98] transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+            className="mt-2 cursor-pointer flex w-full justify-center rounded-lg bg-form-highlights px-3 py-2.5 text-sm font-semibold text-white shadow-md shadow-form-shadow hover:bg-button-hover active:scale-[0.98] transition-all disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {loading ? (
               <span className="flex items-center gap-2">
@@ -242,7 +241,7 @@ if (err.response?.status === 403 && err.response?.data?.message === 'Account not
           {/* Divider */}
           <div className="relative my-2">
             <div className="absolute inset-0 flex items-center">
-              <div className="w-full border-t border-emerald-500/10" />
+              <div className="w-full border-t border-form-border" />
             </div>
            
           </div>
@@ -250,7 +249,7 @@ if (err.response?.status === 403 && err.response?.data?.message === 'Account not
           {/* Sign up link */}
           <p className="text-center text-sm text-muted-foreground pt-1">
             {tx.no_account}{' '}
-            <Link to="/authentication/register" className="font-semibold text-form-highlights hover:text-emerald-400 transition-colors">
+            <Link to="/authentication/register" className="font-semibold text-form-highlights hover:text-button-hover transition-colors">
               {tx.register}
             </Link>
           </p>
