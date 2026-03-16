@@ -83,10 +83,9 @@ type Tab = "Overview" | "History" | "Favourites";
 
 /* ─── Main Component ─────────────────────────────────────── */
 export default function UserProfile() {
-  const language = useUIStore((state:any) => state.language);
-  const isDark = useUIStore((state:any) => state.isDark);
+  const language = useUIStore((state) => state.language);
+  const isDark = useUIStore((state) => state.isDark);
   const tx = translations[language];
-
   /* ── theme ── */
   const c = {
     page:          isDark ? "bg-[#0d0d12] text-zinc-300"              : "bg-gray-50 text-gray-600",

@@ -22,9 +22,16 @@ const PALETTE = [
   "rgba(168,85,247,0.85)",
   "rgba(239,68,68,0.85)",
 ]
-
-// ─── URL extraction ───────────────────────────────────────────────────────────
-
+const translations = {
+  En: {
+    subscriptionLabel: 'subscription is required',
+    locked:"locked"
+  },
+  Ge:{
+    subscriptionLabel: 'საჭიროა პაკეტის შეძენა',
+    locked:"დაბლოკილია"
+  }
+}
 function extractStreamUrl(data: unknown): string | null {
   if (!data) return null
   if (typeof data === "string") {
@@ -126,9 +133,7 @@ async function grabThumbnail(streamUrl: string): Promise<GrabResult> {
   })
 }
 
-// ─── Per-card thumb logic ─────────────────────────────────────────────────────
 
-// "locked" = 403 subscription required
 type ThumbState = undefined | "loading" | "failed" | "locked" | string
 
 async function fetchThumb(channelId: string): Promise<ThumbState> {
@@ -154,11 +159,13 @@ async function fetchThumb(channelId: string): Promise<ThumbState> {
 
 // ─── Single channel card ──────────────────────────────────────────────────────
 
-const ChannelCard: React.FC<{ channel: Channel; index: number }> = ({ channel, index }) => {
+export const ChannelCard: React.FC<{ channel: Channel; index: number }> = ({ channel, index }) => {
   const color = channel.color ?? PALETTE[index % PALETTE.length]
   const cardRef = useRef<HTMLAnchorElement>(null)
   const [thumb, setThumb] = useState<ThumbState>(undefined)
   const started = useRef(false)
+  const { isDark, language } = useUIStore();
+  const tx= translations[language];
   const { setSelectedChannelId } = useUIStore();
 
   useEffect(() => {
@@ -231,11 +238,11 @@ const ChannelCard: React.FC<{ channel: Channel; index: number }> = ({ channel, i
       {/* Lock badge — centred, shown above the text */}
       {isLocked && (
         <div className="absolute inset-0 flex flex-col items-center justify-center gap-1.5 pb-6">
-          <div className="flex h-9 w-9 items-center justify-center rounded-full bg-white/10 ring-1 ring-white/20">
-            <Lock className="h-4 w-4 text-white/60" />
+          <div className="flex h-9 w-9 mt-8 items-center justify-center rounded-full bg-white/10 ring-1 ring-white/20">
+            <Lock className="h-4  w-4 text-white/60" />
           </div>
           <span className="text-[11px] font-medium tracking-wide text-white/45">
-            Subscription required
+            {tx.subscriptionLabel}
           </span>
         </div>
       )}
@@ -245,7 +252,7 @@ const ChannelCard: React.FC<{ channel: Channel; index: number }> = ({ channel, i
         <div className="space-y-1">
           <div className="flex items-center gap-2 text-xs text-white/80">
             <span className={`h-2 w-2 rounded-full ${isLocked ? "bg-white/25" : "bg-green-400"}`} />
-            {isLocked ? "Locked" : "Live"} · {channel.genre}
+            {isLocked ? tx.locked : "Live"} 
           </div>
           <p className="text-lg font-semibold leading-tight drop-shadow">{channel.name}</p>
         </div>

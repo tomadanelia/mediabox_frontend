@@ -1,22 +1,20 @@
 import React, { useEffect, useState } from "react"
-import { API_BASE_URL } from "../../src/config"
-import ChannelScroller from "./comps/ChannelScroller"
+import ChannelScroller, { ChannelCard } from "./comps/ChannelScroller"
 import type { Channel } from "./comps/ChannelScroller"
 import useUIStore from "@/store/ui-store"
 import api from "@/lib/axios"
-const API_BASE = `${API_BASE_URL}/api`
+import { CategoryIcon } from "@/hmcomponents/IconMapper"
 
-// ─── Translations ─────────────────────────────────────────────────────────────
 const HERO_TEXT = {
   En: {
     eyebrow:       "Your universe of live content",
-    tagline:       "Stream thousands of live channels, on-demand series, and curated collections — all in one place.",
-    pills:         ["Live TV", "Movies", "Series", "Sports", "News", "Kids"],
+    tagline:       "Stream hundreds of live channels, on-demand series, and curated collections — all in one place.",
+    pills:         ["Live TV", "Movies", "Series", "Sports", "News"],
   },
   Ge: {
     eyebrow:       "შენი პირდაპირი კონტენტის სამყარო",
-    tagline:       "ათასობით პირდაპირი არხი, სერიალი და კურირებული კოლექცია — ყველაფერი ერთ ადგილას.",
-    pills:         ["პირდაპირი", "ფილმები", "სერიალები", "სპორტი", "სიახლეები", "საბავშვო"],
+    tagline:       "ასობით პირდაპირი არხი, სერიალი და კურირებული კოლექცია — ყველაფერი ერთ ადგილას.",
+    pills:         ["პირდაპირი", "ფილმები", "სერიალები", "სპორტი", "სიახლეები"],
   },
 } as const
 
@@ -30,9 +28,7 @@ interface HeroBannerProps {
 const HeroBanner: React.FC<HeroBannerProps> = ({ heroImage, language }) => {
   const lang: Lang = language === "Ge" ? "Ge" : "En"
   const t = HERO_TEXT[lang]
-  const { isDark } = useUIStore()
   const currentLogo = useUIStore((state) => state.logoLight)
-  console.log("HeroBanner logo:", currentLogo) // ← does it show the full URL or local path?
   
   return (
     <section
@@ -163,36 +159,122 @@ const HeroBanner: React.FC<HeroBannerProps> = ({ heroImage, language }) => {
           from { opacity: 0; transform: translateY(10px); }
           to   { opacity: 1; transform: translateY(0); }
         }
-        @media (max-width: 480px) {
-          .hero-banner { --hero-h: 260px; border-radius: 0.75rem; }
-          .hero-content { padding: 1.25rem; }
-          .hero-tagline { display: none; }
-        }
+       @media (max-width: 600px) {
+  .hero-banner { --hero-h: 260px; border-radius: 0.75rem; }
+  .hero-content { padding: 0 1.25rem 1rem; }  /* top: 0 */
+  .hero-tagline { display: none; }
+}
       `}</style>
     </section>
   )
 }
 
-// ─── Page ─────────────────────────────────────────────────────────────────────
+// ─── Types ────────────────────────────────────────────────────────────────────
+
+interface Category {
+  id: string
+  name_ka: string
+  name_en: string
+  description_en: string
+  description_ka: string
+  icon_url: string
+}
+
+interface CategoryScrollerProps {
+  category: Category
+  channels: Channel[]
+  language: string
+}
+
+
+
 const Home: React.FC = () => {
   const [channels, setChannels] = useState<Channel[]>([])
-  const {  language } = useUIStore()
-
+  const [categories, setCategories] = useState<Category[]>([])
+  const { isDark,language } = useUIStore()
+  const color=isDark?"bg-black":"bg-yellow";
   useEffect(() => {
     ;(async () => {
       try {
-        const res = await api.get("/api/channels")
-        setChannels(Array.isArray(res.data.channels) ? res.data.channels : [])
+        const [chRes, catRes] = await Promise.all([
+          api.get("/api/channels"),
+          api.get("/api/channels/categories"),
+        ])
+        setChannels(Array.isArray(chRes.data.channels) ? chRes.data.channels : [])
+        setCategories(Array.isArray(catRes.data) ? catRes.data : [])
       } catch (e) {
-        console.error("[Home/fetchChannels]", e)
+        console.error("[Home/fetch]", e)
       }
     })()
   }, [])
+  useEffect(() => {
+  const el = document.querySelector(".page-content") as HTMLElement | null
+  if (!el) return
+  el.style.overflowY = "auto"
+  return () => { el.style.overflowY = "hidden" }
+}, [])
+  const channelsByCategory = React.useMemo(() => {
+    const map = new Map<string, Channel[]>()
+    for (const ch of channels) {
+      const catId = (ch as Channel & { category_id?: string }).category_id
+      if (!catId) continue
+      if (!map.has(catId)) map.set(catId, [])
+      map.get(catId)!.push(ch)
+    }
+    return map
+  }, [channels])
+
+  const uncategorised = React.useMemo(() => {
+    const knownIds = new Set(categories.map((c) => c.id))
+    return channels.filter((ch) => {
+      const catId = (ch as Channel & { category_id?: string }).category_id
+      return !catId || !knownIds.has(catId)
+    })
+  }, [channels, categories])
 
   return (
-    <main className="mx-auto flex w-full max-w-7xl flex-col gap-6 px-4 pb-10 pt-6 sm:px-6 lg:px-8">
+<main className={`overflow-y-auto ${color} mx-auto w-full max-w-screen-2xl flex flex-col gap-8 px-4 pb-12 pt-6 sm:px-6 lg:px-10 xl:px-14`}>
       <HeroBanner heroImage={null} language={language} />
-      <ChannelScroller channels={channels} />
+      {[...categories]
+  .sort((a, b) => (channelsByCategory.get(b.id)?.length ?? 0) - (channelsByCategory.get(a.id)?.length ?? 0))
+  .map((cat) => {
+        const catChannels = channelsByCategory.get(cat.id) ?? []
+        if (catChannels.length === 0) return null
+
+        const label = language === "Ge" ? cat.name_ka : cat.name_en
+
+        return (
+          <section key={cat.id} className="space-y-3">
+            {/* Section header */}
+            <div className="flex items-center gap-3">
+              <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
+                <CategoryIcon name={cat.icon_url} />
+              </span>
+              <div>
+                <h3 className="text-xl font-semibold text-foreground leading-tight">{label}</h3>
+              </div>
+            </div>
+
+            {/* Reuse ChannelScroller but suppress its built-in header */}
+            <div className="cat-scroller-no-header">
+              <ChannelScroller channels={catChannels} />
+            </div>
+          </section>
+        )
+      })}
+
+      {/* Fallback: channels with no matched category */}
+      {uncategorised.length > 0 && (
+        <ChannelScroller channels={uncategorised} />
+      )}
+
+      <style>{`
+        /* Hide the built-in header inside each ChannelScroller we've wrapped,
+           since we render our own styled header above each one */
+        .cat-scroller-no-header > section > div:first-child {
+          display: none;
+        }
+      `}</style>
     </main>
   )
 }
