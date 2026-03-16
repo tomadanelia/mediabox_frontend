@@ -184,7 +184,7 @@ const ProfileDropdown = ({ user, tx }: ProfileDropdownProps) => {
     <div ref={ref} className="relative">
       <button
         onClick={() => setOpen(v => !v)}
-        className="flex items-center gap-1 rounded-full p-1 hover:bg-black/5 dark:hover:bg-white/10 transition-colors focus:outline-none"
+        className="flex cursor-pointer items-center gap-1 rounded-full p-1 hover:bg-black/5 dark:hover:bg-white/10 transition-colors focus:outline-none"
       >
         <Avatar src={user?.avatar_url} name={user?.full_name} />
         <Icon
@@ -227,10 +227,10 @@ const ProfileDropdown = ({ user, tx }: ProfileDropdownProps) => {
           ))}
         </div>
 
-        <div className="border-t border-black/8 dark:border-white/8 py-1.5">
+        <div className="border-t  border-black/8 dark:border-white/8 py-1.5">
           <button
             onClick={() => { setOpen(false) }}
-            className="flex w-full items-center gap-3 px-4 py-2.5 text-sm text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 transition-colors"
+            className="flex w-full cursor-pointer items-center gap-3 px-4 py-2.5 text-sm text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 transition-colors"
           >
             <Icon name="logout" size={18} />
             <span>{tx.logout}</span>
@@ -465,7 +465,7 @@ const Navbar = () => {
             <button
               onClick={toggleDarkMode}
               title="Toggle dark mode"
-              className="hidden lg:flex rounded-full p-2 hover:bg-zinc-100 dark:hover:bg-white/8 transition-colors"
+              className="hidden cursor-pointer lg:flex rounded-full p-2 hover:bg-zinc-100 dark:hover:bg-white/8 transition-colors"
             >
               <Icon
                 name={isDark ? "light_mode" : "dark_mode"}
@@ -478,7 +478,7 @@ const Navbar = () => {
             <button
               onClick={() => setLanguage(language === "En" ? "Ge" : "En")}
               title="Switch language"
-              className="hidden lg:flex rounded-full px-2 py-1.5 items-center gap-1 hover:bg-zinc-100 dark:hover:bg-white/8 transition-colors"
+              className="hidden lg:flex rounded-full cursor-pointer px-2 py-1.5 items-center gap-1 hover:bg-zinc-100 dark:hover:bg-white/8 transition-colors"
             >
               <Icon name="translate" size={18} className="text-zinc-500 dark:text-zinc-400" />
               <span className="text-xs font-semibold text-zinc-600 dark:text-zinc-300">
@@ -488,13 +488,12 @@ const Navbar = () => {
 
             {/* go live — desktop only */}
 
-            <Link
-              to="/TV"
-              className="hidden xl:inline-flex items-center gap-1.5 rounded-full bg-[#d52b1e] hover:bg-[#b03830] px-3 py-1.5 text-sm font-semibold text-white shadow-md shadow-[#d52b1e40] transition-colors whitespace-nowrap"
-            >
-              <Icon name="play_circle" size={17} fill={1} className="text-white" />
-              <span>{tx.live}</span>
-            </Link>
+           <Link
+          to="/TV"
+          className="hidden xl:inline-flex items-center justify-center gap-1.5 rounded-full bg-[#d52b1e] hover:bg-[#b03830] px-3 py-1.5 text-sm font-semibold text-white shadow-md shadow-[#d52b1e40] transition-colors whitespace-nowrap w-[140px] shrink-0">
+          <Icon name="play_circle" size={17} fill={1} className="text-white shrink-0" />
+          <span className="truncate">{tx.live}</span>
+          </Link>
 
             {/* profile — always visible */}
             <ProfileDropdown user={user} tx={tx} />

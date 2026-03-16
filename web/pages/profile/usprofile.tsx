@@ -1,8 +1,8 @@
 import { useState, useEffect, useCallback } from "react";
 import api from "../../src/lib/axios";
-import useUIStore from "@/store/ui-store";
-import useAuthStore from "@/store/AuthStore";
-import type { User, Account } from "@/types/user";
+import useUIStore from "../../src/store/ui-store";
+import useAuthStore from "../../src/store/AuthStore";
+import type { User, Account } from "../../src/types/user";
 import EditProfileModal from "./EditModal";
 
 interface WatchedChannel {
@@ -83,8 +83,8 @@ type Tab = "Overview" | "History" | "Favourites";
 
 /* ─── Main Component ─────────────────────────────────────── */
 export default function UserProfile() {
-  const language = useUIStore((state) => state.language);
-  const isDark = useUIStore((state) => state.isDark);
+  const language = useUIStore((state:any) => state.language);
+  const isDark = useUIStore((state:any) => state.isDark);
   const tx = translations[language];
 
   /* ── theme ── */
@@ -199,12 +199,12 @@ export default function UserProfile() {
 
   /* ── Copy helpers ── */
   const copyNumericId = () => {
-    if (!user?.username) return;
-    navigator.clipboard.writeText(user.numeric_id).then(() => {
-      setCopiedUsername(true);
-      setTimeout(() => setCopiedUsername(false), 2000);
-    });
-  };
+  if (!user?.numeric_id) return;
+  navigator.clipboard.writeText(String(user.numeric_id)).then(() => {
+    setCopiedUsername(true);
+    setTimeout(() => setCopiedUsername(false), 2000);
+  });
+};
 
   /* ── Derived ── */
   const initials = user?.full_name
