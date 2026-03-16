@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react'
+import React, { useState, useRef } from 'react'
 import { EyeIcon, EyeOffIcon, ArrowLeftIcon, CheckCircleIcon } from 'lucide-react'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
@@ -17,7 +17,7 @@ const PasswordInput = ({
         type={visible ? 'text' : 'password'}
         placeholder={placeholder}
         autoComplete={autoComplete}
-        className="pr-9 border-emerald-500/40 bg-transparent focus-visible:ring-emerald-500/30 focus-visible:border-emerald-500 placeholder:text-muted-foreground/50 transition-colors"
+        className="pr-9 border-form-border bg-transparent focus-visible:ring-form-border focus-visible:border-form-highlights placeholder:text-muted-foreground/50 transition-colors"
         {...props}
       />
       <Button
@@ -25,7 +25,7 @@ const PasswordInput = ({
         variant="ghost"
         size="icon"
         onClick={() => setVisible(v => !v)}
-        className="absolute inset-y-0 right-0 text-emerald-500/70 hover:text-emerald-500 hover:bg-transparent"
+        className="absolute inset-y-0 right-0 cursor-pointer text-eye-icon hover:text-form-highlights hover:bg-transparent"
       >
         {visible ? <EyeOffIcon className="size-4" /> : <EyeIcon className="size-4" />}
         <span className="sr-only">{visible ? 'Hide' : 'Show'} password</span>
@@ -41,12 +41,10 @@ const OtpInput = ({ value, onChange }: { value: string; onChange: (v: string) =>
   const handleKey = (i: number, e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'Backspace') {
       if (value[i]) {
-        // clear current cell
         const next = value.split('')
         next[i] = ''
         onChange(next.join(''))
       } else if (i > 0) {
-        // move to previous
         const next = value.split('')
         next[i - 1] = ''
         onChange(next.join(''))
@@ -76,7 +74,7 @@ const OtpInput = ({ value, onChange }: { value: string; onChange: (v: string) =>
   }
 
   return (
-    <div className="flex gap-2 justify-between ">
+    <div className="flex gap-2 justify-between">
       {Array.from({ length: 6 }).map((_, i) => (
         <input
           key={i}
@@ -92,11 +90,11 @@ const OtpInput = ({ value, onChange }: { value: string; onChange: (v: string) =>
             h-12 w-full rounded-lg border text-center text-lg font-bold
             bg-transparent outline-none transition-all
             ${value[i]
-              ? 'border-emerald-500 text-emerald-500 shadow-sm shadow-emerald-500/20'
-              : 'border-emerald-500/30 text-gray-800 dark:text-white'
+              ? 'border-form-highlights text-form-highlights shadow-sm shadow-form-shadow'
+              : 'border-form-border text-auth-heading'
             }
-            focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20
-            dark:bg-gray-900
+            focus:border-form-highlights focus:ring-2 focus:ring-form-border
+            bg-auth-card-bg
           `}
         />
       ))}
@@ -178,17 +176,17 @@ const ResetPassword: React.FC = () => {
   // ── Success state ──────────────────────────────────────────────────────────
   if (success) {
     return (
-      <div className="flex h-screen items-start justify-center p-3 pt-0 dark:bg-gray-950 bg-gray-50 overflow-hidden">
-        <div className="w-full max-w-100 rounded-xl border border-emerald-500/20 bg-white dark:bg-gray-900 shadow-xl shadow-emerald-500/5 px-8 py-12 text-center">
+      <div className="flex h-screen items-start justify-center p-3 pt-0 bg-auth-page-bg overflow-hidden">
+        <div className="w-full max-w-100 rounded-xl border border-form-border bg-auth-card-bg shadow-xl shadow-form-shadow px-8 py-12 text-center">
           <div className="mb-5 flex justify-center">
-            <div className="flex size-16 items-center justify-center rounded-full border border-emerald-500/30 bg-emerald-500/10">
-              <CheckCircleIcon className="size-8 text-emerald-500" />
+            <div className="flex size-16 items-center justify-center rounded-full border border-form-border bg-form-highlight-subtle">
+              <CheckCircleIcon className="size-8 text-form-highlights" />
             </div>
           </div>
-          <h2 className="text-xl font-bold dark:text-white text-gray-900">პაროლი წარმატებით შეიცვალა!</h2>
+          <h2 className="text-xl font-bold text-auth-heading">პაროლი წარმატებით შეიცვალა!</h2>
           <p className="mt-2 text-sm text-muted-foreground">გადამისამართება შესვლის გვერდზე…</p>
-          <div className="mt-6 h-1 w-full overflow-hidden rounded-full bg-emerald-500/10">
-            <div className="h-full bg-emerald-500 rounded-full animate-[grow_2.5s_linear_forwards]" style={{ width: '100%', animationName: 'grow' }} />
+          <div className="mt-6 h-1 w-full overflow-hidden rounded-full bg-form-highlight-subtle">
+            <div className="h-full bg-form-highlights rounded-full animate-[grow_2.5s_linear_forwards]" style={{ width: '100%', animationName: 'grow' }} />
           </div>
           <style>{`@keyframes grow { from { width:0% } to { width:100% } }`}</style>
         </div>
@@ -197,13 +195,13 @@ const ResetPassword: React.FC = () => {
   }
 
   return (
-    <div className="flex h-screen items-start justify-center mt-5 p-3 pt-0 dark:bg-gray-950 bg-gray-50 overflow-hidden">
-      <div className="w-full max-w-100 rounded-xl border border-emerald-500/20 bg-white dark:bg-gray-900 shadow-xl shadow-emerald-500/5 px-8 py-10">
+    <div className="flex h-screen items-start justify-center  p-3 pt-0 bg-auth-page-bg overflow-hidden">
+      <div className="w-full max-w-100 mt-6 rounded-xl border border-form-border bg-auth-card-bg shadow-xl shadow-form-shadow px-8 py-10">
 
         {/* Back link */}
         <Link
           to="/authentication/forgot-password"
-          className="mb-6 inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-emerald-500 transition-colors"
+          className="mb-6 inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-form-highlights transition-colors"
         >
           <ArrowLeftIcon className="size-3.5" />
           კოდის თავიდან გამოგზავნა
@@ -211,13 +209,13 @@ const ResetPassword: React.FC = () => {
 
         {/* Header */}
         <div className="mb-7 text-center">
-          <h1 className="text-2xl font-bold tracking-tight dark:text-white text-gray-900">
+          <h1 className="text-2xl font-bold tracking-tight text-auth-heading">
             ახალი პაროლის დაყენება
           </h1>
           {login && (
             <p className="mt-1.5 text-sm text-muted-foreground">
               კოდი გაიგზავნა:{' '}
-              <span className="font-medium text-emerald-500">{login}</span>
+              <span className="font-medium text-form-highlights">{login}</span>
             </p>
           )}
         </div>
@@ -226,19 +224,16 @@ const ResetPassword: React.FC = () => {
 
           {/* OTP */}
           <div className="space-y-2">
-            <label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-              დადასტურების კოდი
-            </label>
             <OtpInput value={otp} onChange={setOtp} />
           </div>
 
           {/* Divider */}
           <div className="relative">
             <div className="absolute inset-0 flex items-center">
-              <div className="w-full border-t border-emerald-500/10" />
+              <div className="w-full border-t border-form-border" />
             </div>
             <div className="relative flex justify-center text-xs">
-              <span className="px-3 bg-white dark:bg-gray-900 text-muted-foreground">ახალი პაროლი</span>
+              <span className="px-3 bg-auth-card-bg text-muted-foreground">ახალი პაროლი</span>
             </div>
           </div>
 
@@ -249,7 +244,6 @@ const ResetPassword: React.FC = () => {
               value={password}
               onChange={e => setPassword(e.target.value)}
             />
-            {/* Strength meter */}
             {password.length > 0 && (
               <div className="space-y-1">
                 <div className="flex gap-1">
@@ -312,7 +306,7 @@ const ResetPassword: React.FC = () => {
           <button
             type="submit"
             disabled={loading}
-            className="cursor-pointer flex w-full items-center justify-center gap-2 rounded-lg bg-emerald-500 px-3 py-2.5 text-sm font-semibold text-white shadow-md shadow-emerald-500/20 hover:bg-emerald-400 active:scale-[0.98] transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+            className="cursor-pointer flex w-full items-center justify-center gap-2 rounded-lg bg-form-highlights px-3 py-2.5 text-sm font-semibold text-white shadow-md shadow-form-shadow hover:bg-button-hover active:scale-[0.98] transition-all disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {loading ? (
               <>

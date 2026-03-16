@@ -139,15 +139,15 @@ if (savedTvCode) {
 };
 
   return (
-    <div className="flex h-screen mt-5 items-start justify-center p-3 pt-0 dark:bg-gray-950 bg-gray-50 overflow-hidden">
-      <div className="w-full max-w-100 rounded-xl border border-emerald-500/20 bg-white dark:bg-gray-900 shadow-xl shadow-emerald-500/5 px-8 py-10">
+    <div className="flex h-screen mt-5 items-start justify-center p-3 pt-0 bg-auth-page-bg overflow-hidden">
+      <div className="w-full max-w-100 rounded-xl border border-form-border bg-auth-card-bg shadow-xl shadow-form-shadow px-8 py-10">
 
         {/* Header */}
         <div className="mb-8 text-center">
-          <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-emerald-500/10 border border-emerald-500/30">
-            <ShieldCheckIcon className="size-5 text-emerald-500" />
+          <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-form-highlight-subtle border border-form-border">
+            <ShieldCheckIcon className="size-5 text-form-highlights" />
           </div>
-          <h1 className="text-2xl font-bold tracking-tight dark:text-white text-gray-900">
+          <h1 className="text-2xl font-bold tracking-tight text-auth-heading">
             {tx.account_verification}
           </h1>
           <p className="mt-1 text-sm text-muted-foreground">
@@ -172,8 +172,8 @@ if (savedTvCode) {
                 onKeyDown={e => handleKeyDown(i, e)}
                 className={`
                   h-12 w-full text-center text-lg font-bold
-                  border-emerald-500/40 bg-transparent
-                  focus-visible:ring-emerald-500/30 focus-visible:border-form-highlights
+                  border-form-border bg-transparent
+                  focus-visible:ring-form-border focus-visible:border-form-highlights
                   transition-colors
                   ${digit ? 'border-form-highlights text-form-highlights' : ''}
                 `}
@@ -187,13 +187,13 @@ if (savedTvCode) {
               <button
                 type="button"
                 onClick={handleResend}
-                className="font-semibold text-form-highlights hover:text-emerald-400 transition-colors cursor-pointer"
+                className="font-semibold text-form-highlights hover:text-button-hover transition-colors cursor-pointer"
               >
                 {tx.resend_code}
               </button>
             ) : (
               <span>
-                 {tx.resend_code}{' '}
+                {tx.resend_code}{' '}
                 <span className="font-semibold text-form-highlights">{resendTimer}s</span>
               </span>
             )}
@@ -203,7 +203,7 @@ if (savedTvCode) {
           <button
             type="submit"
             disabled={loading || code.join('').length < 6}
-            className="cursor-pointer flex w-full justify-center rounded-lg bg-form-highlights px-3 py-2.5 text-sm font-semibold text-white shadow-md shadow-emerald-500/20 hover:bg-emerald-400 active:scale-[0.98] transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+            className="cursor-pointer flex w-full justify-center rounded-lg bg-form-highlights px-3 py-2.5 text-sm font-semibold text-white shadow-md shadow-form-shadow hover:bg-button-hover active:scale-[0.98] transition-all disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {loading ? (
               <span className="flex items-center gap-2">
@@ -222,7 +222,7 @@ if (savedTvCode) {
           <p className="text-center text-sm text-muted-foreground">
             <a
               href="/authentication/login"
-              className="font-semibold text-form-highlights hover:text-emerald-400 transition-colors"
+              className="font-semibold text-form-highlights hover:text-button-hover transition-colors"
             >
               {tx.topText}
             </a>

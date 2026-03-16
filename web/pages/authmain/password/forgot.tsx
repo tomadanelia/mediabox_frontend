@@ -18,13 +18,13 @@ const IconInput = ({
   type?: string
 } & React.ComponentProps<typeof Input>) => (
   <div className="relative w-full">
-    <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3 text-emerald-500">
+    <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3 text-form-highlights">
       <Icon className="size-4" />
     </div>
     <Input
       type={type}
       placeholder={placeholder}
-      className="pl-9 border-emerald-500/40 bg-transparent focus-visible:ring-emerald-500/30 focus-visible:border-emerald-500 placeholder:text-muted-foreground/50 transition-colors"
+      className="pl-9 border-form-border bg-transparent focus-visible:ring-form-border focus-visible:border-form-highlights placeholder:text-muted-foreground/50 transition-colors"
       {...props}
     />
   </div>
@@ -51,8 +51,8 @@ const ForgotPassword: React.FC = () => {
     setLoading(true)
     setError('')
     try {
-      const res=await api.post('/api/auth/password/forgot', { login })
-      alert("verification code is"+res.data.code?res.data.code:"");
+      const res = await api.post('/api/auth/password/forgot', { login })
+      alert("verification code is" + res.data.code ? res.data.code : "");
       localStorage.setItem('pending_reset_login', login)
       window.location.href = '/authentication/reset-password'
     } catch (err: any) {
@@ -63,13 +63,13 @@ const ForgotPassword: React.FC = () => {
   }
 
   return (
-    <div className="flex h-screen items-start mt-5 justify-center p-3 pt-0 dark:bg-gray-950 bg-gray-50 overflow-hidden">
-      <div className="w-full max-w-100 rounded-xl border border-emerald-500/20 bg-white dark:bg-gray-900 shadow-xl shadow-emerald-500/5 px-8 py-10">
+    <div className="flex h-screen items-start  justify-center p-3 pt-0 bg-auth-page-bg overflow-hidden">
+      <div className="w-full max-w-100 rounded-xl mt-6 border border-form-border bg-auth-card-bg shadow-xl shadow-form-shadow px-8 py-10">
 
         {/* Back link */}
         <Link
           to="/authentication/login"
-          className="mb-6 inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-emerald-500 transition-colors"
+          className="mb-6 inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-form-highlights transition-colors"
         >
           <ArrowLeftIcon className="size-3.5" />
           შესვლა
@@ -77,9 +77,9 @@ const ForgotPassword: React.FC = () => {
 
         {/* Icon badge */}
         <div className="mb-6 flex justify-center">
-          <div className="flex size-14 items-center justify-center rounded-full border border-emerald-500/20 bg-emerald-500/8 shadow-inner shadow-emerald-500/10">
+          <div className="flex size-14 items-center justify-center rounded-full border border-form-border bg-form-highlight-subtle shadow-inner shadow-form-shadow">
             <svg
-              className="size-6 text-emerald-500"
+              className="size-6 text-form-highlights"
               fill="none"
               viewBox="0 0 24 24"
               stroke="currentColor"
@@ -96,7 +96,7 @@ const ForgotPassword: React.FC = () => {
 
         {/* Header */}
         <div className="mb-8 text-center">
-          <h1 className="text-2xl font-bold tracking-tight dark:text-white text-gray-900">
+          <h1 className="text-2xl font-bold tracking-tight text-auth-heading">
             პაროლის აღდგენა
           </h1>
           <p className="mt-1.5 text-sm text-muted-foreground leading-relaxed">
@@ -108,14 +108,14 @@ const ForgotPassword: React.FC = () => {
         <form className="space-y-4" onSubmit={handleSubmit}>
 
           {/* Email / Phone toggle */}
-          <div className="flex rounded-lg overflow-hidden border border-emerald-500/30 text-sm font-medium">
+          <div className="flex rounded-lg overflow-hidden border border-form-border text-sm font-medium">
             <button
               type="button"
               onClick={() => handleMethodSwitch('email')}
               className={`cursor-pointer flex-1 py-2 transition-all ${
                 loginMethod === 'email'
-                  ? 'bg-emerald-500 text-white'
-                  : 'bg-transparent dark:text-gray-400 text-gray-500 hover:bg-emerald-500/5'
+                  ? 'bg-form-highlights text-white'
+                  : 'bg-transparent text-muted-foreground hover:bg-form-highlight-subtle'
               }`}
             >
               ელ-ფოსტა
@@ -125,8 +125,8 @@ const ForgotPassword: React.FC = () => {
               onClick={() => handleMethodSwitch('phone')}
               className={`cursor-pointer flex-1 py-2 transition-all ${
                 loginMethod === 'phone'
-                  ? 'bg-emerald-500 text-white'
-                  : 'bg-transparent dark:text-gray-400 text-gray-500 hover:bg-emerald-500/5'
+                  ? 'bg-form-highlights text-white'
+                  : 'bg-transparent text-muted-foreground hover:bg-form-highlight-subtle'
               }`}
             >
               მობილური
@@ -150,7 +150,7 @@ const ForgotPassword: React.FC = () => {
               type="tel"
               autoComplete="tel"
               value={login}
-              onChange={(e:any ) => { setLogin(e.target.value); setError('') }}
+              onChange={(e: any) => { setLogin(e.target.value); setError('') }}
             />
           )}
 
@@ -168,7 +168,7 @@ const ForgotPassword: React.FC = () => {
           <button
             type="submit"
             disabled={loading}
-            className="mt-2 cursor-pointer flex w-full items-center justify-center gap-2 rounded-lg bg-emerald-500 px-3 py-2.5 text-sm font-semibold text-white shadow-md shadow-emerald-500/20 hover:bg-emerald-400 active:scale-[0.98] transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+            className="mt-2 cursor-pointer flex w-full items-center justify-center gap-2 rounded-lg bg-form-highlights px-3 py-2.5 text-sm font-semibold text-white shadow-md shadow-form-shadow hover:bg-button-hover active:scale-[0.98] transition-all disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {loading ? (
               <>
@@ -188,7 +188,7 @@ const ForgotPassword: React.FC = () => {
 
           {/* Sign in link */}
           <p className="text-center text-sm text-muted-foreground pt-1">
-            <Link to="/authentication/login" className="font-semibold text-emerald-500 hover:text-emerald-400 transition-colors">
+            <Link to="/authentication/login" className="font-semibold text-form-highlights hover:text-button-hover transition-colors">
               შესვლა
             </Link>
           </p>
