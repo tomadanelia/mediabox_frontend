@@ -910,7 +910,9 @@ useEffect(() => {
                             <span className="text-[0.6rem] text-zinc-700 w-4 shrink-0 font-mono tabular-nums text-right">{idx + 1}</span>
                             <div className="w-8 h-8 rounded-lg bg-zinc-800 border border-zinc-700/50 flex items-center justify-center shrink-0 overflow-hidden">
                               {cat.icon_url
-                                ? <CategoryIcon name={cat.icon_url} className="w-7 h-7" />
+                                ? <span className="material-symbols-outlined">
+                  {cat.icon_url}
+              </span>  
                                 : <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#a78bfa" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M7 7V5a2 2 0 012-2h6a2 2 0 012 2v2"/></svg>
                               }
                             </div>
@@ -1052,7 +1054,9 @@ useEffect(() => {
                   <div key={cat.id} className="group bg-zinc-900 border border-zinc-800 hover:border-zinc-700 transition-colors rounded-2xl p-4 flex items-center gap-4">
                     <div className="w-11 h-11 rounded-xl bg-zinc-800 flex items-center justify-center shrink-0 overflow-hidden">
                       {cat.icon_url
-                        ? <CategoryIcon name={cat.icon_url} className="w-7 h-7" />
+                        ? <span className="material-symbols-outlined">
+                  {cat.icon_url}
+              </span>  
                         : <span className="text-xl"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
                     <path d="M3 7a2 2 0 012-2h3.17a2 2 0 011.42.59L11 7h10a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V7z"/>
                   </svg></span>
@@ -1629,7 +1633,7 @@ const isActive =
             <div className="p-5 border-b border-zinc-800 flex items-center gap-4">
               <div className="w-11 h-11 rounded-xl bg-zinc-800 flex items-center justify-center shrink-0 overflow-hidden">
                 {activeCategory.icon_url
-                  ? <CategoryIcon name={activeCategory.icon_url} className="w-7 h-7" />
+                  ? <span className="material-symbols-outlined w-7 h-7" >activeCategory.icon_url</span>
                   : <span className="text-xl">📁</span>
                 }
               </div>

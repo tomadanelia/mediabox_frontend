@@ -247,9 +247,11 @@ const Home: React.FC = () => {
           <section key={cat.id} className="space-y-3">
             {/* Section header */}
             <div className="flex items-center gap-3">
-              <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
-                <CategoryIcon name={cat.icon_url} />
-              </span>
+              <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
+             <span className="material-symbols-outlined">
+                  {cat.icon_url}
+              </span>  
+                          </div>
               <div>
                 <h3 className="text-xl font-semibold text-foreground leading-tight">{label}</h3>
               </div>
