@@ -63,13 +63,11 @@ export async function fetchFavourites(): Promise<ReadonlySet<number>> {
   if (fetchPromise) return fetchPromise.then(() => favouriteIds);
 
   fetchPromise = api
-    .get<number[]>('/api/user/preferences/favourite-channels')
+    .get<{ favouriteChannelIds: string[] }>('/api/user/preferences/favourite-channels')
     .then(res => {
-      // Backend may return objects { id, ... } or raw numbers — handle both.
-      const raw = Array.isArray(res.data) ? res.data : [];
-      favouriteIds = new Set(
-        raw.map((item: any) => (typeof item === 'number' ? item : Number(item.id ?? item.channel_id ?? item)))
-      );
+      // Response shape: { favouriteChannelIds: ["22", "24", ...] }
+      const ids: any[] = res.data?.favouriteChannelIds ?? (Array.isArray(res.data) ? res.data : []);
+      favouriteIds = new Set(ids.map((item: any) => Number(item)));
       initialised = true;
       notify();
     })
