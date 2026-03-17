@@ -3,6 +3,7 @@ import AdminUsersExtended from "./AdminUsersExtended";
 import AdminChannelsSection from "./AdminChannelsSection";
 import api from "../../src/lib/axios";
 import {CategoryIcon} from "../../src/hmcomponents/IconMapper";
+import useAuthStore from "../../src/store/authStore"; 
 type AdminSection = "Overview" | "Users" | "Category-Channels" | "Categories" | "Plans" | "Plan-Channels" |"Channels"| "Support" | "Settings";
 const adminSectionLabels: Record<AdminSection, string> = {
   "Overview": "მთავარი",
@@ -205,6 +206,24 @@ function PlanMenu({
    MAIN
 ════════════════════════════════════════════════ */
 export default function AdminDashboard() {
+  const { user, isLoading, isAuthenticated } = useAuthStore();
+
+  if (isLoading) {
+    return (
+      <div className="flex h-screen items-center justify-center bg-zinc-950">
+        <div className="flex items-center gap-2 text-zinc-500 text-sm">
+          <IconSpinner />
+          <span>Loading…</span>
+        </div>
+      </div>
+    );
+  }
+
+  if (!isAuthenticated || !user || user.role !== "admin") {
+    window.location.href = "/";
+    return null;
+  }
+
   const [section, setSection] = useState<AdminSection>("Overview");
 
   /* ── Channel state ── */
@@ -1805,7 +1824,7 @@ const isActive =
                 <label key={cat.id} className={`flex items-center gap-3 p-3 rounded-xl border cursor-pointer transition-all ${selectedCategoryId === cat.id ? "border-violet-500 bg-violet-500/10" : "border-zinc-800 bg-zinc-800/30 hover:border-zinc-700 hover:bg-zinc-800/60"}`}>
                   <input type="radio" name="bulkCat" value={cat.id} checked={selectedCategoryId === cat.id} onChange={() => setSelectedCategoryId(cat.id)} className="accent-violet-500" />
                   <div className="w-7 h-7 rounded-lg bg-zinc-800 flex items-center justify-center shrink-0">
-                    {cat.icon_url ? <CategoryIcon name={cat.icon_url} className="w-7 h-7" /> : <span className="text-sm">📁</span>}
+                    {cat.icon_url ? <span  className="material-symbols-outlined w-7 h-7" >cat.icon_url</span> : <span className="text-sm">📁</span>}
                   </div>
                   <div className="flex-1 min-w-0">
                     <p className="text-zinc-100 font-medium text-sm truncate">{cat.name_en}</p>
