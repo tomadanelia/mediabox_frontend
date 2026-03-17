@@ -11,6 +11,8 @@ import AuthLog from "../pages/authmain/authlogpapa/mauthlog"
 import AuthVerify from "../pages/authmain/codeVerification"
 import AuthLoginVerify from "../pages/authmain/codeLoginVerification"
 import AdminDashboard from "../pages/admin/admin"
+import SupportPage from "../pages/support/support"
+import MeetUsPage from "../pages/meetus/meetUs"
 import type { UIStore } from "./store/ui-store"
 import useAuthStore from "./store/AuthStore"
 import TvPair from "../pages/authmain/tv/TvPair"
@@ -66,6 +68,8 @@ const App: React.FC = () => {
           <Route path="/admin" element={<AdminDashboard />} />
           <Route path="/remote" element={<RemotePage />} />
           <Route path="/radio" element={<RadioPage />} />
+          <Route path="/support" element={<SupportPage />} />
+          <Route path="/meetus" element={<MeetUsPage />} />
           <Route path="/authentication">
             <Route path="login" element={<AuthLog/>} />
             <Route path="register" element={<AuthReg/>} />

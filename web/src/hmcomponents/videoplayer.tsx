@@ -299,25 +299,7 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
   // ─── Render ───────────────────────────────────────────────────────────────────
 
   return (
-    /*
-     * Outer shell: full available height, centers content.
-     * On fullscreen the browser takes over so these classes don't matter there.
-     */
     <div className="flex items-center justify-center w-full h-full p-4">
-
-      {/*
-       * Aspect-ratio box — this is the key trick:
-       *   • aspect-video  → keeps 16/9
-       *   • w-full        → fills width first
-       *   • max-h-full    → but never taller than the parent (no vertical stretch)
-       *   • max-w-full    → never wider than the parent either
-       *
-       * Result:
-       *   – Wide screen  → width-constrained, height shrinks to match aspect
-       *   – Tall/narrow  → height-constrained (max-h-full kicks in),
-       *                    width shrinks to match aspect
-       *   – Never        → a pillar-box tall video or stretched pixels
-       */}
       <div
         ref={containerRef}
         className={`
@@ -329,11 +311,6 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
         onMouseEnter={() => setShowControls(true)}
         onMouseLeave={() => { setShowControls(false); setShowVolumeSlider(false); }}
       >
-        {/*
-         * The <video> fills the container completely.
-         * The container itself already has the correct 16:9 aspect — so the
-         * video never gets distorted; we don't need object-contain here.
-         */}
         <video
           ref={videoRef}
           className="absolute inset-0 w-full h-full"
@@ -352,7 +329,10 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
           <div className="absolute bottom-12 right-6 flex items-center justify-center gap-3 z-20 pointer-events-none">
             <button
               onClick={onGoLive}
-              className="pointer-events-auto cursor-pointer flex items-center gap-1.5 bg-red-600 hover:bg-red-500 text-white text-xs font-semibold px-3 py-1.5 rounded-full transition-colors"
+              className="pointer-events-auto cursor-pointer flex items-center gap-1.5 text-white text-xs font-semibold px-3 py-1.5 rounded-full transition-colors"
+              style={{ backgroundColor: '#d52b1e' }}
+              onMouseEnter={e => (e.currentTarget.style.backgroundColor = '#b82419')}
+              onMouseLeave={e => (e.currentTarget.style.backgroundColor = '#d52b1e')}
             >
               <span className="material-symbols-outlined text-4xl">sensors</span>
               Go Live
@@ -364,7 +344,10 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
         {isFullscreen && (
           <button
             onClick={() => setShowChannels(!showChannels)}
-            className={`absolute top-6 right-6 z-50 text-white hover:text-orange-400 transition-all cursor-pointer px-4 py-2 bg-black/60 backdrop-blur-sm rounded-lg border border-white/20 ${showControls ? 'opacity-100' : 'opacity-0'}`}
+            className={`absolute top-6 right-6 z-50 text-white transition-all cursor-pointer px-4 py-2 bg-black/60 backdrop-blur-sm rounded-lg border border-white/20 ${showControls ? 'opacity-100' : 'opacity-0'}`}
+            style={{ ['--tw-ring-color' as string]: '#d52b1e' }}
+            onMouseEnter={e => (e.currentTarget.style.color = '#d52b1e')}
+            onMouseLeave={e => (e.currentTarget.style.color = 'white')}
           >
             Channels
           </button>
@@ -389,13 +372,30 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
         >
           {/* Center playback controls */}
           <div className="absolute h-full w-full flex items-center justify-center gap-6">
-            <button onClick={() => skip(-10)} className="text-white hover:text-orange-400 transition-colors" title="Rewind 10s">
+            <button
+              onClick={() => skip(-10)}
+              className="text-white transition-colors"
+              title="Rewind 10s"
+              onMouseEnter={e => (e.currentTarget.style.color = '#d52b1e')}
+              onMouseLeave={e => (e.currentTarget.style.color = 'white')}
+            >
               <RotateCcw className="w-7 h-7" />
             </button>
-            <button onClick={togglePlay} className="text-white hover:text-orange-400 transition-colors">
+            <button
+              onClick={togglePlay}
+              className="text-white transition-colors"
+              onMouseEnter={e => (e.currentTarget.style.color = '#d52b1e')}
+              onMouseLeave={e => (e.currentTarget.style.color = 'white')}
+            >
               {isPlaying ? <Pause className="w-10 h-10" /> : <Play className="w-10 h-10" />}
             </button>
-            <button onClick={() => skip(10)} className="text-white hover:text-orange-400 transition-colors" title="Forward 10s">
+            <button
+              onClick={() => skip(10)}
+              className="text-white transition-colors"
+              title="Forward 10s"
+              onMouseEnter={e => (e.currentTarget.style.color = '#d52b1e')}
+              onMouseLeave={e => (e.currentTarget.style.color = 'white')}
+            >
               <RotateCw className="w-7 h-7" />
             </button>
           </div>
@@ -422,8 +422,11 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
                     <div className="absolute bottom-10 left-1/2 -translate-x-1/2">
                       <div className="h-40 w-6 rounded-sm bg-gray-400/20 backdrop-blur-sm p-1 flex items-center justify-center">
                         <div
-                          className="absolute w-2 bottom-4 bg-gradient-to-r from-orange-500 to-yellow-500 rounded-full"
-                          style={{ height: `${(isMuted ? 0 : volume) * 80}%` }}
+                          className="absolute w-2 bottom-4 rounded-full"
+                          style={{
+                            height: `${(isMuted ? 0 : volume) * 80}%`,
+                            background: '#d52b1e',
+                          }}
                         />
                         <input
                           type="range" min="0" max="1" step="0.01"
@@ -452,12 +455,18 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
                   onClick={handleSeek}
                 >
                   <div
-                    className={`h-full rounded-full ${mode === 'live' ? 'bg-red-500' : 'bg-gradient-to-r from-orange-500 to-yellow-500'}`}
-                    style={{ width: `${progressPct}%` }}
+                    className="h-full rounded-full"
+                    style={{
+                      width: `${progressPct}%`,
+                      backgroundColor: '#d52b1e',
+                    }}
                   />
                   <div
-                    className={`absolute top-1/2 -translate-y-1/2 -translate-x-1/2 w-3 h-3 rounded-full shadow ${mode === 'live' ? 'bg-red-400' : 'bg-orange-400'}`}
-                    style={{ left: `${progressPct}%` }}
+                    className="absolute top-1/2 -translate-y-1/2 -translate-x-1/2 w-3 h-3 rounded-full shadow"
+                    style={{
+                      left: `${progressPct}%`,
+                      backgroundColor: '#d52b1e',
+                    }}
                   />
                 </div>
               </div>

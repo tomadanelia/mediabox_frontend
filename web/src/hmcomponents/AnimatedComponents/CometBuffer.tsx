@@ -11,15 +11,13 @@ export function CometRing() {
             </feMerge>
           </filter>
           <linearGradient id="comet-tail" gradientUnits="userSpaceOnUse" x1="40" y1="12" x2="40" y2="68">
-            <stop offset="0%" stopColor="#a5b4fc" />
-            <stop offset="100%" stopColor="#6366f1" stopOpacity="0.1" />
+            <stop offset="0%" stopColor="#f87171" />
+            <stop offset="100%" stopColor="#d52b1e" stopOpacity="0.1" />
           </linearGradient>
         </defs>
 
-        {/* track */}
-        <circle cx="40" cy="40" r="32" fill="none" stroke="#312e81" strokeWidth="5" />
+        <circle cx="40" cy="40" r="32" fill="none" stroke="rgba(213,43,30,0.18)" strokeWidth="5" />
 
-        {/* comet arc */}
         <circle
           cx="40" cy="40" r="32"
           fill="none"
