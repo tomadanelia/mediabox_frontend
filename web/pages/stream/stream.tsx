@@ -6,31 +6,29 @@ import VideoPlayer from '@/hmcomponents/videoplayer';
 import DataTableDemo from '@/components/shadcn-studio/data-table/data-table-11';
 import Timeline from '@/hmcomponents/timeline';
 import DataTableDemoCL from '@/components/shadcn-studio/data-table/data-table-c1';
-import IconButtonDemo from '@/components/shadcn-studio/button/button-31';
-import ButtonCopyDemo from '@/components/shadcn-studio/button/custom/button-02';
+
 import IconButtonCalendar from '@/components/shadcn-studio/button/custom/button-01';
-import ButtonMenuDemo from '@/components/shadcn-studio/button/custom/button-31';
-import ButtonGroupSocialDemo from '@/components/shadcn-studio/button-group/button-group-05';
+
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import ChannelCalendar from '@/hmcomponents/calendar';
 import MobileCalendar from '@/hmcomponents/mobilecalendar';
 import { ChevronLeft, ChevronRight, CalendarDays } from 'lucide-react';
-import InputSearchIconDemo from '@/components/shadcn-studio/cadditions/inp1';
-import {
-  Clapperboard, ChessRook, Gamepad2, Newspaper,
-  Music, Camera, Code,
-} from 'lucide-react';
-import { GeorgiaLogo } from '@/components/svg_telecom_production/svglib';
+
+import { FavouriteButton } from '@/hmcomponents/favourites';
 import { CategoryIcon } from '@/hmcomponents/IconMapper';
 import PlansModal from '@/hmcomponents/planspopup';
 import api from '@/lib/axios';
 import { getLiveUrl, getArchiveUrl, probeRewindableHours } from '../../src/services/streamService';
 import { getProgramsForTimeline } from '../../src/services/programService'
+import {
+  fetchFavourites,
+  getFavourites,
+  markFavourite,
+  unmarkFavourite,
+  subscribeFavourites,
+} from '../../src/services/favouritesService';
 import { useIsMobile } from '@/hooks/useIsMobile';
 import { useNavigate } from 'react-router-dom';
-import { useOrientation } from '@/hooks/useOrientation';
-
-// ─── Types ────────────────────────────────────────────────────────────────────
 
 export type Channel = {
   id: string;
@@ -78,7 +76,6 @@ function toApiDate(date: Date = new Date()): string {
   return `${y}/${m}/${d}`;
 }
 
-
 function formatTime(unixSec: number): string {
   const d = new Date(unixSec * 1000);
   return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
@@ -106,26 +103,27 @@ interface ChannelGridProps {
   channels: Channel[];
   selectedChannel: Channel | null;
   onChannelSelect: (ch: Channel) => void;
-  favorites: any[];
-  markFavorite: (id: number) => void;
-  unmarkFavorite: (id: number) => void;
+  favouriteIds: ReadonlySet<number>;
   categories: any[];
   selectedCategory: string;
   onToggleCategory: (name: string) => void;
+  showFavouritesOnly: boolean;
+  onToggleFavourites: () => void;
 }
 
 const ChannelGrid: React.FC<ChannelGridProps> = ({
   channels, selectedChannel, onChannelSelect,
-  favorites, markFavorite, unmarkFavorite,
+  favouriteIds,
   categories, selectedCategory, onToggleCategory,
+  showFavouritesOnly, onToggleFavourites,
 }) => {
   const [search, setSearch] = useState('');
-  const favoriteIds = new Set((Array.isArray(favorites) ? favorites : []).map((f: any) => f.id ?? f.channel_id ?? f));
 
   const filtered = (Array.isArray(channels) ? channels : []).filter(ch => {
     const matchesCat = selectedCategory === '' || ch.category === selectedCategory;
     const matchesSearch = ch.name.toLowerCase().includes(search.toLowerCase());
-    return matchesCat && matchesSearch;
+    const matchesFav = !showFavouritesOnly || favouriteIds.has(Number(ch.id));
+    return matchesCat && matchesSearch && matchesFav;
   });
 
   return (
@@ -146,22 +144,47 @@ const ChannelGrid: React.FC<ChannelGridProps> = ({
 
       {/* Category pills */}
       <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-none">
+        {/* All pill */}
         <button
           onClick={() => onToggleCategory('')}
           className={`shrink-0 h-7 px-3 rounded-full text-xs font-medium transition-all
-            ${selectedCategory === ''
+            ${selectedCategory === '' && !showFavouritesOnly
               ? 'bg-gradient-to-br from-orange-500 to-yellow-400 text-white shadow-sm shadow-orange-300/30'
               : 'bg-white/70 dark:bg-white/5 border border-black/10 dark:border-white/10 text-black/50 dark:text-white/40'
             }`}
         >
           ყველა
         </button>
+
+        {/* Favourites pill */}
+        <button
+          onClick={onToggleFavourites}
+          className={`shrink-0 h-7 px-3 rounded-full text-xs font-medium transition-all flex items-center gap-1
+            ${showFavouritesOnly
+              ? 'bg-gradient-to-br from-orange-500 to-yellow-400 text-white shadow-sm shadow-orange-300/30'
+              : 'bg-white/70 dark:bg-white/5 border border-black/10 dark:border-white/10 text-black/50 dark:text-white/40'
+            }`}
+        >
+          <span
+            className='material-symbols-outlined'
+            style={{
+              fontSize: '13px',
+              fontVariationSettings: showFavouritesOnly
+                ? "'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 20"
+                : "'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 20",
+            }}
+          >
+            star
+          </span>
+          საყვარელი
+        </button>
+
         {(Array.isArray(categories) ? categories : []).map(cat => (
           <button
             key={cat.id}
             onClick={() => onToggleCategory(cat.name_en)}
             className={`shrink-0 h-7 px-3 rounded-full text-xs font-medium transition-all flex items-center gap-1.5
-              ${selectedCategory === cat.name_en
+              ${selectedCategory === cat.name_en && !showFavouritesOnly
                 ? 'bg-gradient-to-br from-orange-500 to-yellow-400 text-white shadow-sm shadow-orange-300/30'
                 : 'bg-white/70 dark:bg-white/5 border border-black/10 dark:border-white/10 text-black/50 dark:text-white/40'
               }`}
@@ -169,7 +192,6 @@ const ChannelGrid: React.FC<ChannelGridProps> = ({
             {cat.icon_url && (
               <span className="w-3.5 h-3.5 flex items-center justify-center">
                 <CategoryIcon name={cat.icon_url} />
-               
               </span>
             )}
             {cat.name_ka}
@@ -181,7 +203,7 @@ const ChannelGrid: React.FC<ChannelGridProps> = ({
       <div className="grid grid-cols-4 gap-2">
         {filtered.map(ch => {
           const isSelected = selectedChannel?.id === ch.id;
-          const isFav = favoriteIds.has(Number(ch.id));
+          const isFav = favouriteIds.has(Number(ch.id));
           return (
             <div
               key={ch.id}
@@ -221,7 +243,7 @@ const ChannelGrid: React.FC<ChannelGridProps> = ({
   );
 };
 
-// ─── Mobile Portrait: Programs List (mirrors ChannelScheduleCL logic) ─────
+// ─── Mobile Portrait: Programs List ──────────────────────────────────────────
 
 const timeFormatter = new Intl.DateTimeFormat('en-GB', {
   hour: '2-digit', minute: '2-digit', hour12: false,
@@ -270,7 +292,6 @@ const ProgramsList: React.FC<ProgramsListProps> = ({
       {sorted.map(p => {
         const isCurrent = p.UID === activeUID;
         const isPast    = nowSec >= p.END_TIME;
-        // Matches ChannelScheduleCL: only past/current programs are clickable
         const isClickable = p.START_TIME <= nowSec;
         const isFuture  = !isClickable;
 
@@ -313,7 +334,6 @@ const ProgramsList: React.FC<ProgramsListProps> = ({
   );
 };
 
-
 type PortraitTab = 'channels' | 'programs';
 
 // ─── Component ────────────────────────────────────────────────────────────────
@@ -347,12 +367,20 @@ export const Stream: React.FC = () => {
 
   const [leftExpanded, setLeftExpanded] = useState(false);
   const [rightExpanded, setRightExpanded] = useState(false);
-  const [favorites, setFavorites] = useState([]);
+
+  // ─── Favourites state (driven by favouriteService) ────────────────────────
+  const [favouriteIds, setFavouriteIds] = useState<ReadonlySet<number>>(getFavourites());
+  const [showFavouritesOnly, setShowFavouritesOnly] = useState(false);
+
+  // Legacy favlist shape kept so DataTableDemo doesn't need props changed
+  const favlist = useMemo(
+    () => Array.from(favouriteIds).map(id => ({ id })),
+    [favouriteIds]
+  );
+
   const [portraitTab, setPortraitTab] = useState<PortraitTab>('channels');
 
   const navigate = useNavigate();
-
-  // ─── URL caches live in streamService.ts ─────────────────────────────────
 
   type Category = {
     id: string
@@ -366,24 +394,23 @@ export const Stream: React.FC = () => {
   }
 
   const handleChannelSelect = async (channel: Channel) => {
-  const hasAccess = accessibleIds.includes(channel.id);
-
-  if (hasAccess) {
-    setSelectedChannel(channel);
-    return;
-  }
-  try {
-    const res = await api.get(`/api/channels/${channel.id}/plans`);
-    const data = res.data;
-    setPendingChannel({ 
-        ...channel, 
-        is_free: data.is_free, 
-        plans: data.required_plans 
-    } as ChannelWithPlans);
-  } catch (err) {
-    console.error('Failed to fetch channel plans:', err);
-  }
-};
+    const hasAccess = accessibleIds.includes(channel.id);
+    if (hasAccess) {
+      setSelectedChannel(channel);
+      return;
+    }
+    try {
+      const res = await api.get(`/api/channels/${channel.id}/plans`);
+      const data = res.data;
+      setPendingChannel({
+        ...channel,
+        is_free: data.is_free,
+        plans: data.required_plans
+      } as ChannelWithPlans);
+    } catch (err) {
+      console.error('Failed to fetch channel plans:', err);
+    }
+  };
 
   const [categories, setCategories] = useState<Category[]>([]);
 
@@ -398,25 +425,22 @@ export const Stream: React.FC = () => {
     return () => clearInterval(id);
   }, []);
 
+  // ─── Favourites — load once, subscribe for live updates ──────────────────
   useEffect(() => {
-    api.get('/api/user/preferences/favourite-channels')
-      .then(res => setFavorites(res.data))
-      .catch(err => console.error('Failed to fetch favorites:', err));
+    fetchFavourites().catch((err: unknown) =>
+      console.error('Failed to fetch favourites:', err)
+    );
+    return subscribeFavourites((ids: ReadonlySet<number>) => setFavouriteIds(ids));
   }, []);
 
-  const markFavorite = (channelId: number) => {
-    api.post('/api/user/preferences/favourite-channels', { channelId })
-      .then(() => api.get('/api/user/preferences/favourite-channels'))
-      .then(res => setFavorites(res.data))
-      .catch(err => console.error('Failed to mark channel as favorite:', err));
-  };
+  // Legacy helpers kept so nothing else breaks (they now delegate to the service)
+  const markFavorite = useCallback((channelId: number) => {
+    markFavourite(channelId);
+  }, []);
 
-  const unmarkFavorite = (channelId: number) => {
-    api.delete(`/api/user/preferences/favourites/${channelId}`)
-      .then(() => api.get('/api/user/preferences/favourite-channels'))
-      .then(res => setFavorites(res.data))
-      .catch(err => console.error('Failed to remove channel from favorites:', err));
-  };
+  const unmarkFavorite = useCallback((channelId: number) => {
+    unmarkFavourite(channelId);
+  }, []);
 
   // ─── API ─────────────────────────────────────────────────────────────────────
 
@@ -463,25 +487,31 @@ export const Stream: React.FC = () => {
 
   // ─── Effects ─────────────────────────────────────────────────────────────────
 
- useEffect(() => {
-  (async () => {
-    try {
-      const res = await api.get('/api/channels');
-      const data = res.data;
-      
-      setChannels(data.channels || []);
-      setAccessibleIds(data.accessible_external_ids || []); 
+  useEffect(() => {
+    (async () => {
+      try {
+        const res = await api.get('/api/channels');
+        const data = res.data;
 
-      const firstAccessible = data.channels.find((ch:Channel) => 
-        data.accessible_external_ids.includes(ch.id)
-      ) ?? data.channels[0];
+        const raw: any[] = data.channels || [];
+        const normalized: Channel[] = raw.map(ch => ({
+          ...ch,
+          category: ch.category_en ?? ch.category ?? '',
+        }));
 
-      if (firstAccessible) setSelectedChannel(firstAccessible);
-    } catch (e) {
-      console.error('[fetchChannels]', e);
-    }
-  })();
-}, []);
+        setChannels(normalized);
+        setAccessibleIds(data.accessible_external_ids || []);
+
+        const firstAccessible = normalized.find((ch: Channel) =>
+          data.accessible_external_ids.includes(ch.id)
+        ) ?? normalized[0];
+
+        if (firstAccessible) setSelectedChannel(firstAccessible);
+      } catch (e) {
+        console.error('[fetchChannels]', e);
+      }
+    })();
+  }, []);
 
   useEffect(() => {
     if (!selectedChannel) return;
@@ -539,13 +569,28 @@ export const Stream: React.FC = () => {
     setIsCalendarVisible(false);
   };
 
-  const filteredChannels = selectedCategory !== ""
-    ? channels.filter(ch => selectedCategory === ch.category)
-    : channels;
+  // ─── Filtered channels (category + favourites) ───────────────────────────
 
-  const toggleCategory = (id: string) => selectedCategory === id
-    ? setselectedCategory("")
-    : setselectedCategory(id);
+  const filteredChannels = useMemo(() => {
+    let result = channels;
+    if (selectedCategory !== '') {
+      result = result.filter(ch => ch.category === selectedCategory);
+    }
+    if (showFavouritesOnly) {
+      result = result.filter(ch => favouriteIds.has(Number(ch.id)));
+    }
+    return result;
+  }, [channels, selectedCategory, showFavouritesOnly, favouriteIds]);
+
+  const toggleCategory = (id: string) => {
+    setShowFavouritesOnly(false);
+    setselectedCategory(prev => prev === id ? '' : id);
+  };
+
+  const toggleFavouritesFilter = () => {
+    setShowFavouritesOnly(prev => !prev);
+    if (!showFavouritesOnly) setselectedCategory('');
+  };
 
   const programDateAsDate = new Date(programDate.replace(/\//g, '-'));
 
@@ -582,7 +627,7 @@ export const Stream: React.FC = () => {
             onChannelSelect={handleChannelSelect}
             currentChannelId={selectedChannel?.id}
             rewindableDays={rewindableDays}
-          />
+          />      
         </div>
 
         {/* Now-watching strip */}
@@ -661,12 +706,12 @@ export const Stream: React.FC = () => {
                 channels={channels}
                 selectedChannel={selectedChannel}
                 onChannelSelect={ch => { handleChannelSelect(ch); setPortraitTab('programs'); }}
-                favorites={favorites}
-                markFavorite={markFavorite}
-                unmarkFavorite={unmarkFavorite}
+                favouriteIds={favouriteIds}
                 categories={categories}
                 selectedCategory={selectedCategory}
                 onToggleCategory={toggleCategory}
+                showFavouritesOnly={showFavouritesOnly}
+                onToggleFavourites={toggleFavouritesFilter}
               />
             </div>
           ) : (
@@ -687,7 +732,7 @@ export const Stream: React.FC = () => {
   }
 
   // ════════════════════════════════════════════════════════════
-  // DESKTOP + MOBILE LANDSCAPE (unchanged)
+  // DESKTOP + MOBILE LANDSCAPE
   // ════════════════════════════════════════════════════════════
 
   return (
@@ -734,7 +779,7 @@ export const Stream: React.FC = () => {
               iconOnly={isMobile && !leftExpanded}
               markFavorite={markFavorite}
               unmarkFavorite={unmarkFavorite}
-              favlist={favorites}
+              favlist={favlist}
             />
           </div>
         </div>
@@ -756,6 +801,10 @@ export const Stream: React.FC = () => {
               rewindableDays={rewindableDays}
             />
           </div>
+<div className='flex px-2 py-1'>
+  <FavouriteButton channelId={selectedChannel?.id} />
+</div>
+
           {isCalendarVisible && (
             <div className="lg:hidden z-20 w-full h-full absolute flex top-0">
               <MobileCalendar
@@ -768,12 +817,37 @@ export const Stream: React.FC = () => {
           {!isMobile && (
             <div className='w-full h-full flex justify-center items-center'>
               <div className="shrink-0 w-full flex items-center gap-3 px-1 py-2 overflow-x-auto justify-center">
+
+                {/* ── Favourites toggle pill (replaces <IconButtonDemo />) ── */}
                 <div className="flex items-center shrink-0">
-                  <IconButtonDemo />
+                  <div
+                    onClick={toggleFavouritesFilter}
+                    className={`
+                      relative flex items-center gap-1.5 h-10 px-3 rounded-lg cursor-pointer
+                      text-xs font-medium transition-all duration-150
+                      ${showFavouritesOnly
+                        ? 'bg-linear-to-br from-[#f82719] to-[#da2b1e] text-white'
+                        : 'bg-white/70 dark:bg-white/5 border-black/8 dark:border-white/10 backdrop-blur-md text-black/50 dark:text-white/40 hover:text-black/70 dark:hover:text-white/60 hover:bg-white dark:hover:bg-white/10'
+                      }
+                    `}
+                  >
+                    <span
+                      className='material-symbols-outlined'
+                      style={{
+                        fontSize: '20px',
+                        fontVariationSettings: showFavouritesOnly
+                          ? "'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 24"
+                          : "'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24",
+                      }}
+                    >
+                      star
+                    </span>
+                  </div>
                 </div>
+
                 <div className="flex gap-2">
                   {(Array.isArray(categories) ? categories : []).map((category) => {
-                    const isSelected = selectedCategory === category.name_en
+                    const isSelected = selectedCategory === category.name_en && !showFavouritesOnly;
                     return (
                       <div
                         key={category.id}
@@ -788,10 +862,9 @@ export const Stream: React.FC = () => {
                         `}
                       >
                         {category.icon_url && (
-                          <div className="w-5 h-5 flex items-center justify-center flex-none transition-transform duration-150  text-gray-900 dark:text-blue-200">
+                          <div className="w-5 h-5 flex items-center justify-center flex-none transition-transform duration-150 text-gray-900 dark:text-blue-200">
                             <div className={isSelected ? "scale-125" : "scale-100"}>
-
-                               <span  style={{ fontVariationSettings: "'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24" }} className="material-symbols-outlined">{category.icon_url}</span>
+                              <span style={{ fontVariationSettings: "'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24" }} className="material-symbols-outlined">{category.icon_url}</span>
                             </div>
                           </div>
                         )}
@@ -803,7 +876,7 @@ export const Stream: React.FC = () => {
                           <TooltipContent side="bottom">{category.name_en}</TooltipContent>
                         </Tooltip>
                       </div>
-                    )
+                    );
                   })}
                 </div>
               </div>

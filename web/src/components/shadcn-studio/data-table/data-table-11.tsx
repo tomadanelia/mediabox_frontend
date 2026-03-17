@@ -1,8 +1,7 @@
 'use client'
 
-import { Bookmark, Search, X } from 'lucide-react'
+import { Search, X } from 'lucide-react'
 import { useState, useMemo } from 'react'
-import { MagneticSnap } from '../../../hmcomponents/AnimatedComponents/BookMark'
 
 type Channel = {
   id: string
@@ -19,9 +18,9 @@ type DataTableDemoProps = {
   onChannelSelect: (channel: Channel) => void
   selectedChannel?: Channel | null
   iconOnly?: boolean
-  markFavorite: (channelId: number) => void  // or ChannelId type
-  unmarkFavorite: (channelId: number) => void  // or ChannelId type
-  favlist: any[]  // You can define a more specific type like Channel[] or string[]
+  markFavorite: (channelId: number) => void
+  unmarkFavorite: (channelId: number) => void
+  favlist: any[]
 }
 
 const DataTableDemo = ({
@@ -36,9 +35,11 @@ const DataTableDemo = ({
   const [query, setQuery] = useState('')
 
   const safeChannels: Channel[] = Array.isArray(filteredChannels) ? filteredChannels : []
-   const isFavorite = (channelId: number) => {
+
+  const isFavorite = (channelId: number) => {
     return favlist.some(fav => fav.id === channelId);
   }
+
   const displayedChannels = useMemo(() => {
     const q = query.trim().toLowerCase()
     if (!q) return safeChannels
@@ -111,6 +112,7 @@ const DataTableDemo = ({
           {displayedChannels.length > 0 ? (
             displayedChannels.map((channel) => {
               const isSelected = selectedChannel?.id === channel.id
+              const isFav = isFavorite(Number(channel.id))
               return (
                 <div
                   key={channel.id}
@@ -147,19 +149,25 @@ const DataTableDemo = ({
                         {channel.name.length > 18 ? channel.name.slice(0, 18) + '…' : channel.name}
                       </div>
 
-                      {/* category chip */}
-                      {/* <span className='hidden sm:inline-flex text-[10px] px-2 py-0.5 rounded-full bg-black/5 dark:bg-white/8 text-black/40 dark:text-white/35 font-medium truncate max-w-[70px]'>
-                        {channel.category}
-                      </span> */}
-
-                      {/* bookmark */}
-                                {/* <MagneticSnap 
-            channelId={channel.id}
-            isFav={isFavorite(Number(channel.id))}
-            markFavorite={markFavorite}
-            unmarkFavorite={unmarkFavorite}
-          /> */}
+                      {/* favourite star — display only */}
+                      {isFav && (
+                        <span
+                          className='material-symbols-outlined shrink-0 select-none'
+                          style={{
+                            fontSize: '16px',
+                            color: '#f97316',
+                            fontVariationSettings: "'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 20",
+                          }}
+                        >
+                          star
+                        </span>
+                      )}
                     </>
+                  )}
+
+                  {/* icon-only mode: show star dot indicator instead */}
+                  {iconOnly && isFav && (
+                    <span className='absolute top-1 right-1 w-1.5 h-1.5 rounded-full bg-orange-400' />
                   )}
                 </div>
               )
