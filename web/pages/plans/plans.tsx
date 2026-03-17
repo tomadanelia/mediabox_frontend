@@ -328,8 +328,8 @@ const Plans = () => {
 
   const t = {
     bg: 'bg-plans-bg',
-    cardDefault: 'border border-plans-divider bg-plans-card-bg hover:border-plans-divider-popular',
-    cardPopular: 'bg-plans-card-popular-bg border border-plans-divider-popular shadow-lg',
+    cardDefault: 'border border-plans-divider bg-plans-card-bg hover:border-plans-divider-popular hover:-translate-y-1 hover:shadow-xl transition-all duration-300',
+    cardPopular: 'bg-plans-card-popular-bg border border-plans-divider-popular shadow-lg hover:-translate-y-1 hover:shadow-2xl transition-all duration-300',
     skeletonCard: 'bg-plans-skeleton-bg',
     skeletonInner: 'bg-plans-skeleton-inner',
     divider: 'bg-plans-divider',
