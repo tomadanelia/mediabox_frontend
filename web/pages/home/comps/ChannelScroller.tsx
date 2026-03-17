@@ -196,13 +196,13 @@ export const ChannelCard: React.FC<{ channel: Channel; index: number }> = ({ cha
     <Link
       ref={cardRef}
       onClick={() => {
-    if (!isLocked) setSelectedChannelId(channel.id);
-  }}
+        if (!isLocked) setSelectedChannelId(channel.id);
+      }}
       to={isLocked ? "/packets" : `/TV`}
-      className={`group relative w-64 shrink-0 overflow-hidden rounded-xl border shadow-lg transition
+      className={`group relative w-80 shrink-0 overflow-hidden rounded-xl border shadow-lg transition-all duration-300
         ${isLocked
           ? "border-white/10 cursor-pointer"
-          : "border-border hover:-translate-y-1 hover:border-primary/60 hover:shadow-xl"
+          : "border-border hover:-translate-y-2 hover:scale-[1.03] hover:border-primary/60 hover:shadow-2xl hover:shadow-black/40"
         }`}
     >
       {/* Gradient base — desaturated when locked */}
@@ -219,7 +219,7 @@ export const ChannelCard: React.FC<{ channel: Channel; index: number }> = ({ cha
         <img
           src={thumb as string}
           alt={`${channel.name} preview`}
-          className="absolute inset-0 h-full w-full object-cover opacity-85 transition duration-700 group-hover:scale-105"
+          className="absolute inset-0 h-full w-full object-cover opacity-85 transition-all duration-500 group-hover:scale-110 group-hover:opacity-95"
         />
       )}
 
@@ -239,7 +239,7 @@ export const ChannelCard: React.FC<{ channel: Channel; index: number }> = ({ cha
       {isLocked && (
         <div className="absolute inset-0 flex flex-col items-center justify-center gap-1.5 pb-6">
           <div className="flex h-9 w-9 mt-8 items-center justify-center rounded-full bg-white/10 ring-1 ring-white/20">
-            <Lock className="h-4  w-4 text-white/60" />
+            <Lock className="h-4 w-4 text-white/60" />
           </div>
           <span className="text-[11px] font-medium tracking-wide text-white/45">
             {tx.subscriptionLabel}
@@ -247,12 +247,12 @@ export const ChannelCard: React.FC<{ channel: Channel; index: number }> = ({ cha
         </div>
       )}
 
-      {/* Text overlay */}
-      <div className={`relative flex h-32 flex-col justify-between p-4 text-white ${isLocked ? "opacity-35" : ""}`}>
+      {/* Text overlay — taller to match bigger card */}
+      <div className={`relative flex h-36 flex-col justify-between p-5 text-white ${isLocked ? "opacity-35" : ""}`}>
         <div className="space-y-1">
           <div className="flex items-center gap-2 text-xs text-white/80">
             <span className={`h-2 w-2 rounded-full ${isLocked ? "bg-white/25" : "bg-green-400"}`} />
-            {isLocked ? tx.locked : "Live"} 
+            {isLocked ? tx.locked : "Live"}
           </div>
           <p className="text-lg font-semibold leading-tight drop-shadow">{channel.name}</p>
         </div>
@@ -277,10 +277,12 @@ const ChannelScroller: React.FC<{ channels: Channel[] }> = ({ channels }) => {
         <h3 className="text-xl font-semibold text-foreground">Switch channels</h3>
       </div>
 
-      <div className="flex gap-4 overflow-x-auto overflow-y-visible scrollbar-hide pb-2 py-2 -my-2">
+     <div style={{ overflowX: "auto", overflowY: "visible" }} className="scrollbar-hide">
+  <div className="flex gap-4 pt-7 pl-2 pb-4 -mt-4" style={{ overflow: "visible" }}>
           {channels.map((channel, i) => (
-          <ChannelCard key={channel.id} channel={channel} index={i} />
-        ))}
+            <ChannelCard key={channel.id} channel={channel} index={i} />
+          ))}
+        </div>
       </div>
     </section>
   )
