@@ -93,11 +93,11 @@ export default function UserProfile() {
   faint:         "text-muted-foreground/40",
   accent:        "text-form-highlights",
   divider:       "border-border",
-  tabActive:     "border-form-highlights text-foreground bg-form-highlight-subtle",
-  tabInactive:   "border-transparent text-muted-foreground hover:text-foreground hover:bg-form-highlight-subtle/50",
+  tabActive:   "border-form-highlights text-foreground",
+tabInactive: "border-transparent text-muted-foreground hover:text-foreground",
   verifiedText:  "text-emerald-500",
   unverifiedText:"text-muted-foreground",
-  balanceBg:     "bg-profile-balance-bg",
+  balanceBg: "bg-profile-sidebar-bg",
   balanceNum:    "text-foreground",
   interpayBg:    "bg-profile-interpay-bg border border-border",
   btnGhost:      "border border-border text-muted-foreground hover:border-form-border hover:text-foreground bg-transparent",
@@ -111,7 +111,7 @@ export default function UserProfile() {
   tableRow:      "border-border hover:bg-form-highlight-subtle/30",
   logoBg:        "bg-muted text-muted-foreground",
   removeBtn:     "text-red-400/60 hover:text-red-400",
-  rolePill:      "bg-form-highlight-subtle text-form-highlights",
+rolePill: "bg-muted text-muted-foreground",
   avatarRing:    "ring-border",
   spinnerColor:  "border-form-highlights border-t-transparent",
   mobileTopbar:  "bg-profile-sidebar-bg border-border",
@@ -261,14 +261,26 @@ export default function UserProfile() {
             </button>
           </div>
 
-          <h2 className={`text-base font-semibold leading-tight ${c.heading}`}>{user?.full_name ?? "—"}</h2>
-          <p className={`text-xs mt-0.5 ${c.sub}`}>@{user?.username ?? "—"}</p>
+         {user?.full_name && (
+  <h2 className={`text-base font-semibold leading-tight ${c.heading}`}>{user.full_name}</h2>
+)}
+{user?.username && (
+  <p className={`text-xs mt-0.5 ${c.sub}`}>{user.username}</p>
+)}
+{!user?.full_name && !user?.username && (
+  <p className={`text-xs mt-0.5 ${c.sub}`}>{user?.email ?? user?.phone ?? "—"}</p>
+)}
 
-          <div className="flex items-center gap-2 mt-2">
-            <span className={`inline-block text-[0.6rem] font-semibold uppercase tracking-widest px-2 py-0.5 rounded-full ${c.rolePill}`}>
-              {user?.numeric_id ?? "user"}
-            </span>
-          </div>
+        <div className="flex items-center gap-2 mt-2">
+  <div className="flex flex-col gap-0.5">
+    <p className={`text-[0.55rem] uppercase tracking-widest ${c.sub}`}>
+      {tx.overview.accountId}
+    </p>
+    <span className={`inline-block text-[0.6rem] font-semibold font-mono px-2 py-0.5 rounded-md ${c.rolePill}`}>
+      {user?.numeric_id ?? "—"}
+    </span>
+  </div>
+</div>
 
           <p className={`text-[0.65rem] mt-3 ${c.sub}`}>
             {tx.sidebar.memberSince}:{" "}
@@ -306,24 +318,9 @@ export default function UserProfile() {
         <div className={`border-t ${c.divider} mx-6 shrink-0`} />
 
         {/* Verification status */}
-        <div className="px-6 py-4 shrink-0">
-          {!anyVerified ? (
-            <p className={`text-xs ${c.unverifiedText}`}>✗ {tx.sidebar.notVerified}</p>
-          ) : (
-            <div className="flex flex-col gap-1.5">
-              {emailVerified && (
-                <p className={`text-xs ${c.verifiedText}`}>
-                  ✓ {tx.overview.emailVerified} {tx.overview.verified.toLowerCase()}
-                </p>
-              )}
-              {phoneVerified && (
-                <p className={`text-xs ${c.verifiedText}`}>
-                  ✓ {tx.overview.phoneVerified} {tx.overview.verified.toLowerCase()}
-                </p>
-              )}
-            </div>
-          )}
-        </div>
+        {!anyVerified && (
+  <p className={`text-xs ${c.unverifiedText}`}>✗ {tx.sidebar.notVerified}</p>
+)}
 
         {/* Nav */}
         <div className={`border-t ${c.divider} shrink-0`}>

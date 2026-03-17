@@ -3,7 +3,6 @@ import { Link, NavLink, useNavigate } from "react-router-dom"
 import useUIStore from "@/store/ui-store"
 import api from "@/lib/axios"
 
-// ── Types ─────────────────────────────────────────────────────
 type Language = "En" | "Ge"
 
 interface User {
@@ -455,16 +454,16 @@ const Navbar = () => {
 
   return (
     <>
-      <header className="w-full h-16 bg-white/75 dark:bg-[#21262c] border-black/10 dark:border-white/10 backdrop-blur-lg transition-colors duration-300">
+      <header className="w-full h-16 bg-nav-bg border border-black/10 dark:border-white/10 backdrop-blur-lg transition-colors duration-300">
         <div className="flex h-full items-center justify-between px-4 sm:px-6 w-full">
 
           {/* LEFT */}
-          <div className="flex items-center gap-2 flex-shrink-0 min-w-0">
+          <div className="flex items-center gap-2 shrink-0 min-w-0">
 
             {/* hamburger — mobile only */}
             <button
               onClick={() => setSidebarOpen(true)}
-              className="lg:hidden flex-shrink-0 rounded-xl p-2 hover:bg-zinc-100 dark:hover:bg-white/8 transition-colors"
+              className="lg:hidden shrink-0 rounded-xl p-2 hover:bg-zinc-100 dark:hover:bg-white/8 transition-colors"
             >
               <Icon name="menu" size={22} className="text-zinc-700 dark:text-zinc-300" />
             </button>

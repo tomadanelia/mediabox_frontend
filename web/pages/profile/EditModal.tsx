@@ -181,7 +181,7 @@ export default function EditProfileModal({
 
           {/* Avatar preview row */}
           <div className="flex items-center gap-4 mb-6">
-            <div className={`w-14 h-14 rounded-2xl flex-shrink-0 flex items-center justify-center text-base font-bold overflow-hidden ${c.avatarWrap} ${c.avatarText}`}>
+            <div className={`w-14 h-14 rounded-2xl shrink-0 flex items-center justify-center text-base font-bold overflow-hidden ${c.avatarWrap} ${c.avatarText}`}>
               {showAvatar ? (
                 <img
                   src={avatarUrl}
