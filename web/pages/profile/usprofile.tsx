@@ -85,51 +85,38 @@ export default function UserProfile() {
   const isDark = useUIStore((state) => state.isDark);
   const tx = translations[language];
   const c = {
-    page:          isDark ? "bg-[#0d0d12] text-zinc-300"              : "bg-gray-50 text-gray-600",
-    sidebar:       isDark ? "bg-[#111116]"                             : "bg-white",
-    sidebarBorder: isDark ? "border-white/5"                          : "border-gray-200",
-    heading:       isDark ? "text-white"                               : "text-gray-900",
-    sub:           isDark ? "text-zinc-500"                            : "text-gray-400",
-    faint:         isDark ? "text-zinc-700"                            : "text-gray-300",
-    accent:        isDark ? "text-violet-400"                          : "text-violet-500",
-    divider:       isDark ? "border-white/5"                           : "border-gray-100",
-    tabActive:     isDark
-      ? "border-violet-400 text-white bg-white/[0.03]"
-      : "border-violet-500 text-gray-900 bg-violet-50/60",
-    tabInactive:   isDark
-      ? "border-transparent text-zinc-600 hover:text-zinc-400 hover:bg-white/[0.02]"
-      : "border-transparent text-gray-400 hover:text-gray-700 hover:bg-gray-50",
-    verifiedText:  "text-emerald-500",
-    unverifiedText: isDark ? "text-zinc-600" : "text-gray-400",
-    balanceBg:     isDark
-      ? "bg-gradient-to-br from-violet-950/60 to-[#0d0d12]"
-      : "bg-gradient-to-br from-violet-50 to-gray-50",
-    balanceNum:    isDark ? "text-white"                               : "text-gray-900",
-    interpayBg:    isDark ? "bg-white/[0.03]"                          : "bg-white/80 border border-gray-100",
-    btnGhost:      isDark
-      ? "border border-white/10 text-zinc-400 hover:border-white/20 hover:text-white"
-      : "border border-gray-200 text-gray-500 hover:border-gray-400 hover:text-gray-900 bg-white",
-    btnCopied:     "border border-emerald-500/40 text-emerald-500",
-    btnInterpay:   "bg-violet-600 hover:bg-violet-500 text-white",
-    planRow:       isDark ? "border-white/5"                           : "border-gray-100",
-    planHover:     isDark ? "hover:bg-white/[0.02]"                    : "hover:bg-gray-50",
-    expiringSoon:  "text-red-400",
-    expiringOk:    isDark ? "text-emerald-400"                         : "text-emerald-500",
-    progressBg:    isDark ? "bg-white/5"                               : "bg-gray-100",
-    tableRow:      isDark
-      ? "border-white/5 hover:bg-white/[0.02]"
-      : "border-gray-100 hover:bg-gray-50",
-    logoBg:        isDark ? "bg-white/5 text-zinc-500"                 : "bg-gray-100 text-gray-400",
-    removeBtn:     isDark ? "text-red-400/60 hover:text-red-400"       : "text-red-400 hover:text-red-600",
-    rolePill:      isDark ? "bg-violet-500/10 text-violet-400"         : "bg-violet-100 text-violet-600",
-    avatarRing:    isDark ? "ring-white/10"                            : "ring-gray-200",
-    spinnerColor:  isDark ? "border-violet-400 border-t-transparent"   : "border-violet-500 border-t-transparent",
-    mobileTopbar:  isDark ? "bg-[#111116] border-white/5"              : "bg-white border-gray-200",
-    // edit button
-    editBtn:       isDark
-      ? "border border-white/8 text-zinc-500 hover:text-zinc-300 hover:border-white/15 bg-white/[0.02]"
-      : "border border-gray-200 text-gray-400 hover:text-gray-600 hover:border-gray-300 bg-gray-50",
-  };
+  page:          "bg-background text-foreground",
+  sidebar:       "bg-profile-sidebar-bg",
+  sidebarBorder: "border-border",
+  heading:       "text-foreground",
+  sub:           "text-muted-foreground",
+  faint:         "text-muted-foreground/40",
+  accent:        "text-form-highlights",
+  divider:       "border-border",
+  tabActive:     "border-form-highlights text-foreground bg-form-highlight-subtle",
+  tabInactive:   "border-transparent text-muted-foreground hover:text-foreground hover:bg-form-highlight-subtle/50",
+  verifiedText:  "text-emerald-500",
+  unverifiedText:"text-muted-foreground",
+  balanceBg:     "bg-profile-balance-bg",
+  balanceNum:    "text-foreground",
+  interpayBg:    "bg-profile-interpay-bg border border-border",
+  btnGhost:      "border border-border text-muted-foreground hover:border-form-border hover:text-foreground bg-transparent",
+  btnCopied:     "border border-emerald-500/40 text-emerald-500",
+  btnInterpay:   "bg-form-highlights hover:bg-button-hover text-white",
+  planRow:       "border-border",
+  planHover:     "hover:bg-form-highlight-subtle/50",
+  expiringSoon:  "text-red-400",
+  expiringOk:    "text-emerald-500",
+  progressBg:    "bg-border",
+  tableRow:      "border-border hover:bg-form-highlight-subtle/30",
+  logoBg:        "bg-muted text-muted-foreground",
+  removeBtn:     "text-red-400/60 hover:text-red-400",
+  rolePill:      "bg-form-highlight-subtle text-form-highlights",
+  avatarRing:    "ring-border",
+  spinnerColor:  "border-form-highlights border-t-transparent",
+  mobileTopbar:  "bg-profile-sidebar-bg border-border",
+  editBtn:       "border border-border text-muted-foreground hover:text-foreground hover:border-form-border bg-transparent",
+}
 
   const [tab, setTab] = useState<Tab>("Overview");
   const [sidebarOpen, setSidebarOpen] = useState(false);

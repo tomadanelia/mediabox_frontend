@@ -72,6 +72,10 @@
 --color-plans-active-chip-border: var(--plans-active-chip-border);
 --color-plans-active-chip-text: var(--plans-active-chip-text);
 --color-plans-popular-head: var(--plans-popular-head);
+
+--color-profile-sidebar-bg: var(--profile-sidebar-bg);
+--color-profile-balance-bg: var(--profile-balance-bg);
+--color-profile-interpay-bg: var(--profile-interpay-bg);
 }
 
 :root {
@@ -139,6 +143,10 @@
 --plans-active-chip-border: #c0111140;
 --plans-active-chip-text: #a50e0e;
 --plans-popular-head: #c01111;
+
+--profile-sidebar-bg: oklch(100% 0 0);
+--profile-balance-bg: oklch(95% 0.002 20);   
+--profile-interpay-bg: oklch(93% 0 0);
 }
 
 .dark {
@@ -169,7 +177,9 @@
 --plans-active-chip-text: #f87171;
 --plans-popular-head: #e03333;
 
-
+--profile-sidebar-bg: oklch(10% 0 0);
+--profile-balance-bg: oklch(8% 0.005 20);   
+--profile-interpay-bg: oklch(13% 0 0);
 
 
   --background: oklch(0.129 0.042 264.695);

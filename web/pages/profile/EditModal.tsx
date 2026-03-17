@@ -129,35 +129,25 @@ export default function EditProfileModal({
   if (!isOpen) return null;
 
   /* ── Tailwind theme classes ── */
-  const c = {
-    overlay:      isDark ? "bg-black/75" : "bg-black/45",
-    modal:        isDark
-      ? "bg-[#0f0f16] border border-white/[0.07] shadow-[0_25px_60px_rgba(0,0,0,0.7),0_0_0_1px_rgba(124,58,237,0.08)]"
-      : "bg-white border border-gray-200 shadow-[0_25px_60px_rgba(0,0,0,0.18)]",
-    headerBorder: isDark ? "border-white/[0.07]" : "border-gray-200",
-    title:        isDark ? "text-zinc-100" : "text-gray-900",
-    subtitle:     isDark ? "text-zinc-500" : "text-gray-400",
-    closeBtn:     isDark ? "text-zinc-500 hover:text-zinc-200" : "text-gray-400 hover:text-gray-700",
-    avatarWrap:   isDark ? "bg-white/[0.06] border border-white/[0.07]" : "bg-gray-100 border border-gray-200",
-    avatarText:   isDark ? "text-violet-400" : "text-violet-700",
-    previewName:  isDark ? "text-zinc-100" : "text-gray-900",
-    previewUser:  isDark ? "text-zinc-500" : "text-gray-400",
-    label:        isDark ? "text-zinc-400" : "text-gray-700",
-    counter:      isDark ? "text-zinc-700" : "text-gray-300",
-    input:        isDark
-      ? "bg-white/[0.04] border border-white/10 text-zinc-100 placeholder:text-zinc-600 focus:border-violet-500 outline-none"
-      : "bg-gray-50 border border-gray-300 text-gray-900 placeholder:text-gray-400 focus:border-violet-500 outline-none",
-    errorBox:     isDark
-      ? "bg-red-400/[0.08] border border-red-400/20 text-red-400"
-      : "bg-red-50 border border-red-200 text-red-500",
-    successBox:   isDark
-      ? "bg-emerald-400/[0.08] border border-emerald-400/20 text-emerald-400"
-      : "bg-green-50 border border-green-200 text-emerald-600",
-    btnPrimary:   "bg-violet-600 hover:bg-violet-500 disabled:bg-violet-800 disabled:opacity-80 disabled:cursor-not-allowed text-white cursor-pointer",
-    btnSecondary: isDark
-      ? "bg-white/[0.06] border border-white/[0.07] text-zinc-400 hover:text-zinc-200 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
-      : "bg-gray-100 border border-gray-200 text-gray-600 hover:text-gray-900 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer",
-  };
+ const c = {
+  overlay:      "bg-black/60",
+  modal:        "bg-auth-card-bg border border-form-border shadow-[0_25px_60px_rgba(0,0,0,0.5),0_0_0_1px_rgba(192,17,17,0.08)]",
+  headerBorder: "border-border",
+  title:        "text-foreground",
+  subtitle:     "text-muted-foreground",
+  closeBtn:     "text-muted-foreground hover:text-foreground transition-colors",
+  avatarWrap:   "bg-form-highlight-subtle border border-form-border",
+  avatarText:   "text-form-highlights",
+  previewName:  "text-foreground",
+  previewUser:  "text-muted-foreground",
+  label:        "text-muted-foreground",
+  counter:      "text-muted-foreground/40",
+  input:        "bg-transparent border border-form-border text-foreground placeholder:text-muted-foreground/40 focus:border-form-highlights outline-none transition-colors duration-150",
+  errorBox:     "bg-red-500/8 border border-red-500/20 text-red-500",
+  successBox:   "bg-emerald-500/8 border border-emerald-500/20 text-emerald-500",
+  btnPrimary:   "bg-form-highlights hover:bg-button-hover disabled:opacity-50 disabled:cursor-not-allowed text-white cursor-pointer transition-colors duration-150",
+  btnSecondary: "border border-border text-muted-foreground hover:text-foreground hover:border-form-border disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer bg-transparent transition-colors duration-150",
+};
 
   return (
     <div
@@ -166,7 +156,7 @@ export default function EditProfileModal({
       className={`fixed inset-0 z-50 flex items-center justify-center p-4 backdrop-blur-sm ${c.overlay}`}
       style={{ fontFamily: "'DM Sans', sans-serif" }}
     >
-      <div className={`w-full max-w-[480px] rounded-2xl overflow-hidden ${c.modal}`}>
+      <div className={`w-full max-w-120 rounded-2xl overflow-hidden ${c.modal}`}>
 
         {/* Header */}
         <div className={`flex items-start justify-between gap-4 px-7 pt-6 pb-5 border-b ${c.headerBorder}`}>
