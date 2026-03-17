@@ -23,7 +23,7 @@ const IconInput = ({
     <Input
       type={type}
       placeholder={placeholder}
-      className="pl-9 border-form-border bg-transparent focus-visible:ring-form-border focus-visible:border-form-highlights placeholder:text-muted-foreground/50 transition-colors"
+      className="pl-9 border border-form-border bg-transparent focus-visible:ring-form-border focus-visible:border-form-highlights placeholder:text-muted-foreground/50 transition-colors"
       {...props}
     />
   </div>
@@ -144,7 +144,7 @@ if (data.code) {
 
   return (
 <div className="flex min-h-svh items-start justify-center  p-3 pt-0 bg-auth-page-bg overflow-hidden">
-        <div className="w-full max-w-100  mt-6 rounded-xl border border-form-border bg-auth-card-bg shadow-xl shadow-form-shadow px-8 py-10">
+        <div className="w-full max-w-100  mt-6 rounded-xl border border-form-border bg-auth-card-bg  shadow-form-shadow px-8 py-10">
 
         {/* Header */}
         <div className="mb-8 text-center">
@@ -156,7 +156,7 @@ if (data.code) {
         <form className="space-y-4" onSubmit={handleSubmit}>
 
           {/* Email / Phone toggle */}
-          <div className="flex rounded-lg overflow-hidden border-form-border text-sm font-medium">
+          <div className="flex rounded-lg overflow-hidden border border-form-border text-sm font-medium">
             <button
               type="button"
               onClick={() => setContactMethod('email')}

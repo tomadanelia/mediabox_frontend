@@ -114,14 +114,14 @@
 
 
    --form-highlight:#0d90b1;
-   -form-highlight: #0d90b1;
-  --form-highlight-subtle: #0d90b111;
-  --form-border: #0d90b166;
-  --form-shadow: #0d90b10d;
+   --form-highlight: #e03333;
+--form-highlight-subtle: #e0333315;
+--form-border: #e0333355;
+--form-shadow: #e033330d;
   --auth-page-bg: oklch(0.968 0.007 247.896);
   --auth-card-bg: oklch(1 0 0);
   --auth-heading: oklch(0.129 0.042 264.695);
-  --button-hover: #a3115a;
+--button-hover: #b01a1a;
   --eye-icon: #0d90b166;
 
 --plans-bg: oklch(97% 0 0);
@@ -143,14 +143,14 @@
 
 .dark {
   --form-highlight:#d70f0f76;
-  --form-highlight: #0d90b1;
-  --form-highlight-subtle: #0d90b111;
-  --form-border: #0d90b166;
-  --form-shadow: #0d90b10d;
+  --form-highlight: #e03333;
+--form-highlight-subtle: #e0333315;
+--form-border: #e0333355;
+--form-shadow: #e033330d;
+--button-hover: #b01a1a;
   --auth-page-bg: oklch(0.05 0.042 264.695);
   --auth-card-bg: oklch(0.208 0.042 265.755);
   --auth-heading: oklch(0.984 0.003 247.858);
-  --button-hover: #9d09e2;
   --eye-icon: #0d90b166;
   
 --plans-bg: oklch(8% 0 0);
@@ -243,7 +243,9 @@ input::-ms-clear {
   background: rgba(128, 128, 128, 0.4);
   border-radius: 999px;
 }
-
+input[type="checkbox"] {
+  accent-color: var(--form-highlight);
+}
 ::-webkit-scrollbar-thumb:hover {
   background: rgba(128, 128, 128, 0.7);
 }

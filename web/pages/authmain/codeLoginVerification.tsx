@@ -171,7 +171,7 @@ if (savedTvCode) {
                 onChange={e => handleChange(i, e.target.value)}
                 onKeyDown={e => handleKeyDown(i, e)}
                 className={`
-                  h-12 w-full text-center text-lg font-bold
+                  h-12 w-full text-center text-lg font-bold border
                   border-form-border bg-transparent
                   focus-visible:ring-form-border focus-visible:border-form-highlights
                   transition-colors

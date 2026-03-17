@@ -134,7 +134,7 @@ if (savedTvCode) {
 
   return (
     <div className="flex h-screen items-start justify-center mt-5 p-3 pt-0 bg-auth-page-bg overflow-hidden">
-      <div className="w-full max-w-100 rounded-xl border border-form-border bg-auth-card-bg shadow-xl shadow-form-shadow px-8 py-10">
+      <div className="w-full max-w-100 rounded-xl border border-form-border bg-auth-card-bg shadow-form-shadow px-8 py-10">
 
         {/* Header */}
         <div className="mb-8 text-center">
@@ -165,7 +165,7 @@ if (savedTvCode) {
                 onChange={e => handleChange(i, e.target.value)}
                 onKeyDown={e => handleKeyDown(i, e)}
                 className={`
-                  h-12 w-full text-center text-lg font-bold
+                  h-12 w-full text-center text-lg font-bold border
                   border-form-border bg-transparent
                   focus-visible:ring-form-border focus-visible:border-form-highlights
                   transition-colors

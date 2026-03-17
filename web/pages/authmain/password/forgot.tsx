@@ -64,7 +64,7 @@ const ForgotPassword: React.FC = () => {
 
   return (
     <div className="flex h-screen items-start  justify-center p-3 pt-0 bg-auth-page-bg overflow-hidden">
-      <div className="w-full max-w-100 rounded-xl mt-6 border border-form-border bg-auth-card-bg shadow-xl shadow-form-shadow px-8 py-10">
+      <div className="w-full max-w-100 rounded-xl mt-6 border border-form-border bg-auth-card-bg  shadow-form-shadow px-8 py-10">
 
         {/* Back link */}
         <Link

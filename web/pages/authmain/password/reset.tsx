@@ -17,7 +17,7 @@ const PasswordInput = ({
         type={visible ? 'text' : 'password'}
         placeholder={placeholder}
         autoComplete={autoComplete}
-        className="pr-9 border-form-border bg-transparent focus-visible:ring-form-border focus-visible:border-form-highlights placeholder:text-muted-foreground/50 transition-colors"
+        className="pr-9 border border-form-border bg-transparent focus-visible:ring-form-border focus-visible:border-form-highlights placeholder:text-muted-foreground/50 transition-colors"
         {...props}
       />
       <Button
@@ -90,8 +90,8 @@ const OtpInput = ({ value, onChange }: { value: string; onChange: (v: string) =>
             h-12 w-full rounded-lg border text-center text-lg font-bold
             bg-transparent outline-none transition-all
             ${value[i]
-              ? 'border-form-highlights text-form-highlights shadow-sm shadow-form-shadow'
-              : 'border-form-border text-auth-heading'
+              ? 'border border-form-highlights text-form-highlights shadow-sm shadow-form-shadow'
+              : 'border border-form-border text-auth-heading'
             }
             focus:border-form-highlights focus:ring-2 focus:ring-form-border
             bg-auth-card-bg
@@ -177,7 +177,7 @@ const ResetPassword: React.FC = () => {
   if (success) {
     return (
       <div className="flex h-screen items-start justify-center p-3 pt-0 bg-auth-page-bg overflow-hidden">
-        <div className="w-full max-w-100 rounded-xl border border-form-border bg-auth-card-bg shadow-xl shadow-form-shadow px-8 py-12 text-center">
+        <div className="w-full max-w-100 rounded-xl border border-form-border bg-auth-card-bg  shadow-form-shadow px-8 py-12 text-center">
           <div className="mb-5 flex justify-center">
             <div className="flex size-16 items-center justify-center rounded-full border border-form-border bg-form-highlight-subtle">
               <CheckCircleIcon className="size-8 text-form-highlights" />
