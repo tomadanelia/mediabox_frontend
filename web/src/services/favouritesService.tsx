@@ -113,7 +113,7 @@ export async function markFavourite(channelId: number): Promise<void> {
   if (pendingWrites.has(channelId)) return pendingWrites.get(channelId)!;
 
   const req = api
-    .post('/api/user/preferences/favourite-channels', { external_id: channelId })
+    .post('/api/user/preferences/favourite-channels', { channelId: channelId })
     .catch(err => {
       console.error(`[favouriteService] markFavourite(${channelId}) failed:`, err);
       // Rollback optimistic update
