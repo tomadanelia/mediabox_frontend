@@ -256,7 +256,7 @@ const Home: React.FC = () => {
             </div>
 
             {/* Reuse ChannelScroller but suppress its built-in header */}
-            <div className="cat-scroller-no-header">
+            <div className="cat-scroller-no-header overflow-visible">
               <ChannelScroller channels={catChannels} />
             </div>
           </section>

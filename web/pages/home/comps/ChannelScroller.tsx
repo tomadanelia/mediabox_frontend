@@ -277,8 +277,8 @@ const ChannelScroller: React.FC<{ channels: Channel[] }> = ({ channels }) => {
         <h3 className="text-xl font-semibold text-foreground">Switch channels</h3>
       </div>
 
-      <div className="flex gap-4 overflow-x-auto scrollbar-hide pb-2">
-        {channels.map((channel, i) => (
+      <div className="flex gap-4 overflow-x-auto overflow-y-visible scrollbar-hide pb-2 py-2 -my-2">
+          {channels.map((channel, i) => (
           <ChannelCard key={channel.id} channel={channel} index={i} />
         ))}
       </div>
