@@ -267,7 +267,7 @@ input[type="checkbox"] {
 }
 @font-face {
   font-family: 'Calibri';
-  src: url('../public/Fonts/BPG\ calibri.ttf') format('truetype');
+  src: url('/Fonts/BPG\ calibri.ttf') format('truetype');
   font-weight: normal;
   font-style: normal;
   font-display: swap;
