@@ -159,3 +159,14 @@ input::-ms-clear {
   scrollbar-width: thin;
   scrollbar-color: rgba(128, 128, 128, 0.4) transparent;
 }
+@font-face {
+  font-family: 'Calibri';
+  src: url('../public/Fonts/BPG\ calibri.ttf') format('truetype');
+  font-weight: normal;
+  font-style: normal;
+  font-display: swap;
+}
+
+* {
+  font-family: 'Calibri', sans-serif;
+}

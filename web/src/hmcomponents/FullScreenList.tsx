@@ -68,7 +68,7 @@ function dayLabel(d: Date): string {
 
 const Spinner = () => (
   <div className="flex items-center justify-center py-10">
-    <div className="w-5 h-5 border-2 border-black/10 dark:border-white/10 border-t-orange-400 rounded-full animate-spin" />
+    <div className="w-5 h-5 border-2 border-black/10 dark:border-white/10 rounded-full animate-spin" style={{ borderTopColor: '#d52b1e' }} />
   </div>
 )
 
@@ -154,13 +154,11 @@ const FullScreenList: React.FC<Props> = ({
     const rangeStart = sorted[0].START_TIME
     const rangeEnd   = nextSorted.length > 0 ? nextSorted[0].START_TIME : Infinity
 
-    // current day programs + next day programs that fall before rangeEnd
     const combined = [
       ...sorted,
       ...nextSorted.filter(p => p.START_TIME < rangeEnd),
     ]
 
-    // deduplicate by UID and keep only within range
     const seen = new Set<number>()
     return combined.filter(p => {
       if (seen.has(p.UID)) return false
@@ -207,19 +205,23 @@ const FullScreenList: React.FC<Props> = ({
 
         {/* Date strip */}
         <div className="flex gap-1.5 overflow-x-auto" style={{ scrollbarWidth: 'none' }}>
-          {dateStrip.map((d, i) => (
-            <button
-              key={i}
-              onClick={() => setSelDate(d)}
-              className={`shrink-0 px-2.5 py-1 rounded-lg text-[11px] font-semibold whitespace-nowrap transition-all duration-150 ${
-                d.toDateString() === selDate.toDateString()
-                  ? 'bg-gradient-to-r from-orange-500 to-yellow-400 text-white shadow-sm shadow-orange-300/30'
-                  : 'bg-white/70 dark:bg-white/5 border border-black/8 dark:border-white/10 text-black/50 dark:text-white/40 hover:text-black/70 dark:hover:text-white/60 hover:bg-white dark:hover:bg-white/10'
-              }`}
-            >
-              {dayLabel(d)}
-            </button>
-          ))}
+          {dateStrip.map((d, i) => {
+            const isSelected = d.toDateString() === selDate.toDateString()
+            return (
+              <button
+                key={i}
+                onClick={() => setSelDate(d)}
+                className={`shrink-0 px-2.5 py-1 rounded-lg text-[11px] font-semibold whitespace-nowrap transition-all duration-150 ${
+                  isSelected
+                    ? 'text-white shadow-sm'
+                    : 'bg-white/70 dark:bg-white/5 border border-black/8 dark:border-white/10 text-black/50 dark:text-white/40 hover:text-black/70 dark:hover:text-white/60 hover:bg-white dark:hover:bg-white/10'
+                }`}
+                style={isSelected ? { background: '#d52b1e', boxShadow: 'rgba(213,43,30,0.3) 0px 1px 3px' } : {}}
+              >
+                {dayLabel(d)}
+              </button>
+            )
+          })}
         </div>
       </div>
 
@@ -242,12 +244,13 @@ const FullScreenList: React.FC<Props> = ({
                     key={ch.id}
                     onClick={() => handleChannelClick(ch)}
                     className={`w-full flex items-center gap-2 px-3 py-2 text-left border-l-2 transition-all duration-150 ${
-                      isStreaming
-                        ? 'bg-gradient-to-r from-orange-50 to-yellow-50/60 dark:from-orange-500/10 dark:to-yellow-400/5 border-l-orange-400'
-                        : isPreviewing
+                      isPreviewing && !isStreaming
                         ? 'bg-black/3 dark:bg-white/8 border-l-transparent'
-                        : 'border-l-transparent hover:bg-black/3 dark:hover:bg-white/4'
+                        : !isStreaming
+                        ? 'border-l-transparent hover:bg-black/3 dark:hover:bg-white/4'
+                        : ''
                     }`}
+                    style={isStreaming ? { background: 'linear-gradient(to right, rgba(213,43,30,0.07), rgba(33,38,44,0.04))', borderLeftColor: '#d52b1e', borderLeftWidth: '2px' } : {}}
                   >
                     <div className="w-7 h-7 rounded-lg bg-white dark:bg-white/10 shadow-sm shrink-0 overflow-hidden flex items-center justify-center">
                       {ch.logo
@@ -258,7 +261,7 @@ const FullScreenList: React.FC<Props> = ({
                     </div>
                     <span className="text-black/80 dark:text-white/75 text-[11px] font-medium truncate flex-1">{ch.name}</span>
                     {isStreaming && (
-                      <span className="w-1.5 h-1.5 rounded-full bg-orange-400 shrink-0 animate-pulse" />
+                      <span className="w-1.5 h-1.5 rounded-full shrink-0 animate-pulse" style={{ backgroundColor: '#d52b1e' }} />
                     )}
                   </button>
                 )
@@ -285,7 +288,8 @@ const FullScreenList: React.FC<Props> = ({
               </div>
               <button
                 onClick={() => { onSelect({ channel: previewChannel, mode: 'live' }); onClose() }}
-                className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-gradient-to-r from-orange-500 to-yellow-400 text-white text-[10px] font-bold shadow-sm shadow-orange-300/30 transition-all hover:opacity-90"
+                className="flex items-center gap-1 px-2.5 py-1 rounded-lg text-white text-[10px] font-bold transition-all hover:opacity-90"
+                style={{ background: '#d52b1e', boxShadow: 'rgba(213,43,30,0.3) 0px 1px 3px' }}
               >
                 <Radio className="w-3 h-3" />
                 Live
@@ -313,19 +317,26 @@ const FullScreenList: React.FC<Props> = ({
                       onClick={() => clickable && handleProgramClick(p)}
                       className={[
                         'flex items-center gap-2 px-3 py-2 transition-all duration-150 select-none border-l-2',
-                        isCurrent ? 'bg-gradient-to-r from-orange-50 to-yellow-50/60 dark:from-orange-500/10 dark:to-yellow-400/5 border-l-orange-400 cursor-pointer' : '',
                         isPast    ? 'border-l-transparent opacity-50 cursor-pointer hover:opacity-80 hover:bg-black/3 dark:hover:bg-white/4' : '',
                         isFuture  ? 'border-l-transparent opacity-25 cursor-not-allowed' : '',
                       ].join(' ')}
+                      style={isCurrent ? {
+                        background: 'linear-gradient(to right, rgba(213,43,30,0.06), rgba(33,38,44,0.03))',
+                        borderLeftColor: '#d52b1e',
+                        cursor: 'pointer',
+                      } : {}}
                     >
-                      <span className={`text-[10px] font-mono tabular-nums shrink-0 w-8 ${isCurrent ? 'text-orange-400' : 'text-black/30 dark:text-white/25'}`}>
+                      <span
+                        className={`text-[10px] font-mono tabular-nums shrink-0 w-8 ${!isCurrent ? 'text-black/30 dark:text-white/25' : ''}`}
+                        style={isCurrent ? { color: '#d52b1e' } : {}}
+                      >
                         {fmtTime(p.START_TIME)}
                       </span>
                       <span className={`text-[11px] font-medium truncate flex-1 ${isCurrent ? 'text-black/80 dark:text-white' : 'text-black/70 dark:text-white/75'}`}>
                         {p.TITLE}
                       </span>
                       {isCurrent && (
-                        <span className="shrink-0 px-1.5 py-0.5 bg-gradient-to-r from-orange-500 to-yellow-400 text-white text-[8px] font-bold rounded-md">
+                        <span className="shrink-0 px-1.5 py-0.5 text-white text-[8px] font-bold rounded-md" style={{ background: '#d52b1e' }}>
                           LIVE
                         </span>
                       )}

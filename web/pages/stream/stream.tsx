@@ -24,6 +24,8 @@ import { GeorgiaLogo } from '@/components/svg_telecom_production/svglib';
 import { CategoryIcon } from '@/hmcomponents/IconMapper';
 import PlansModal from '@/hmcomponents/planspopup';
 import api from '@/lib/axios';
+import { getLiveUrl, getArchiveUrl, probeRewindableHours } from '../../src/services/streamService';
+import { getProgramsForTimeline } from '../../src/services/programService'
 import { useIsMobile } from '@/hooks/useIsMobile';
 import { useNavigate } from 'react-router-dom';
 import { useOrientation } from '@/hooks/useOrientation';
@@ -76,11 +78,6 @@ function toApiDate(date: Date = new Date()): string {
   return `${y}/${m}/${d}`;
 }
 
-function addOneDay(dateStr: string): string {
-  const d = new Date(dateStr.replace(/\//g, '-'));
-  d.setDate(d.getDate() + 1);
-  return toApiDate(d);
-}
 
 function formatTime(unixSec: number): string {
   const d = new Date(unixSec * 1000);
@@ -355,6 +352,8 @@ export const Stream: React.FC = () => {
 
   const navigate = useNavigate();
 
+  // ─── URL caches live in streamService.ts ─────────────────────────────────
+
   type Category = {
     id: string
     name_ka: string
@@ -424,8 +423,8 @@ export const Stream: React.FC = () => {
   const goLive = useCallback(async (channelId: string) => {
     setIsStreamLoading(true);
     try {
-      const res = await api.get(`/api/channels/${channelId}/stream`);
-      setStreamUrl(res.data.url);
+      const { url } = await getLiveUrl(channelId);
+      setStreamUrl(url);
       setMode('live');
       setArchiveTimestamp(null);
     } catch (e) {
@@ -440,14 +439,10 @@ export const Stream: React.FC = () => {
     const safeTs = Math.max(timestamp, oldestValid);
     setIsStreamLoading(true);
     try {
-      const res = await api.get(`/api/channels/${channelId}/archive`, {
-        params: { timestamp: safeTs },
-      });
-      const data = res.data;
-      setStreamUrl(data.url);
+      const { url, rewindableHours: hours } = await getArchiveUrl(channelId, safeTs);
+      setStreamUrl(url);
       setMode('archive');
       setArchiveTimestamp(safeTs);
-      const hours = parseInt(data.hoursBack, 10);
       if (!isNaN(hours)) setRewindableHours(hours);
     } catch (e) {
       console.error('[goArchive]', e);
@@ -458,18 +453,11 @@ export const Stream: React.FC = () => {
 
   const fetchPrograms = useCallback(async (channelId: string, date: string) => {
     try {
-      const res = await api.get(`/api/channels/${channelId}/programs`, { params: { date } });
-      setPrograms(res.data);
+      const { programs, nextDayPrograms } = await getProgramsForTimeline(channelId, date);
+      setPrograms(programs);
+      setNextDayPrograms(nextDayPrograms);
     } catch (e) {
       console.error('[fetchPrograms]', e);
-    }
-    try {
-      const nextDate = addOneDay(date);
-      const res = await api.get(`/api/channels/${channelId}/programs`, { params: { date: nextDate } });
-      setNextDayPrograms(res.data);
-    } catch (e) {
-      console.error('[fetchNextDayPrograms]', e);
-      setNextDayPrograms([]);
     }
   }, []);
 
@@ -530,12 +518,8 @@ export const Stream: React.FC = () => {
 
   const handleCalendarToggle = async () => {
     if (selectedChannel) {
-      const probeTs = Math.floor(Date.now() / 1000) - 10;
       try {
-        const res = await api.get(`/api/channels/${selectedChannel.id}/archive`, {
-          params: { timestamp: probeTs },
-        });
-        const hours = parseInt(res.data.hoursBack, 10);
+        const hours = await probeRewindableHours(selectedChannel.id);
         if (!isNaN(hours)) setRewindableHours(hours);
       } catch (e) {
         console.error('[calendarProbe]', e);

@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from "react"
-import { Link, NavLink } from "react-router-dom"
+import { Link, NavLink, useNavigate } from "react-router-dom"
 import useUIStore from "@/store/ui-store"
+import api from "@/lib/axios"
 
 // ── Types ─────────────────────────────────────────────────────
 type Language = "En" | "Ge"
@@ -23,6 +24,7 @@ interface Translation {
   profile: string
   settings: string
   logout: string
+  signin: string
 }
 
 // ── Translations ───────────────────────────────────────────────
@@ -40,6 +42,7 @@ const T: Record<Language, Translation> = {
     profile:  "პროფილი",
     settings: "პარამეტრები",
     logout:   "გასვლა",
+    signin:   "შესვლა",
   },
   En: {
     search: "Search channels or shows...",
@@ -54,6 +57,7 @@ const T: Record<Language, Translation> = {
     profile:  "Profile",
     settings: "Settings",
     logout:   "Sign out",
+    signin:   "Sign in",
   },
 }
 
@@ -123,7 +127,6 @@ const SearchPanel = ({ open, onClose, placeholder }: SearchPanelProps) => {
 
   return (
     <>
-      {/* backdrop */}
       <div
         onClick={onClose}
         className={[
@@ -131,8 +134,6 @@ const SearchPanel = ({ open, onClose, placeholder }: SearchPanelProps) => {
           open ? "opacity-100" : "opacity-0 pointer-events-none",
         ].join(" ")}
       />
-
-      {/* panel — anchored just below navbar */}
       <div className={[
         "fixed top-16 left-0 right-0 z-50",
         "flex justify-center px-4 pt-3",
@@ -161,11 +162,13 @@ const SearchPanel = ({ open, onClose, placeholder }: SearchPanelProps) => {
 interface ProfileDropdownProps {
   user: User | null
   tx: Translation
+  onLogout: () => void
 }
 
-const ProfileDropdown = ({ user, tx }: ProfileDropdownProps) => {
+const ProfileDropdown = ({ user, tx, onLogout }: ProfileDropdownProps) => {
   const [open, setOpen] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
+  const isGuest = !user?.email
 
   useEffect(() => {
     const handler = (e: MouseEvent) => {
@@ -203,6 +206,8 @@ const ProfileDropdown = ({ user, tx }: ProfileDropdownProps) => {
         "transition-all duration-200 origin-top-right",
         open ? "opacity-100 scale-100 pointer-events-auto" : "opacity-0 scale-95 pointer-events-none",
       ].join(" ")}>
+
+        {/* User info header */}
         <div className="flex items-center gap-3 px-4 py-3 border-b border-black/8 dark:border-white/8">
           <Avatar src={user?.avatar_url} name={user?.full_name} />
           <div className="min-w-0">
@@ -213,29 +218,49 @@ const ProfileDropdown = ({ user, tx }: ProfileDropdownProps) => {
           </div>
         </div>
 
-        <div className="py-1.5">
-          {menuItems.map(item => (
+        {isGuest ? (
+          /* ── Guest: only Sign in ── */
+          <div className="py-1.5">
             <Link
-              key={item.to}
-              to={item.to}
+              to="/authentication/login"
               onClick={() => setOpen(false)}
-              className="flex items-center gap-3 px-4 py-2.5 text-sm text-zinc-700 dark:text-zinc-300 hover:bg-zinc-50 dark:hover:bg-white/5 transition-colors"
+              className="flex items-center gap-3 px-4 py-2.5 text-sm font-medium transition-colors"
+              style={{ color: '#d52b1e' }}
+              onMouseEnter={e => (e.currentTarget.style.backgroundColor = 'rgba(213,43,30,0.06)')}
+              onMouseLeave={e => (e.currentTarget.style.backgroundColor = 'transparent')}
             >
-              <Icon name={item.icon} size={18} className="text-zinc-400" />
-              <span>{item.label}</span>
+              <Icon name="login" size={18}/>
+              <span>{tx.signin}</span>
             </Link>
-          ))}
-        </div>
+          </div>
+        ) : (
+          /* ── Logged in: menu items + logout ── */
+          <>
+            <div className="py-1.5">
+              {menuItems.map(item => (
+                <Link
+                  key={item.to}
+                  to={item.to}
+                  onClick={() => setOpen(false)}
+                  className="flex items-center gap-3 px-4 py-2.5 text-sm text-zinc-700 dark:text-zinc-300 hover:bg-zinc-50 dark:hover:bg-white/5 transition-colors"
+                >
+                  <Icon name={item.icon} size={18} className="text-zinc-400" />
+                  <span>{item.label}</span>
+                </Link>
+              ))}
+            </div>
 
-        <div className="border-t border-black/8 dark:border-white/8 py-1.5">
-          <button
-            onClick={() => { setOpen(false) }}
-            className="flex w-full items-center gap-3 px-4 py-2.5 text-sm text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 transition-colors"
-          >
-            <Icon name="logout" size={18} />
-            <span>{tx.logout}</span>
-          </button>
-        </div>
+            <div className="border-t border-black/8 dark:border-white/8 py-1.5">
+              <button
+                onClick={() => { setOpen(false); onLogout(); }}
+                className="flex w-full items-center gap-3 px-4 py-2.5 text-sm text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 transition-colors"
+              >
+                <Icon name="logout" size={18} />
+                <span>{tx.logout}</span>
+              </button>
+            </div>
+          </>
+        )}
       </div>
     </div>
   )
@@ -251,11 +276,14 @@ interface MobileSidebarProps {
   language: Language
   setLanguage: (lang: Language) => void
   user: User | null
+  onLogout: () => void
 }
 
 const MobileSidebar = ({
-  open, onClose, tx, isDark, toggleDark, language, setLanguage, user,
+  open, onClose, tx, isDark, toggleDark, language, setLanguage, user, onLogout,
 }: MobileSidebarProps) => {
+  const isGuest = !user?.email
+
   useEffect(() => {
     document.body.style.overflow = open ? "hidden" : ""
     return () => { document.body.style.overflow = "" }
@@ -300,7 +328,8 @@ const MobileSidebar = ({
             <Icon name="search" size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400 pointer-events-none" />
             <input
               placeholder={tx.search}
-              className="w-full rounded-xl bg-zinc-100 dark:bg-white/8 pl-9 pr-3 py-2.5 text-sm text-zinc-900 dark:text-white placeholder:text-zinc-400 focus:outline-none focus:ring-2 focus:ring-orange-500/40"
+              className="w-full rounded-xl bg-zinc-100 dark:bg-white/8 pl-9 pr-3 py-2.5 text-sm text-zinc-900 dark:text-white placeholder:text-zinc-400 focus:outline-none"
+              style={{ ['--tw-ring-color' as string]: 'rgba(213,43,30,0.4)' }}
             />
           </div>
         </div>
@@ -320,10 +349,11 @@ const MobileSidebar = ({
                 [
                   "flex items-center gap-3 rounded-xl px-3 py-3 text-sm font-medium transition-colors",
                   isActive
-                    ? "bg-orange-500/10 text-orange-500"
+                    ? "text-white"
                     : "text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-white/6",
                 ].join(" ")
               }
+              style={({ isActive }) => isActive ? { backgroundColor: '#d52b1e' } : {}}
             >
               {({ isActive }: { isActive: boolean }) => (
                 <>
@@ -331,9 +361,9 @@ const MobileSidebar = ({
                     name={NAV_ICONS[link.to] ?? "chevron_right"}
                     size={20}
                     fill={isActive ? 1 : 0}
-                    className={isActive ? "text-orange-500" : "text-zinc-400"}
+                    className={isActive ? "text-white" : "text-zinc-400"}
                   />
-                  <span className="whitespace-nowrap text-gray-800 dark:text-white ml-2">
+                  <span className={`whitespace-nowrap ml-2 ${isActive ? "text-white" : "text-gray-800 dark:text-white"}`}>
                     {link.label}
                   </span>
                 </>
@@ -342,7 +372,7 @@ const MobileSidebar = ({
           ))}
         </nav>
 
-        {/* bottom controls — dark mode + language (only in sidebar on mobile) */}
+        {/* bottom controls */}
         <div className="border-t border-black/8 dark:border-white/8 px-4 py-4 space-y-1">
           <button
             onClick={toggleDark}
@@ -364,13 +394,27 @@ const MobileSidebar = ({
             </span>
           </button>
 
-          <button
-            onClick={() => { /* logout */ }}
-            className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 hover:bg-red-50 dark:hover:bg-red-500/10 transition-colors"
-          >
-            <Icon name="logout" size={20} className="text-red-400" />
-            <span className="text-sm text-red-500">{tx.logout}</span>
-          </button>
+          {isGuest ? (
+            <Link
+              to="/login"
+              onClick={onClose}
+              className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 transition-colors text-sm font-medium"
+              style={{ color: '#d52b1e' }}
+              onMouseEnter={e => (e.currentTarget.style.backgroundColor = 'rgba(213,43,30,0.06)')}
+              onMouseLeave={e => (e.currentTarget.style.backgroundColor = 'transparent')}
+            >
+              <Icon name="login" size={20}/>
+              <span>{tx.signin}</span>
+            </Link>
+          ) : (
+            <button
+              onClick={() => { onClose(); onLogout(); }}
+              className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 hover:bg-red-50 dark:hover:bg-red-500/10 transition-colors"
+            >
+              <Icon name="logout" size={20} className="text-red-400" />
+              <span className="text-sm text-red-500">{tx.logout}</span>
+            </button>
+          )}
         </div>
       </aside>
     </>
@@ -388,24 +432,33 @@ const Navbar = () => {
   const currentLogo    = isDark ? logoLight : logoDark
 
   const tx = T[language]
+  const navigate = useNavigate()
 
-  const [sidebarOpen,  setSidebarOpen]  = useState(false)
-  const [searchOpen,   setSearchOpen]   = useState(false)
-  const [user,         setUser]         = useState<User | null>(null)
+  const [sidebarOpen, setSidebarOpen] = useState(false)
+  const [searchOpen,  setSearchOpen]  = useState(false)
+  const [user,        setUser]        = useState<User | null>(null)
 
   useEffect(() => {
-    import("@/lib/axios").then(({ default: api }) => {
-      api.get("/api/user").then((r) => setUser(r.data as User)).catch(() => {})
-    }).catch(() => {})
+    api.get("/api/user").then((r) => setUser(r.data as User)).catch(() => {})
   }, [])
+
+  const handleLogout = async () => {
+    try {
+      await api.post("/api/auth/logout")
+    } catch {
+      // proceed regardless
+    } finally {
+      setUser(null)
+      navigate("/login")
+    }
+  }
 
   return (
     <>
-      {/* ── Header — fixed height, never overflows ── */}
-      <header className="w-full h-16 bg-white/75 dark:bg-[#21262c]  border-black/10 dark:border-white/10 backdrop-blur-lg transition-colors duration-300">
+      <header className="w-full h-16 bg-white/75 dark:bg-[#21262c] border-black/10 dark:border-white/10 backdrop-blur-lg transition-colors duration-300">
         <div className="flex h-full items-center justify-between px-4 sm:px-6 w-full">
 
-          {/* LEFT: hamburger + logo + desktop nav */}
+          {/* LEFT */}
           <div className="flex items-center gap-2 flex-shrink-0 min-w-0">
 
             {/* hamburger — mobile only */}
@@ -422,13 +475,13 @@ const Navbar = () => {
                 ? <img src={currentLogo} alt="Mediabox" className="h-8 w-auto" />
                 : (
                   <span className="text-lg font-bold tracking-tight text-zinc-900 dark:text-white">
-                    media<span className="text-[#d52b1e]">box</span>
+                    media<span style={{ color: '#d52b1e' }}>box</span>
                   </span>
                 )
               }
             </Link>
 
-            {/* desktop nav — hidden below md */}
+            {/* desktop nav */}
             <nav className="hidden lg:flex items-center gap-0.5 ml-3">
               {tx.navLinks.map((link: NavLinkItem) => (
                 <NavLink
@@ -439,9 +492,13 @@ const Navbar = () => {
                     [
                       "rounded-full px-3 py-1.5 text-sm font-medium transition-colors whitespace-nowrap",
                       isActive
-                        ? "bg-[#d52b1e1a] text-[#d52b1e]"
+                        ? "text-white"
                         : "text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white hover:bg-zinc-100 dark:hover:bg-white/6",
                     ].join(" ")
+                  }
+                  style={({ isActive }) => isActive
+                    ? { backgroundColor: '#d52b1e' }
+                    : {}
                   }
                 >
                   {link.label}
@@ -450,10 +507,9 @@ const Navbar = () => {
             </nav>
           </div>
 
-          {/* RIGHT: controls — never wrap, never overflow */}
+          {/* RIGHT */}
           <div className="flex items-center gap-1 flex-shrink-0">
 
-            {/* search icon — always visible, opens panel */}
             <button
               onClick={() => setSearchOpen(true)}
               className="rounded-full p-2 hover:bg-zinc-100 dark:hover:bg-white/8 transition-colors"
@@ -461,7 +517,6 @@ const Navbar = () => {
               <Icon name="search" size={20} className="text-zinc-600 dark:text-zinc-400" />
             </button>
 
-            {/* dark mode — desktop only */}
             <button
               onClick={toggleDarkMode}
               title="Toggle dark mode"
@@ -474,7 +529,6 @@ const Navbar = () => {
               />
             </button>
 
-            {/* language — desktop only */}
             <button
               onClick={() => setLanguage(language === "En" ? "Ge" : "En")}
               title="Switch language"
@@ -486,30 +540,28 @@ const Navbar = () => {
               </span>
             </button>
 
-            {/* go live — desktop only */}
-
             <Link
               to="/TV"
-              className="hidden xl:inline-flex items-center gap-1.5 rounded-full bg-[#d52b1e] hover:bg-[#b03830] px-3 py-1.5 text-sm font-semibold text-white shadow-md shadow-[#d52b1e40] transition-colors whitespace-nowrap"
+              className="hidden xl:inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-sm font-semibold text-white transition-colors whitespace-nowrap"
+              style={{ backgroundColor: '#d52b1e', boxShadow: '0 4px 6px rgba(213,43,30,0.25)' }}
+              onMouseEnter={e => (e.currentTarget.style.backgroundColor = '#b82419')}
+              onMouseLeave={e => (e.currentTarget.style.backgroundColor = '#d52b1e')}
             >
               <Icon name="play_circle" size={17} fill={1} className="text-white" />
               <span>{tx.live}</span>
             </Link>
 
-            {/* profile — always visible */}
-            <ProfileDropdown user={user} tx={tx} />
+            <ProfileDropdown user={user} tx={tx} onLogout={handleLogout} />
           </div>
         </div>
       </header>
 
-      {/* Search dropdown panel */}
       <SearchPanel
         open={searchOpen}
         onClose={() => setSearchOpen(false)}
         placeholder={tx.search}
       />
 
-      {/* Mobile sidebar */}
       <MobileSidebar
         open={sidebarOpen}
         onClose={() => setSidebarOpen(false)}
@@ -519,6 +571,7 @@ const Navbar = () => {
         language={language}
         setLanguage={setLanguage}
         user={user}
+        onLogout={handleLogout}
       />
     </>
   )

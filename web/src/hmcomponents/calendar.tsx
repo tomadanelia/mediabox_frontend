@@ -1,11 +1,10 @@
 import { useState, useMemo } from "react";
 
-
 interface ChannelCalendarProps {
   archiveDays: number;
   onSelect?: (date: Date) => void;
   channelName?: string;
-  initialDate?: Date | null;  // currently viewed date so selection persists on reopen
+  initialDate?: Date | null;
 }
 
 function startOfDay(d: Date): Date {
@@ -54,6 +53,26 @@ function getFirstDOW(year: number, month: number): number {
 
 const DOW_LABELS = ["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"];
 
+const R        = "#d52b1e";
+const R_LIGHT  = "rgba(213,43,30,0.10)";
+const R_MED    = "rgba(213,43,30,0.18)";
+const R_STRIP  = "rgba(213,43,30,0.09)";
+const R_SEL    = "rgba(213,43,30,0.18)";
+const R_GLOW   = "rgba(213,43,30,0.35)";
+const R_SOFT   = "#f87171";
+const R_RING   = "rgba(213,43,30,0.45)";
+
+function Icon({ name, size = 18 }: { name: string; size?: number }) {
+  return (
+    <span
+      className="material-symbols-outlined select-none"
+      style={{ fontSize: size, lineHeight: 1, display: "block" }}
+    >
+      {name}
+    </span>
+  );
+}
+
 export default function ChannelCalendar({
   archiveDays,
   onSelect,
@@ -63,12 +82,11 @@ export default function ChannelCalendar({
   const TODAY    = useMemo(() => startOfDay(new Date()), []);
   const MIN_DATE = useMemo(() => startOfDay(addDays(TODAY, -archiveDays)), [TODAY, archiveDays]);
 
-  // Initialize from initialDate if provided, so reopening shows the right selection
   const initSelected = useMemo(() => {
     if (!initialDate) return null;
     const d = startOfDay(initialDate);
     return d <= TODAY && d >= MIN_DATE ? d : null;
-  }, []);  // intentionally only on mount
+  }, []);
 
   const [viewYear,  setViewYear]  = useState(() => (initSelected ?? TODAY).getFullYear());
   const [viewMonth, setViewMonth] = useState(() => (initSelected ?? TODAY).getMonth());
@@ -101,7 +119,6 @@ export default function ChannelCalendar({
 
   const isInWindow  = (d: Date) => d >= MIN_DATE && d <= TODAY;
   const isToday     = (d: Date) => sameDay(d, TODAY);
-  const isMinDay    = (d: Date) => sameDay(d, MIN_DATE);
   const isSelected  = (d: Date) => !!selected && sameDay(d, selected);
   const isDisabled  = (d: Date) => !isInWindow(d);
 
@@ -122,21 +139,21 @@ export default function ChannelCalendar({
     <div className="w-full max-w-sm">
       <div className="rounded-xl bg-zinc-900 border border-zinc-800 overflow-hidden shadow-2xl shadow-black/50">
 
-        {/* ── Header ── */}
+        {/* Header */}
         <div className="px-5 pt-5 pb-4 border-b border-zinc-800/70">
           <div className="flex items-center gap-2 mb-4">
-            <span className="w-2 h-2 rounded-full bg-emerald-400 shadow-sm shadow-emerald-400/60" />
+            <span className="w-2 h-2 rounded-full" style={{ backgroundColor: R, boxShadow: `0 0 6px ${R_GLOW}` }} />
             <span className="text-[0.65rem] font-semibold text-zinc-500 uppercase tracking-widest">
               {channelName}
             </span>
           </div>
 
           <div className="flex items-stretch gap-2">
-            <div className="flex-1 rounded-xl bg-violet-500/8 border border-violet-500/20 px-3 py-2.5">
-              <p className="text-[0.57rem] font-semibold text-violet-500/70 uppercase tracking-widest mb-1">
+            <div className="flex-1 rounded-xl px-3 py-2.5" style={{ background: R_LIGHT, border: `1px solid ${R_MED}` }}>
+              <p className="text-[0.57rem] font-semibold uppercase tracking-widest mb-1" style={{ color: 'rgba(213,43,30,0.60)' }}>
                 Archive Window
               </p>
-              <p className="text-sm font-semibold text-violet-300 leading-tight">
+              <p className="text-sm font-semibold leading-tight" style={{ color: R_SOFT }}>
                 Last {archiveDays} {archiveDays === 1 ? "day" : "days"}
               </p>
               <p className="text-[0.63rem] text-zinc-600 mt-0.5">
@@ -166,17 +183,19 @@ export default function ChannelCalendar({
           </div>
         </div>
 
-        {/* ── Month navigation ── */}
+        {/* Month navigation */}
         <div className="flex items-center justify-between px-5 py-3.5">
           <button
             onClick={prevMonth}
             disabled={!canGoPrev}
-            className={`w-8 h-8 rounded-xl border flex items-center justify-center text-base transition-all ${
+            className={`w-8 h-8 rounded-xl border flex items-center justify-center transition-all ${
               canGoPrev
                 ? "bg-zinc-800/60 border-zinc-700/60 text-zinc-400 hover:text-zinc-200 hover:bg-zinc-700/60"
                 : "bg-zinc-800/20 border-zinc-800/30 text-zinc-800 cursor-not-allowed"
             }`}
-          >‹</button>
+          >
+            <Icon name="chevron_left" size={18} />
+          </button>
 
           <p className="text-sm font-semibold text-zinc-200 tracking-wide">
             {monthLabel(viewYear, viewMonth)}
@@ -185,15 +204,17 @@ export default function ChannelCalendar({
           <button
             onClick={nextMonth}
             disabled={!canGoNext}
-            className={`w-8 h-8 rounded-xl border flex items-center justify-center text-base transition-all ${
+            className={`w-8 h-8 rounded-xl border flex items-center justify-center transition-all ${
               canGoNext
                 ? "bg-zinc-800/60 border-zinc-700/60 text-zinc-400 hover:text-zinc-200 hover:bg-zinc-700/60"
                 : "bg-zinc-800/20 border-zinc-800/30 text-zinc-800 cursor-not-allowed"
             }`}
-          >›</button>
+          >
+            <Icon name="chevron_right" size={18} />
+          </button>
         </div>
 
-        {/* ── Calendar grid ── */}
+        {/* Calendar grid */}
         <div className="px-4 pb-5">
           <div className="grid grid-cols-7 mb-1">
             {DOW_LABELS.map((d) => (
@@ -236,9 +257,7 @@ export default function ChannelCalendar({
                       style={{
                         left:  stripLeft  ? "50%" : 0,
                         right: stripRight ? "50%" : 0,
-                        background: selDay
-                          ? "rgba(139,92,246,0.18)"
-                          : "rgba(139,92,246,0.09)",
+                        background: selDay ? R_SEL : R_STRIP,
                         borderRadius: stripRoundL && stripRoundR
                           ? "8px"
                           : stripRoundL ? "8px 0 0 8px"
@@ -253,13 +272,21 @@ export default function ChannelCalendar({
                     onClick={() => handleClick(day)}
                     disabled={disabled}
                     title={disabled ? "Outside archive window" : formatDate(day)}
+                    style={selDay ? {
+                      background: `linear-gradient(135deg, ${R}, #b71c1c)`,
+                      boxShadow: `0 4px 12px ${R_GLOW}`,
+                    } : todayDay && !selDay ? {
+                      outline: `1px solid ${R_RING}`,
+                      outlineOffset: '-1px',
+                      color: R_SOFT,
+                    } : {}}
                     className={[
                       "relative z-10 w-9 h-9 rounded-xl text-sm font-medium transition-all duration-100 select-none",
                       disabled && !inWindow ? "text-zinc-800 cursor-not-allowed" : "",
                       selDay
-                        ? "bg-violet-500 text-white shadow-lg shadow-violet-500/40 scale-110 font-semibold"
+                        ? "text-white scale-110 font-semibold"
                         : todayDay && !selDay
-                        ? "ring-1 ring-violet-400/50 text-violet-300 hover:bg-zinc-700/60"
+                        ? "hover:bg-zinc-700/60"
                         : inWindow && !selDay
                         ? "text-zinc-200 hover:bg-zinc-700/70 hover:scale-105"
                         : "",
@@ -267,7 +294,10 @@ export default function ChannelCalendar({
                   >
                     {day.getDate()}
                     {todayDay && !selDay && (
-                      <span className="absolute bottom-1 left-1/2 -translate-x-1/2 w-1 h-1 rounded-full bg-violet-400" />
+                      <span
+                        className="absolute bottom-1 left-1/2 -translate-x-1/2 w-1 h-1 rounded-full"
+                        style={{ backgroundColor: R }}
+                      />
                     )}
                   </button>
                 </div>
@@ -276,17 +306,20 @@ export default function ChannelCalendar({
           </div>
         </div>
 
-        {/* ── Footer ── */}
+        {/* Footer */}
         <div className="px-5 py-3.5 border-t border-zinc-800/60 flex items-center justify-between">
           <div className="flex items-center gap-3.5">
-            <LegendItem color="bg-violet-500/25 border border-violet-500/30" label="Archive" />
-            <LegendItem color="bg-violet-500" label="Selected" />
-            <LegendItem color="ring-1 ring-violet-400/50" label="Today" />
+            <LegendItem dot={R_STRIP} border={R_MED}  label="Archive"  />
+            <LegendItem dot={R}       border=""        label="Selected" />
+            <LegendItem dot=""        border={R_RING}  label="Today"    />
           </div>
           {selected && (
             <button
               onClick={() => setSelected(null)}
-              className="text-[0.62rem] text-zinc-700 hover:text-rose-400 transition-colors"
+              className="text-[0.62rem] text-zinc-700 transition-colors"
+              style={{}}
+              onMouseEnter={e => (e.currentTarget.style.color = R_SOFT)}
+              onMouseLeave={e => (e.currentTarget.style.color = '')}
             >
               Clear
             </button>
@@ -300,7 +333,10 @@ export default function ChannelCalendar({
             <p className="text-[0.6rem] text-zinc-600 uppercase tracking-widest mb-0.5">Viewing shows from</p>
             <p className="text-sm font-semibold text-zinc-100">{selected ? formatDate(selected) : ""}</p>
           </div>
-          <span className="text-[0.65rem] font-medium px-2.5 py-1 rounded-xl bg-violet-500/15 border border-violet-500/25 text-violet-300">
+          <span
+            className="text-[0.65rem] font-medium px-2.5 py-1 rounded-xl"
+            style={{ background: R_LIGHT, border: `1px solid ${R_MED}`, color: R_SOFT }}
+          >
             {daysAgo === 0 ? "Today" : daysAgo === 1 ? "Yesterday" : `${daysAgo} days ago`}
           </span>
         </div>
@@ -309,10 +345,17 @@ export default function ChannelCalendar({
   );
 }
 
-function LegendItem({ color, label }: { color: string; label: string }) {
+function LegendItem({ dot, border, label }: { dot: string; border: string; label: string }) {
   return (
     <div className="flex items-center gap-1.5">
-      <span className={`w-2.5 h-2.5 rounded-sm ${color}`} />
+      <span
+        className="w-2.5 h-2.5 rounded-sm"
+        style={{
+          backgroundColor: dot || 'transparent',
+          outline: border ? `1px solid ${border}` : undefined,
+          outlineOffset: border && !dot ? '-1px' : undefined,
+        }}
+      />
       <span className="text-[0.6rem] text-zinc-600">{label}</span>
     </div>
   );
