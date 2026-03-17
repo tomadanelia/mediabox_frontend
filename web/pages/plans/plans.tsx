@@ -325,34 +325,46 @@ const Plans = () => {
   const isOwned = (planId: string) => activePlans.some(ap => ap.plan_id === planId)
   const getActivePlan = (planId: string) => activePlans.find(ap => ap.plan_id === planId)
   const popularIndex = Math.min(3, plans.length - 1)
-
-  const t = {
-    bg: 'bg-plans-bg',
-    cardDefault: 'border border-plans-divider bg-plans-card-bg hover:border-plans-divider-popular hover:-translate-y-1 hover:shadow-xl transition-all duration-300',
-    cardPopular: 'bg-plans-card-popular-bg border border-plans-divider-popular shadow-lg hover:-translate-y-1 hover:shadow-2xl transition-all duration-300',
-    skeletonCard: 'bg-plans-skeleton-bg',
-    skeletonInner: 'bg-plans-skeleton-inner',
-    divider: 'bg-plans-divider',
-    dividerPopular: 'bg-plans-divider-popular',
-    balanceCard: 'bg-plans-balance-card-bg',
-    featureBadge: 'bg-plans-feature-badge-bg text-plans-feature-badge-text',
-    channelBtn: 'flex items-center gap-1.5 text-xs text-plans-channel-btn-text hover:text-form-highlights transition-colors cursor-pointer',
-    activeChip: 'bg-plans-active-chip-bg border-plans-active-chip-border text-plans-active-chip-text',
-    text: 'text-foreground',
-    textMuted: 'text-muted-foreground',
-    textFaint: 'text-muted-foreground',
-    priceColor: 'text-foreground',
-    priceMuted: 'text-muted-foreground',
-    balancePulse: 'bg-plans-skeleton-inner',
-    balanceLabel: 'text-muted-foreground',
-    featureText: 'text-foreground',
-    balanceRegisterText: 'text-form-highlights',
-    btnGuest: 'bg-plans-skeleton-bg hover:bg-plans-skeleton-inner text-foreground border border-plans-divider',
-    btnPurchasing: 'bg-plans-skeleton-bg text-foreground cursor-wait',
-    btnOwned: 'bg-plans-active-chip-bg text-plans-active-chip-text border border-plans-active-chip-border cursor-default',
-    btnLowBalance: 'bg-amber-500/10 text-amber-400 border border-amber-500/20 hover:bg-amber-500/20',
-    btnReady: 'bg-plans-skeleton-bg hover:bg-plans-skeleton-inner text-foreground border border-plans-divider',
-  }
+const t = {
+  bg: 'bg-plans-bg',
+  cardDefault: [
+    'border border-plans-divider bg-plans-card-bg',
+    'hover:border-plans-divider-popular hover:shadow-[0_0_0_1.5px_#c01111,0_8px_32px_rgba(192,17,17,0.10)]',
+    'dark:hover:shadow-[0_0_0_1.5px_#e03333,0_8px_32px_rgba(224,51,51,0.15)]',
+    'hover:-translate-y-1 transition-all duration-300',
+  ].join(' '),
+  cardPopular: [
+    'bg-plans-card-popular-bg',
+    'border-2 border-plans-popular-head',
+    'shadow-[0_0_0_0px_transparent,0_8px_40px_rgba(192,17,17,0.18)]',
+    'hover:-translate-y-1 hover:shadow-[0_0_0_0px_transparent,0_16px_48px_rgba(192,17,17,0.28)]',
+    'dark:shadow-[0_0_0_0px_transparent,0_8px_40px_rgba(224,51,51,0.22)]',
+    'dark:hover:shadow-[0_0_0_0px_transparent,0_16px_48px_rgba(224,51,51,0.32)]',
+    'transition-all duration-300',
+  ].join(' '),
+  skeletonCard: 'bg-plans-skeleton-bg',
+  skeletonInner: 'bg-plans-skeleton-inner',
+  divider: 'bg-plans-divider',
+  dividerPopular: 'bg-plans-divider-popular',
+  balanceCard: 'bg-plans-balance-card-bg',
+  featureBadge: 'bg-plans-feature-badge-bg text-plans-feature-badge-text',
+  channelBtn: 'flex items-center gap-1.5 text-xs text-plans-channel-btn-text hover:text-form-highlights transition-colors cursor-pointer',
+  activeChip: 'bg-plans-active-chip-bg border-plans-active-chip-border text-plans-active-chip-text',
+  text: 'text-foreground',
+  textMuted: 'text-muted-foreground',
+  textFaint: 'text-muted-foreground',
+  priceColor: 'text-foreground',
+  priceMuted: 'text-muted-foreground',
+  balancePulse: 'bg-plans-skeleton-inner',
+  balanceLabel: 'text-muted-foreground',
+  featureText: 'text-foreground',
+  balanceRegisterText: 'text-form-highlights',
+  btnGuest: 'bg-transparent hover:bg-plans-skeleton-bg text-foreground border border-plans-divider hover:border-plans-divider-popular transition-all',
+  btnPurchasing: 'bg-plans-skeleton-bg text-foreground cursor-wait',
+  btnOwned: 'bg-plans-active-chip-bg text-plans-active-chip-text border border-plans-active-chip-border cursor-default',
+  btnLowBalance: 'bg-amber-500/10 text-amber-400 border border-amber-500/20 hover:bg-amber-500/20',
+  btnReady: 'bg-transparent hover:bg-plans-skeleton-bg text-foreground border border-plans-divider hover:border-plans-divider-popular transition-all',
+}
 
   const renderButton = (plan: Plan, popular: boolean) => {
     const owned = isOwned(plan.id)
@@ -399,18 +411,18 @@ const Plans = () => {
         )
 
       case 'ready':
-        return (
-          <button
-            onClick={() => handlePurchase(plan.id)}
-            className={`${base} ${
-              popular
-                ? 'bg-plans-popular-head hover:bg-button-hover text-white shadow-[0_4px_20px_rgba(16,185,129,0.3)] hover:shadow-[0_4px_28px_rgba(16,185,129,0.45)]'
-                : t.btnReady
-            } active:scale-[0.98]`}
-          >
-            {tx.buy}
-          </button>
-        )
+  return (
+    <button
+      onClick={() => handlePurchase(plan.id)}
+      className={`${base} ${
+        popular
+          ? 'bg-plans-popular-head hover:bg-button-hover text-white shadow-[0_2px_16px_rgba(192,17,17,0.35)] hover:shadow-[0_4px_24px_rgba(192,17,17,0.5)]'
+          : t.btnReady
+      } active:scale-[0.98]`}
+    >
+      {tx.buy}
+    </button>
+  )
     }
   }
 

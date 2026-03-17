@@ -124,21 +124,21 @@
   --button-hover: #a3115a;
   --eye-icon: #0d90b166;
 
---plans-bg: oklch(96% 0.008 220);
+--plans-bg: oklch(97% 0 0);
 --plans-card-bg: oklch(100% 0 0);
---plans-card-popular-bg: oklch(96% 0.03 185);
---plans-skeleton-bg: oklch(93% 0.008 220);
---plans-skeleton-inner: oklch(88% 0.008 220);
---plans-divider: oklch(88% 0.01 220);
---plans-divider-popular: oklch(80% 0.06 185);
---plans-balance-card-bg: oklch(93% 0.008 220);
---plans-feature-badge-bg: oklch(92% 0.04 185);
---plans-feature-badge-text: oklch(35% 0.08 200);
---plans-channel-btn-text: oklch(50% 0.03 220);
---plans-active-chip-bg: oklch(92% 0.04 185);
---plans-active-chip-border: oklch(75% 0.08 185);
---plans-active-chip-text: oklch(35% 0.1 185);
---plans-popular-head:rgb(219, 25, 25);
+--plans-card-popular-bg: oklch(100% 0 0);
+--plans-skeleton-bg: oklch(93% 0 0);
+--plans-skeleton-inner: oklch(87% 0 0);
+--plans-divider: oklch(88% 0 0);
+--plans-divider-popular: #c0111160;
+--plans-balance-card-bg: oklch(93% 0 0);
+--plans-feature-badge-bg: #c011110f;
+--plans-feature-badge-text: #8b0000;
+--plans-channel-btn-text: oklch(45% 0 0);
+--plans-active-chip-bg: #c011110d;
+--plans-active-chip-border: #c0111140;
+--plans-active-chip-text: #a50e0e;
+--plans-popular-head: #c01111;
 }
 
 .dark {
@@ -153,22 +153,21 @@
   --button-hover: #9d09e2;
   --eye-icon: #0d90b166;
   
-  --plans-bg: oklch(0.07 0.02 264.695);
---plans-card-bg: oklch(1 0 0 / 3%);
---plans-card-popular-bg: oklch(0.1 0.05 154.449);
---plans-card-hover-shadow: rgba(0,0,0,0.4);
---plans-skeleton-bg: oklch(1 0 0 / 5%);
---plans-skeleton-inner: oklch(1 0 0 / 10%);
---plans-divider: oklch(57.047% 0.22433 28.313 / 0.1);
---plans-divider-popular: oklch(0.696 0.17 162.48 / 20%);
---plans-balance-card-bg: oklch(1 0 0 / 5%);
---plans-feature-badge-bg: oklch(1 0 0 / 10%);
---plans-feature-badge-text: oklch(0.6 0.03 247.896);
---plans-channel-btn-text: oklch(0.6 0.03 247.896);
---plans-active-chip-bg: oklch(0.696 0.17 162.48 / 10%);
---plans-active-chip-border: oklch(0.696 0.17 162.48 / 20%);
---plans-active-chip-text: oklch(0.696 0.17 162.48);
---plans-popular-head:rgb(219, 25, 25);
+--plans-bg: oklch(8% 0 0);
+--plans-card-bg: oklch(12% 0 0);
+--plans-card-popular-bg: oklch(10% 0.015 20);
+--plans-skeleton-bg: oklch(16% 0 0);
+--plans-skeleton-inner: oklch(20% 0 0);
+--plans-divider: oklch(20% 0 0);
+--plans-divider-popular: #e0202060;
+--plans-balance-card-bg: oklch(14% 0 0);
+--plans-feature-badge-bg: #e0202015;
+--plans-feature-badge-text: #f87171;
+--plans-channel-btn-text: oklch(55% 0 0);
+--plans-active-chip-bg: #e0202012;
+--plans-active-chip-border: #e0202045;
+--plans-active-chip-text: #f87171;
+--plans-popular-head: #e03333;
 
 
 
