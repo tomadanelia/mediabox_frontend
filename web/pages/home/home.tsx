@@ -3,7 +3,6 @@ import ChannelScroller, { ChannelCard } from "./comps/ChannelScroller"
 import type { Channel } from "./comps/ChannelScroller"
 import useUIStore from "@/store/ui-store"
 import api from "@/lib/axios"
-import { CategoryIcon } from "@/hmcomponents/IconMapper"
 
 const HERO_TEXT = {
   En: {
@@ -245,7 +244,6 @@ const Home: React.FC = () => {
 
         return (
           <section key={cat.id} className="space-y-3">
-            {/* Section header */}
             <div className="flex items-center gap-3">
               <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
              <span className="material-symbols-outlined">

@@ -2,8 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import AdminUsersExtended from "./AdminUsersExtended";
 import AdminChannelsSection from "./AdminChannelsSection";
 import api from "../../src/lib/axios";
-import {CategoryIcon} from "../../src/hmcomponents/IconMapper";
-import useAuthStore from "../../src/store/authStore"; 
+import useAuthStore from "../../src/store/AuthStore"; 
 type AdminSection = "Overview" | "Users" | "Category-Channels" | "Categories" | "Plans" | "Plan-Channels" |"Channels"| "Support" | "Settings";
 const adminSectionLabels: Record<AdminSection, string> = {
   "Overview": "მთავარი",

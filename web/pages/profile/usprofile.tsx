@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from "react";
 import api from "../../src/lib/axios";
 import useUIStore from "../../src/store/ui-store";
 import useAuthStore from "../../src/store/AuthStore";
-import type { User, Account } from "../../src/types/user";
+import type { User } from "../../src/types/user";
 import EditProfileModal from "./EditModal";
 
 interface WatchedChannel {
@@ -29,7 +29,6 @@ interface FavouriteChannels {
   channels?: { id: number | string; name?: string; logo?: string; [key: string]: unknown }[];
 }
 
-/* ─── Translations ───────────────────────────────────────── */
 const translations = {
   En: {
     loading: "Loading",
@@ -81,12 +80,10 @@ const translations = {
 
 type Tab = "Overview" | "History" | "Favourites";
 
-/* ─── Main Component ─────────────────────────────────────── */
 export default function UserProfile() {
   const language = useUIStore((state) => state.language);
   const isDark = useUIStore((state) => state.isDark);
   const tx = translations[language];
-  /* ── theme ── */
   const c = {
     page:          isDark ? "bg-[#0d0d12] text-zinc-300"              : "bg-gray-50 text-gray-600",
     sidebar:       isDark ? "bg-[#111116]"                             : "bg-white",
@@ -247,12 +244,12 @@ export default function UserProfile() {
         fixed top-0 left-0 z-30 h-full w-64 flex flex-col
         ${c.sidebar} border-r ${c.sidebarBorder}
         transition-transform duration-300
-        lg:static lg:translate-x-0 lg:flex-shrink-0
+        lg:static lg:translate-x-0 lg:shrink-0
         ${sidebarOpen ? "translate-x-0" : "-translate-x-full"}
       `}>
 
         {/* Avatar + Identity */}
-        <div className="px-6 pt-7 pb-5 flex-shrink-0">
+        <div className="px-6 pt-7 pb-5 shrink-0">
           {/* Avatar with edit overlay */}
           <div className="mb-4 relative group w-14">
             {user?.avatar_url ? (
@@ -302,10 +299,10 @@ export default function UserProfile() {
         </div>
 
         {/* Divider */}
-        <div className={`border-t ${c.divider} mx-6 flex-shrink-0`} />
+        <div className={`border-t ${c.divider} mx-6 shrink-0`} />
 
         {/* Contact info */}
-        <div className="px-6 py-4 flex flex-col gap-3 flex-shrink-0">
+        <div className="px-6 py-4 flex flex-col gap-3 shrink-0">
           <div>
             <p className={`text-[0.6rem] uppercase tracking-widest ${c.sub} mb-0.5`}>{tx.overview.email}</p>
             <p className={`text-xs font-medium truncate ${c.heading}`}>{user?.email ?? "—"}</p>
@@ -319,10 +316,10 @@ export default function UserProfile() {
         </div>
 
         {/* Divider */}
-        <div className={`border-t ${c.divider} mx-6 flex-shrink-0`} />
+        <div className={`border-t ${c.divider} mx-6 shrink-0`} />
 
         {/* Verification status */}
-        <div className="px-6 py-4 flex-shrink-0">
+        <div className="px-6 py-4 shrink-0">
           {!anyVerified ? (
             <p className={`text-xs ${c.unverifiedText}`}>✗ {tx.sidebar.notVerified}</p>
           ) : (
@@ -342,7 +339,7 @@ export default function UserProfile() {
         </div>
 
         {/* Nav */}
-        <div className={`border-t ${c.divider} flex-shrink-0`}>
+        <div className={`border-t ${c.divider} shrink-0`}>
           {(["Overview", "History", "Favourites"] as Tab[]).map((t) => (
             <button
               key={t}
@@ -368,7 +365,7 @@ export default function UserProfile() {
       <div className="flex-1 flex flex-col min-w-0 h-full overflow-hidden">
 
         {/* Mobile topbar */}
-        <div className={`lg:hidden flex-shrink-0 flex items-center gap-4 px-5 py-4 border-b ${c.mobileTopbar}`}>
+        <div className={`lg:hidden shrink-0 flex items-center gap-4 px-5 py-4 border-b ${c.mobileTopbar}`}>
           <button onClick={() => setSidebarOpen(true)} className={`${c.sub} text-xl leading-none`}>☰</button>
           <span className={`text-sm font-medium ${c.heading}`}>{tx.tabs[tab]}</span>
           {/* mobile edit shortcut */}
@@ -388,7 +385,7 @@ export default function UserProfile() {
             <div className="flex flex-col min-h-full">
 
               {/* Balance hero */}
-              <div className={`${c.balanceBg} px-8 py-10  lg:px-14 lg:py-14 flex-shrink-0`}>
+              <div className={`${c.balanceBg} px-8 py-10  lg:px-14 lg:py-14 shrink-0`}>
                 <p className={`text-[0.65rem] uppercase tracking-[0.2em] font-semibold ${c.sub} mb-3`}>
                   {tx.overview.accountBalance}
                 </p>
@@ -453,14 +450,14 @@ export default function UserProfile() {
                           key={plan.plan_id}
                           className={`flex items-center gap-6 py-5 border-b ${c.planRow} ${c.planHover} transition-colors duration-150`}
                         >
-                          <span className={`text-[0.6rem] font-mono w-5 flex-shrink-0 ${c.faint}`}>
+                          <span className={`text-[0.6rem] font-mono w-5 shrink-0 ${c.faint}`}>
                             {String(i + 1).padStart(2, "0")}
                           </span>
                           <div className="flex-1 min-w-0">
                             <p className={`text-sm font-semibold ${c.heading}`}>{name}</p>
                             <p className={`text-[0.65rem] ${c.sub} mt-0.5`}>{tx.plans.expires} {expiryDate}</p>
                           </div>
-                          <div className="hidden sm:flex flex-col gap-1.5 w-32 flex-shrink-0">
+                          <div className="hidden sm:flex flex-col gap-1.5 w-32 shrink-0">
                             <div className={`h-1 rounded-full ${c.progressBg} overflow-hidden`}>
                               <div
                                 className={`h-full rounded-full transition-all duration-500 ${isExpiringSoon ? "bg-red-400" : "bg-emerald-400"}`}
@@ -468,11 +465,11 @@ export default function UserProfile() {
                               />
                             </div>
                           </div>
-                          <div className="flex-shrink-0 text-right">
+                          <div className="shrink-0 text-right">
                             <span className={`text-sm font-bold ${isExpiringSoon ? c.expiringSoon : c.expiringOk}`}>{daysLeft}</span>
                             <span className={`text-[0.65rem] ml-1 ${c.sub}`}>{tx.plans.daysLeft}</span>
                           </div>
-                          <span className={`hidden md:block text-xs font-mono ${c.sub} flex-shrink-0 w-16 text-right`}>
+                          <span className={`hidden md:block text-xs font-mono ${c.sub} shrink-0 w-16 text-right`}>
                             {plan.price} {currency}
                           </span>
                         </div>
@@ -498,7 +495,7 @@ export default function UserProfile() {
               ) : (
                 <div className="flex flex-col">
                   <div className={`flex items-center gap-6 pb-3 border-b ${c.divider}`}>
-                    <span className="w-5 flex-shrink-0" />
+                    <span className="w-5 shrink-0" />
                     <span className={`flex-1 text-[0.6rem] uppercase tracking-widest font-semibold ${c.sub}`}>{tx.history.channel}</span>
                     <span className={`text-[0.6rem] uppercase tracking-widest font-semibold ${c.sub} w-36 text-right`}>{tx.history.watchedAt}</span>
                   </div>
@@ -508,15 +505,15 @@ export default function UserProfile() {
                     const watchedAt = w.watched_at ?? w.last_watched;
                     return (
                       <div key={w.id ?? i} className={`flex items-center gap-6 py-4 border-b ${c.tableRow} transition-colors`}>
-                        <span className={`text-[0.6rem] font-mono w-5 flex-shrink-0 ${c.faint}`}>{String(i + 1).padStart(2, "0")}</span>
+                        <span className={`text-[0.6rem] font-mono w-5 shrink-0 ${c.faint}`}>{String(i + 1).padStart(2, "0")}</span>
                         <div className="flex items-center gap-3 flex-1 min-w-0">
                           {logo
-                            ? <img src={logo} alt={name} className="w-8 h-8 rounded-lg object-cover flex-shrink-0" />
-                            : <div className={`w-8 h-8 rounded-lg flex-shrink-0 flex items-center justify-center text-[0.6rem] font-bold font-mono ${c.logoBg}`}>{name.slice(0, 2).toUpperCase()}</div>
+                            ? <img src={logo} alt={name} className="w-8 h-8 rounded-lg object-cover shrink-0" />
+                            : <div className={`w-8 h-8 rounded-lg shrink-0 flex items-center justify-center text-[0.6rem] font-bold font-mono ${c.logoBg}`}>{name.slice(0, 2).toUpperCase()}</div>
                           }
                           <span className={`text-sm font-medium truncate ${c.heading}`}>{name}</span>
                         </div>
-                        <span className={`text-xs font-mono ${c.sub} w-36 text-right flex-shrink-0`}>
+                        <span className={`text-xs font-mono ${c.sub} w-36 text-right shrink-0`}>
                           {watchedAt
                             ? new Date(watchedAt).toLocaleString(language === "En" ? "en-US" : "ka-GE", {
                                 month: "short", day: "numeric", hour: "2-digit", minute: "2-digit",
@@ -545,10 +542,10 @@ export default function UserProfile() {
               ) : (
                 <div className="flex flex-col">
                   <div className={`flex items-center gap-6 pb-3 border-b ${c.divider}`}>
-                    <span className="w-5 flex-shrink-0" />
+                    <span className="w-5 shrink-0" />
                     <span className={`flex-1 text-[0.6rem] uppercase tracking-widest font-semibold ${c.sub}`}>{tx.favourites.channel}</span>
                     <span className={`text-[0.6rem] uppercase tracking-widest font-semibold ${c.sub} w-16 text-right hidden sm:block`}>{tx.favourites.id}</span>
-                    <span className="w-14 flex-shrink-0" />
+                    <span className="w-14 shrink-0" />
                   </div>
                   {favourites.favouriteChannelIds.map((channelId, i) => {
                     const ch = favourites.channels?.find(cc => cc.id === channelId);
@@ -556,19 +553,19 @@ export default function UserProfile() {
                     const logo = ch?.logo as string | undefined;
                     return (
                       <div key={channelId} className={`flex items-center gap-6 py-4 border-b ${c.tableRow} transition-colors`}>
-                        <span className={`text-[0.6rem] font-mono w-5 flex-shrink-0 ${c.faint}`}>{String(i + 1).padStart(2, "0")}</span>
+                        <span className={`text-[0.6rem] font-mono w-5 shrink-0 ${c.faint}`}>{String(i + 1).padStart(2, "0")}</span>
                         <div className="flex items-center gap-3 flex-1 min-w-0">
                           {logo
-                            ? <img src={logo} alt={name} className="w-8 h-8 rounded-lg object-cover flex-shrink-0" />
-                            : <div className={`w-8 h-8 rounded-lg flex-shrink-0 flex items-center justify-center text-[0.6rem] font-bold font-mono ${c.logoBg}`}>{name.slice(0, 2).toUpperCase()}</div>
+                            ? <img src={logo} alt={name} className="w-8 h-8 rounded-lg object-cover shrink-0" />
+                            : <div className={`w-8 h-8 rounded-lg shrink-0 flex items-center justify-center text-[0.6rem] font-bold font-mono ${c.logoBg}`}>{name.slice(0, 2).toUpperCase()}</div>
                           }
                           <span className={`text-sm font-medium truncate ${c.heading}`}>{name}</span>
                         </div>
-                        <span className={`text-xs font-mono ${c.sub} w-16 text-right hidden sm:block flex-shrink-0`}>{channelId}</span>
+                        <span className={`text-xs font-mono ${c.sub} w-16 text-right hidden sm:block shrink-0`}>{channelId}</span>
                         <button
                           onClick={() => deleteFavourite(channelId)}
                           disabled={deletingId === channelId}
-                          className={`text-xs font-medium w-14 text-right flex-shrink-0 transition-colors cursor-pointer disabled:opacity-40 ${c.removeBtn}`}
+                          className={`text-xs font-medium w-14 text-right shrink-0 transition-colors cursor-pointer disabled:opacity-40 ${c.removeBtn}`}
                         >
                           {deletingId === channelId ? tx.favourites.removing : tx.favourites.remove}
                         </button>
