@@ -199,11 +199,11 @@ export const ChannelCard: React.FC<{ channel: Channel; index: number }> = ({ cha
         if (!isLocked) setSelectedChannelId(channel.id);
       }}
       to={isLocked ? "/packets" : `/TV`}
-      className={`group relative w-80 shrink-0 overflow-hidden rounded-xl border shadow-lg transition-all duration-300
-        ${isLocked
-          ? "border-white/10 cursor-pointer"
-          : "border-border hover:-translate-y-2 hover:scale-[1.03] hover:border-primary/60 hover:shadow-2xl hover:shadow-black/40"
-        }`}
+      className={`group relative w-80 shrink-0 overflow-hidden rounded-xl border shadow-lg transition-all duration-500
+  ${isLocked
+    ? "border-white/10 cursor-pointer"
+    : "border-border hover:scale-[1.18] hover:ml-5 hover:mx-3  hover:border-primary/60 hover:shadow-2xl hover:shadow-black/40 hover:z-10"
+  }`}
     >
       {/* Gradient base — desaturated when locked */}
       <div
@@ -267,7 +267,6 @@ export const ChannelCard: React.FC<{ channel: Channel; index: number }> = ({ cha
   )
 }
 
-// ─── Main scroller ────────────────────────────────────────────────────────────
 
 const ChannelScroller: React.FC<{ channels: Channel[] }> = ({ channels }) => {
   return (
@@ -278,7 +277,7 @@ const ChannelScroller: React.FC<{ channels: Channel[] }> = ({ channels }) => {
       </div>
 
      <div style={{ overflowX: "auto", overflowY: "visible" }} className="scrollbar-hide">
-  <div className="flex gap-4 pt-7 pl-2 pb-4 -mt-4" style={{ overflow: "visible" }}>
+  <div className="flex gap-4 pt-8 pl-3 pb-4 -mt-4" style={{ overflow: "visible" }}>
           {channels.map((channel, i) => (
             <ChannelCard key={channel.id} channel={channel} index={i} />
           ))}
