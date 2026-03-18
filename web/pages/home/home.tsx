@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react"
 import ChannelScroller, { ChannelCard } from "./comps/ChannelScroller"
-import type { Channel } from "./comps/ChannelScroller"
+import type { Channel } from "../../src/types/channel"
 import useUIStore from "@/store/ui-store"
 import api from "@/lib/axios"
 
@@ -188,10 +188,9 @@ interface CategoryScrollerProps {
 
 
 const Home: React.FC = () => {
-  const [channels, setChannels] = useState<Channel[]>([])
+  const [channels, setChannelsLocal] = useState<Channel[]>([])
   const [categories, setCategories] = useState<Category[]>([])
-  const { isDark,language } = useUIStore()
-  const color=isDark?"bg-black":"bg-yellow";
+  const { language,setChannels } = useUIStore()
   useEffect(() => {
     ;(async () => {
       try {
@@ -199,7 +198,9 @@ const Home: React.FC = () => {
           api.get("/api/channels"),
           api.get("/api/channels/categories"),
         ])
-        setChannels(Array.isArray(chRes.data.channels) ? chRes.data.channels : [])
+        const fetched = Array.isArray(chRes.data.channels) ? chRes.data.channels : []
+        setChannels(fetched)          
+        setChannelsLocal(fetched)
         setCategories(Array.isArray(catRes.data) ? catRes.data : [])
       } catch (e) {
         console.error("[Home/fetch]", e)

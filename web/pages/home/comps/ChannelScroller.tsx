@@ -4,14 +4,7 @@ import Hls from "hls.js"
 import { Lock } from "lucide-react"
 import api from "../../../src/lib/axios"
 import useUIStore from "@/store/ui-store"
-export type Channel = {
-  id: string
-  name: string
-  genre: string
-  viewers?: string
-  color?: string
-  thumbnail?: string
-}
+import type {Channel} from "../../../src/types/channel"
 
 const PALETTE = [
   "rgba(59,130,246,0.85)",
@@ -160,7 +153,7 @@ async function fetchThumb(channelId: string): Promise<ThumbState> {
 // ─── Single channel card ──────────────────────────────────────────────────────
 
 export const ChannelCard: React.FC<{ channel: Channel; index: number }> = ({ channel, index }) => {
-  const color = channel.color ?? PALETTE[index % PALETTE.length]
+  const color =  PALETTE[index % PALETTE.length]
   const cardRef = useRef<HTMLAnchorElement>(null)
   const [thumb, setThumb] = useState<ThumbState>(undefined)
   const started = useRef(false)
@@ -199,7 +192,7 @@ export const ChannelCard: React.FC<{ channel: Channel; index: number }> = ({ cha
         if (!isLocked) setSelectedChannelId(channel.id);
       }}
       to={isLocked ? "/packets" : `/TV`}
-      className={`group relative w-80 shrink-0 overflow-hidden rounded-xl border shadow-lg transition-all duration-500
+      className={`group relative w-80 shrink-0 overflow-hidden rounded-xl border shadow-lg  ease-in-out transition-all duration-500
   ${isLocked
     ? "border-white/10 cursor-pointer"
     : "border-border hover:scale-[1.18] hover:ml-5 hover:mx-3  hover:border-primary/60 hover:shadow-2xl hover:shadow-black/40 hover:z-10"
@@ -257,7 +250,6 @@ export const ChannelCard: React.FC<{ channel: Channel; index: number }> = ({ cha
           <p className="text-lg font-semibold leading-tight drop-shadow">{channel.name}</p>
         </div>
         <div className="flex items-center justify-between text-xs text-white/80">
-          {channel.viewers && !isLocked && <span>{channel.viewers} watching</span>}
           {!isLocked && (
             <span className="rounded-full bg-white/10 px-2 py-1 font-medium">უყურე</span>
           )}

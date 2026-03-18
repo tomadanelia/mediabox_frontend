@@ -83,6 +83,8 @@ type Tab = "Overview" | "History" | "Favourites";
 export default function UserProfile() {
   const language = useUIStore((state) => state.language);
   const isDark = useUIStore((state) => state.isDark);
+  const allChannels = useUIStore((state) => state.channels)
+  const { setChannels } = useUIStore()
   const tx = translations[language];
   const c = {
   page:          "bg-background text-foreground",
@@ -141,7 +143,14 @@ rolePill: "bg-muted text-muted-foreground",
       setLoading(false);
     }
   }, [storeUser]);
-
+  useEffect(() => {
+  if (allChannels.length === 0) {
+    api.get("/api/channels").then((res) => {
+      const fetched = Array.isArray(res.data.channels) ? res.data.channels : []
+      setChannels(fetched)
+    }).catch(() => {})
+  }
+}, [])
   useEffect(() => {
     api.get("/api/plans/my")
       .then((res) => setActivePlans(Array.isArray(res.data) ? res.data : []))
@@ -155,10 +164,13 @@ rolePill: "bg-muted text-muted-foreground",
       .then((res) => setWatchHistory(Array.isArray(res.data) ? res.data : res.data?.data ?? []))
       .catch(() => setWatchHistory([]));
   }, [tab]);
-
+  useEffect(() => {
+  if (tab !== "Favourites") return;
+  fetchFavourites();
+}, [tab]);
   /* ── Fetch favourites ── */
   const fetchFavourites = useCallback(() => {
-    api.get("/user/preferences/favourite-channels")
+    api.get("/api/user/preferences/favourite-channels")
       .then((res) => {
         const data = res.data;
         setFavourites({
@@ -532,30 +544,29 @@ rolePill: "bg-muted text-muted-foreground",
                     <span className="w-14 shrink-0" />
                   </div>
                   {favourites.favouriteChannelIds.map((channelId, i) => {
-                    const ch = favourites.channels?.find(cc => cc.id === channelId);
-                    const name = ch?.name ?? `Channel ${channelId}`;
-                    const logo = ch?.logo as string | undefined;
-                    return (
-                      <div key={channelId} className={`flex items-center gap-6 py-4 border-b ${c.tableRow} transition-colors`}>
-                        <span className={`text-[0.6rem] font-mono w-5 shrink-0 ${c.faint}`}>{String(i + 1).padStart(2, "0")}</span>
-                        <div className="flex items-center gap-3 flex-1 min-w-0">
-                          {logo
-                            ? <img src={logo} alt={name} className="w-8 h-8 rounded-lg object-cover shrink-0" />
-                            : <div className={`w-8 h-8 rounded-lg shrink-0 flex items-center justify-center text-[0.6rem] font-bold font-mono ${c.logoBg}`}>{name.slice(0, 2).toUpperCase()}</div>
-                          }
-                          <span className={`text-sm font-medium truncate ${c.heading}`}>{name}</span>
-                        </div>
-                        <span className={`text-xs font-mono ${c.sub} w-16 text-right hidden sm:block shrink-0`}>{channelId}</span>
-                        <button
-                          onClick={() => deleteFavourite(channelId)}
-                          disabled={deletingId === channelId}
-                          className={`text-xs font-medium w-14 text-right shrink-0 transition-colors cursor-pointer disabled:opacity-40 ${c.removeBtn}`}
-                        >
-                          {deletingId === channelId ? tx.favourites.removing : tx.favourites.remove}
-                        </button>
-                      </div>
-                    );
-                  })}
+  const ch = allChannels.find(c => String(c.id) === String(channelId))
+  const name = ch?.name ?? `Channel ${channelId}`
+
+  return (
+    <div key={channelId} className={`flex items-center gap-6 py-4 border-b ${c.tableRow} transition-colors`}>
+      <span className={`text-[0.6rem] font-mono w-5 shrink-0 ${c.faint}`}>{String(i + 1).padStart(2, "0")}</span>
+      <div className="flex items-center gap-3 flex-1 min-w-0">
+         <div className={`w-8 h-8 rounded-lg shrink-0 flex items-center justify-center text-[0.6rem] font-bold font-mono ${c.logoBg}`}>
+              {name.slice(0, 2).toUpperCase()}
+            </div>
+        <span className={`text-sm font-medium truncate ${c.heading}`}>{name}</span>
+      </div>
+      <span className={`text-xs font-mono ${c.sub} w-16 text-right hidden sm:block shrink-0`}>{channelId}</span>
+      <button
+        onClick={() => deleteFavourite(channelId)}
+        disabled={deletingId === channelId}
+        className={`text-xs font-medium w-14 text-right shrink-0 transition-colors cursor-pointer disabled:opacity-40 ${c.removeBtn}`}
+      >
+        {deletingId === channelId ? tx.favourites.removing : tx.favourites.remove}
+      </button>
+    </div>
+  )
+})}
                 </div>
               )}
             </div>
