@@ -253,7 +253,7 @@ const ChannelModal = ({
 }
 
 const Plans = () => {
-  const { isDark, language } = useUIStore()
+  const {language } = useUIStore()
   const { user, isAuthenticated, isLoading: authLoading, fetchUser, setUser } = useAuthStore()
   const navigate = useNavigate()
 
@@ -263,6 +263,7 @@ const Plans = () => {
   const [plans, setPlans] = useState<Plan[]>([])
   const [activePlans, setActivePlans] = useState<ActivePlan[]>([])
   const [plansLoading, setPlansLoading] = useState(true)
+  const [confirmPlan,setConfirmPlan]=useState<Plan|null>(null);
   const [purchasing, setPurchasing] = useState<string | null>(null)
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null)
   const [channelModalPlan, setChannelModalPlan] = useState<Plan | null>(null)
@@ -413,7 +414,7 @@ const t = {
       case 'ready':
   return (
     <button
-      onClick={(e) => { e.stopPropagation(); handlePurchase(plan.id)}}
+      onClick={(e) => { e.stopPropagation(); setConfirmPlan(plan)}}
       className={`${base} ${
         popular
           ? 'bg-plans-popular-head hover:bg-button-hover text-white shadow-[0_2px_16px_rgba(192,17,17,0.35)] hover:shadow-[0_4px_24px_rgba(192,17,17,0.5)]'
@@ -456,6 +457,54 @@ const t = {
           onClose={() => setChannelModalPlan(null)}
         />
       )}
+      {confirmPlan && (
+  <div
+    className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm"
+    onClick={() => setConfirmPlan(null)}
+  >
+    <div
+      className="relative w-full max-w-sm rounded-2xl border-2 border-yellow-500/60 bg-auth-card-bg shadow-2xl p-6"
+      onClick={e => e.stopPropagation()}
+    >
+      {/* Icon */}
+      <div className="flex items-center justify-center w-12 h-12 rounded-full bg-yellow-500/15 border border-yellow-500/30 mx-auto mb-4">
+        <svg className="w-6 h-6 text-yellow-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+            d="M12 9v4m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" />
+        </svg>
+      </div>
+
+      {/* Title */}
+      <h2 className="text-center text-lg font-bold text-foreground mb-1">
+        {language === 'Ge' ? 'დაადასტურეთ შეძენა' : 'Confirm Purchase'}
+      </h2>
+
+      {/* Plan info */}
+      <p className="text-center text-sm text-muted-foreground mb-1">
+        {confirmPlan[`name_${lang}`]}
+      </p>
+      <p className="text-center text-2xl font-bold text-yellow-400 mb-5">
+        {Number(confirmPlan.price).toFixed(2)} ₾
+      </p>
+
+      {/* Buttons */}
+      <div className="flex gap-3">
+        <button
+          onClick={() => setConfirmPlan(null)}
+          className="flex-1 py-2.5 rounded-xl text-sm font-semibold border border-plans-divider text-muted-foreground hover:bg-plans-skeleton-bg transition-all"
+        >
+          {language === 'Ge' ? 'გაუქმება' : 'Cancel'}
+        </button>
+        <button
+          onClick={() => { handlePurchase(confirmPlan.id); setConfirmPlan(null) }}
+          className="flex-1 py-2.5 rounded-xl text-sm font-semibold bg-yellow-500 hover:bg-yellow-400 text-black transition-all shadow-[0_2px_16px_rgba(234,179,8,0.35)]"
+        >
+          {language === 'Ge' ? 'დიახ, ყიდვა' : 'Yes, Buy'}
+        </button>
+      </div>
+    </div>
+  </div>
+)}
 
       <div className="max-w-7xl mx-auto px-4 py-16 sm:px-6 lg:px-8">
 
