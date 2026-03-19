@@ -15,6 +15,8 @@ import MobileCalendar from '@/hmcomponents/mobilecalendar';
 import { ChevronLeft, ChevronRight, CalendarDays } from 'lucide-react';
 
 import { FavouriteButton } from '@/hmcomponents/favourites';
+import { DownloadButton } from '@/hmcomponents/downloadBtn';
+
 import { CategoryIcon } from '@/hmcomponents/IconMapper';
 import PlansModal from '@/hmcomponents/planspopup';
 import api from '@/lib/axios';
@@ -139,7 +141,7 @@ const ChannelGrid: React.FC<ChannelGridProps> = ({
           border border-black/10 dark:border-white/10
           text-black/80 dark:text-white/80
           placeholder:text-black/30 dark:placeholder:text-white/30
-          outline-none focus:ring-2 focus:ring-orange-400/40"
+          outline-none focus:ring-2 focus:ring-red-400/40"
       />
 
       {/* Category pills */}
@@ -149,7 +151,7 @@ const ChannelGrid: React.FC<ChannelGridProps> = ({
           onClick={() => onToggleCategory('')}
           className={`shrink-0 h-7 px-3 rounded-full text-xs font-medium transition-all
             ${selectedCategory === '' && !showFavouritesOnly
-              ? 'bg-gradient-to-br from-orange-500 to-yellow-400 text-white shadow-sm shadow-orange-300/30'
+              ? 'bg-gradient-to-br from-red-500 to-yellow-400 text-white shadow-sm shadow-red-300/30'
               : 'bg-white/70 dark:bg-white/5 border border-black/10 dark:border-white/10 text-black/50 dark:text-white/40'
             }`}
         >
@@ -161,7 +163,7 @@ const ChannelGrid: React.FC<ChannelGridProps> = ({
           onClick={onToggleFavourites}
           className={`shrink-0 h-7 px-3 rounded-full text-xs font-medium transition-all flex items-center gap-1
             ${showFavouritesOnly
-              ? 'bg-gradient-to-br from-orange-500 to-yellow-400 text-white shadow-sm shadow-orange-300/30'
+              ? 'bg-gradient-to-br from-red-500 to-yellow-400 text-white shadow-sm shadow-red-300/30'
               : 'bg-white/70 dark:bg-white/5 border border-black/10 dark:border-white/10 text-black/50 dark:text-white/40'
             }`}
         >
@@ -600,7 +602,7 @@ export const Stream: React.FC = () => {
 
   if (isMobilePortrait) {
     return (
-      <div className="flex flex-col w-full h-[calc(100vh-80px)] bg-gray-50 dark:bg-[#21262c] overflow-hidden">
+      <div className="flex flex-col w-full h-[calc(100vh-80px)] overflow-hidden">
 
         {pendingChannel && (
           <div className="absolute inset-0 bg-black/50 z-30">
@@ -736,7 +738,7 @@ export const Stream: React.FC = () => {
   // ════════════════════════════════════════════════════════════
 
   return (
-    <div className="flex flex-col justify-between w-full h-[calc(100vh-80px)] bg-[#21262c] relative">
+    <div className="flex flex-col justify-between w-full h-[calc(100vh-80px)]  relative">
       {pendingChannel && (
         <div className='absolute w-full h-full bg-black/50 z-30'>
           <PlansModal
@@ -786,7 +788,7 @@ export const Stream: React.FC = () => {
 
         {/* CENTER */}
         <div className="w-[calc(100vw-130px)] lg:w-3/5 relative lg:h-full flex flex-col">
-          <div className='flex flex-col'>
+          <div className='flex flex-col lg:h-[calc(100vh-250px)]'>
             <VideoPlayer
               programs={programs}
               nextDayPrograms={nextDayPrograms}
@@ -801,8 +803,13 @@ export const Stream: React.FC = () => {
               rewindableDays={rewindableDays}
             />
           </div>
-<div className='flex px-2 py-1'>
+<div className='flex px-2 py-1 justify-center items-center w-full'>
   <FavouriteButton channelId={selectedChannel?.id} />
+  <DownloadButton
+  channelId={selectedChannel?.id}
+  currentTimestamp={archiveTimestamp}
+  oldestTimestamp={Math.floor(Date.now() / 1000) - rewindableHours * 3600}
+/>
 </div>
 
           {isCalendarVisible && (
