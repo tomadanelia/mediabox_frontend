@@ -207,12 +207,7 @@ const Home: React.FC = () => {
       }
     })()
   }, [])
-  useEffect(() => {
-  const el = document.querySelector(".page-content") as HTMLElement | null
-  if (!el) return
-  el.style.overflowY = "auto"
-  return () => { el.style.overflowY = "hidden" }
-}, [])
+
   const channelsByCategory = React.useMemo(() => {
     const map = new Map<string, Channel[]>()
     for (const ch of channels) {

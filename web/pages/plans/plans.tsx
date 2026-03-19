@@ -41,6 +41,10 @@ interface Channel {
   is_active: boolean
 }
 
+const TV_DEVICE_PRICE = 5 // ₾ per device
+const MAX_TV_DEVICES = 5
+const DEFAULT_TV_DEVICES = 1
+
 const translations = {
   Ge: {
     subscriptionLabel: 'სააბონენტო',
@@ -68,7 +72,20 @@ const translations = {
     channelCount: (n: number) => `${n} არხი`,
     close: 'დახურვა',
     channel: 'არხი',
-    packetIncludes: 'პაკეტში შედის ყველა უფასო არხი და შემდეგი'
+    packetIncludes: 'პაკეტში შედის ყველა უფასო არხი და შემდეგი',
+    // TV Device add-on
+    tvAddonLabel: 'დამატებითი სერვისი',
+    tvAddonTitle: 'TV მოწყობილობები',
+    tvAddonSubtitle: 'მაქსიმალური მოწყობილობების ლიმიტის გაზრდა',
+    tvAddonPricePerDevice: 'მოწყობილობაზე',
+    tvAddonDevices: (n: number) => `${n} მოწყობილობა`,
+    tvAddonCurrentLimit: 'მიმდინარე ლიმიტი',
+    tvAddonNewLimit: 'ახალი ლიმიტი',
+    tvAddonIncluded: 'ჩართულია პაკეტში',
+    tvAddonTotal: 'ჯამი',
+    tvAddonPlanFee: 'პაკეტის ფასი',
+    tvAddonDeviceFee: 'TV მოწყობილობები',
+    tvAddonConfirmNote: 'ეს არის ერთჯერადი დამატება',
   },
   En: {
     subscriptionLabel: 'SUBSCRIPTION',
@@ -96,7 +113,20 @@ const translations = {
     channelCount: (n: number) => `${n} channels`,
     close: 'Close',
     channel: 'CH',
-    packetIncludes: 'plan includes all free channels and folllowing'
+    packetIncludes: 'plan includes all free channels and following',
+    // TV Device add-on
+    tvAddonLabel: 'ADD-ON',
+    tvAddonTitle: 'TV Devices',
+    tvAddonSubtitle: 'Increase your maximum simultaneous device limit',
+    tvAddonPricePerDevice: 'per device',
+    tvAddonDevices: (n: number) => `${n} device${n !== 1 ? 's' : ''}`,
+    tvAddonCurrentLimit: 'Current limit',
+    tvAddonNewLimit: 'New limit',
+    tvAddonIncluded: 'Included in plan',
+    tvAddonTotal: 'Total',
+    tvAddonPlanFee: 'Plan fee',
+    tvAddonDeviceFee: 'TV devices',
+    tvAddonConfirmNote: 'This is a one-time add-on purchase',
   },
 } as const
 
@@ -114,6 +144,138 @@ function getScenario(
   if (!canAfford) return 'low_balance'
   return 'ready'
 }
+
+// ─── TV Device Add-on Banner ─────────────────────────────────────────────────
+
+const TvDeviceAddon = ({
+  tx,
+  extraDevices,
+  setExtraDevices,
+  isAuthenticated,
+  navigate,
+}: {
+  tx: typeof translations['En'] | typeof translations['Ge']
+  extraDevices: number
+  setExtraDevices: (n: number) => void
+  isAuthenticated: boolean
+  navigate: (path: string) => void
+}) => {
+  const currentDefaultLimit = DEFAULT_TV_DEVICES
+  const newLimit = currentDefaultLimit + extraDevices
+  const totalFee = extraDevices * TV_DEVICE_PRICE
+
+  return (
+    <div className="mb-6 relative">
+      {/* Subtle top accent line */}
+      <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-amber-500/40 to-transparent" />
+
+      <div
+        className="rounded-2xl border border-amber-500/20 bg-gradient-to-br from-amber-500/5 via-transparent to-amber-600/5 overflow-hidden"
+        style={{ boxShadow: '0 0 40px rgba(245,158,11,0.06), inset 0 1px 0 rgba(245,158,11,0.1)' }}
+      >
+        <div className="flex flex-col lg:flex-row lg:items-center gap-6 p-5 sm:p-6">
+
+          {/* Left: Icon + Text */}
+          <div className="flex items-start gap-4 flex-1 min-w-0">
+            {/* Icon box */}
+            <div className="shrink-0 w-11 h-11 rounded-xl bg-amber-500/10 border border-amber-500/25 flex items-center justify-center">
+              <svg className="w-5 h-5 text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <rect x="2" y="3" width="20" height="14" rx="2" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+                <path d="M8 21h8M12 17v4" strokeWidth="1.8" strokeLinecap="round" />
+              </svg>
+            </div>
+
+            <div className="min-w-0">
+              <div className="flex items-center gap-2 mb-0.5">
+                <span className="text-[10px] font-bold uppercase tracking-[0.18em] text-amber-500/80">{tx.tvAddonLabel}</span>
+              </div>
+              <h3 className="text-sm font-semibold text-foreground">{tx.tvAddonTitle}</h3>
+              <p className="text-xs text-muted-foreground mt-0.5 leading-relaxed">{tx.tvAddonSubtitle}</p>
+
+              {/* Limit display */}
+              <div className="flex items-center gap-3 mt-3">
+                <div className="flex items-center gap-1.5">
+                  <span className="text-xs text-muted-foreground">{tx.tvAddonCurrentLimit}:</span>
+                  <span className="text-xs font-semibold text-foreground tabular-nums">
+                    {currentDefaultLimit}
+                  </span>
+                </div>
+                {extraDevices > 0 && (
+                  <>
+                    <svg className="w-3 h-3 text-amber-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M9 5l7 7-7 7" />
+                    </svg>
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-xs text-muted-foreground">{tx.tvAddonNewLimit}:</span>
+                      <span className="text-xs font-bold text-amber-400 tabular-nums">{newLimit}</span>
+                    </div>
+                  </>
+                )}
+              </div>
+            </div>
+          </div>
+
+          {/* Right: Price + Counter */}
+          <div className="flex flex-col sm:flex-row lg:flex-col xl:flex-row items-start sm:items-center lg:items-end xl:items-center gap-4 lg:gap-3 shrink-0">
+
+            {/* Price badge */}
+            <div className="flex items-baseline gap-1">
+              <span className="text-2xl font-bold text-amber-400 tabular-nums">{TV_DEVICE_PRICE}</span>
+              <span className="text-sm text-amber-400">₾</span>
+              <span className="text-xs text-muted-foreground ml-0.5">/ {tx.tvAddonPricePerDevice}</span>
+            </div>
+
+            {/* Stepper */}
+            <div className="flex items-center gap-0 rounded-xl border border-plans-divider bg-plans-card-bg overflow-hidden">
+              <button
+                onClick={() => setExtraDevices(Math.max(0, extraDevices - 1))}
+                disabled={extraDevices === 0}
+                className="w-9 h-9 flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-plans-skeleton-bg transition-colors disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer"
+                aria-label="Remove device"
+              >
+                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 12h14" />
+                </svg>
+              </button>
+
+              <div className="w-10 h-9 flex items-center justify-center border-x border-plans-divider">
+                <span className="text-sm font-bold text-foreground tabular-nums">{extraDevices}</span>
+              </div>
+
+              <button
+                onClick={() => setExtraDevices(Math.min(MAX_TV_DEVICES, extraDevices + 1))}
+                disabled={extraDevices === MAX_TV_DEVICES}
+                className="w-9 h-9 flex items-center justify-center text-muted-foreground hover:text-amber-400 hover:bg-amber-500/10 transition-colors disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer"
+                aria-label="Add device"
+              >
+                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 5v14M5 12h14" />
+                </svg>
+              </button>
+            </div>
+
+            {/* Fee summary pill */}
+            {extraDevices > 0 ? (
+              <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-amber-500/10 border border-amber-500/20">
+                <span className="text-xs text-amber-400 font-semibold tabular-nums">
+                  +{totalFee.toFixed(2)} ₾
+                </span>
+                <span className="text-xs text-amber-500/60">·</span>
+                <span className="text-xs text-amber-500/80">{tx.tvAddonDevices(extraDevices)}</span>
+              </div>
+            ) : (
+              <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-plans-skeleton-bg border border-plans-divider">
+                <span className="text-xs text-muted-foreground">{tx.tvAddonIncluded}</span>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// ─── Channel Modal ────────────────────────────────────────────────────────────
 
 const ChannelModal = ({
   plan,
@@ -169,7 +331,6 @@ const ChannelModal = ({
         style={{ maxHeight: '80vh' }}
         onClick={e => e.stopPropagation()}
       >
-        {/* Header */}
         <div className="px-5 py-4 border-b border-plans-divider flex items-start justify-between gap-3 shrink-0">
           <div>
             <h2 className="text-base font-semibold text-foreground">
@@ -181,7 +342,7 @@ const ChannelModal = ({
           </div>
           <button
             onClick={onClose}
-            className="shrink-0 w-8 h-8 rounded-lg flex items-center justify-center transition-colors text-muted-foreground hover:bg-plans-skeleton-bg hover:text-foreground"
+            className="shrink-0 w-8 h-8 cursor-pointer rounded-lg flex items-center justify-center transition-colors text-muted-foreground hover:bg-plans-skeleton-bg hover:text-foreground"
           >
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -189,7 +350,6 @@ const ChannelModal = ({
           </button>
         </div>
 
-        {/* Search */}
         {!loading && !error && channels.length > 0 && (
           <div className="px-5 pt-3 pb-2 shrink-0">
             <input
@@ -202,7 +362,6 @@ const ChannelModal = ({
           </div>
         )}
 
-        {/* Body */}
         <div className="overflow-y-auto flex-1 px-3 py-2">
           {loading ? (
             <div className="flex items-center justify-center py-16">
@@ -216,7 +375,7 @@ const ChannelModal = ({
             </div>
           ) : filtered.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-16 gap-2">
-              <span className="text-2xl">📺</span>
+              <span className="material-symbols-outlined">tv</span>
               <p className="text-sm text-muted-foreground">{tx.channelsEmpty}</p>
             </div>
           ) : (
@@ -252,8 +411,10 @@ const ChannelModal = ({
   )
 }
 
+// ─── Plans ────────────────────────────────────────────────────────────────────
+
 const Plans = () => {
-  const {language } = useUIStore()
+  const { language } = useUIStore()
   const { user, isAuthenticated, isLoading: authLoading, fetchUser, setUser } = useAuthStore()
   const navigate = useNavigate()
 
@@ -263,10 +424,13 @@ const Plans = () => {
   const [plans, setPlans] = useState<Plan[]>([])
   const [activePlans, setActivePlans] = useState<ActivePlan[]>([])
   const [plansLoading, setPlansLoading] = useState(true)
-  const [confirmPlan,setConfirmPlan]=useState<Plan|null>(null);
+  const [confirmPlan, setConfirmPlan] = useState<Plan | null>(null)
   const [purchasing, setPurchasing] = useState<string | null>(null)
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null)
   const [channelModalPlan, setChannelModalPlan] = useState<Plan | null>(null)
+
+  // TV Device add-on state
+  const [extraDevices, setExtraDevices] = useState(0)
 
   const balance = user?.account?.balance != null ? parseFloat(user.account.balance) : null
   const isLowBalance = balance !== null && balance < 1.00
@@ -326,46 +490,52 @@ const Plans = () => {
   const isOwned = (planId: string) => activePlans.some(ap => ap.plan_id === planId)
   const getActivePlan = (planId: string) => activePlans.find(ap => ap.plan_id === planId)
   const popularIndex = Math.min(3, plans.length - 1)
-const t = {
-  bg: 'bg-plans-bg',
-  cardDefault: [
-    'border border-plans-divider bg-plans-card-bg',
-    'hover:border-plans-divider-popular hover:shadow-[0_0_0_1.5px_#c01111,0_8px_32px_rgba(192,17,17,0.10)]',
-    'dark:hover:shadow-[0_0_0_1.5px_#e03333,0_8px_32px_rgba(224,51,51,0.15)]',
-    'hover:-translate-y-1 transition-all duration-300',
-  ].join(' '),
-  cardPopular: [
-    'bg-plans-card-popular-bg',
-    'border-2 border-plans-popular-head',
-    'shadow-[0_0_0_0px_transparent,0_8px_40px_rgba(192,17,17,0.18)]',
-    'hover:-translate-y-1 hover:shadow-[0_0_0_0px_transparent,0_16px_48px_rgba(192,17,17,0.28)]',
-    'dark:shadow-[0_0_0_0px_transparent,0_8px_40px_rgba(224,51,51,0.22)]',
-    'dark:hover:shadow-[0_0_0_0px_transparent,0_16px_48px_rgba(224,51,51,0.32)]',
-    'transition-all duration-300',
-  ].join(' '),
-  skeletonCard: 'bg-plans-skeleton-bg',
-  skeletonInner: 'bg-plans-skeleton-inner',
-  divider: 'bg-plans-divider',
-  dividerPopular: 'bg-plans-divider-popular',
-  balanceCard: 'bg-plans-balance-card-bg',
-  featureBadge: 'bg-plans-feature-badge-bg text-plans-feature-badge-text',
-  channelBtn: 'flex items-center gap-1.5 text-xs text-plans-channel-btn-text hover:text-form-highlights transition-colors cursor-pointer',
-  activeChip: 'bg-plans-active-chip-bg border-plans-active-chip-border text-plans-active-chip-text',
-  text: 'text-foreground',
-  textMuted: 'text-muted-foreground',
-  textFaint: 'text-muted-foreground',
-  priceColor: 'text-foreground',
-  priceMuted: 'text-muted-foreground',
-  balancePulse: 'bg-plans-skeleton-inner',
-  balanceLabel: 'text-muted-foreground',
-  featureText: 'text-foreground',
-  balanceRegisterText: 'text-form-highlights',
-  btnGuest: 'bg-transparent hover:bg-plans-skeleton-bg text-foreground border border-plans-divider hover:border-plans-divider-popular transition-all',
-  btnPurchasing: 'bg-plans-skeleton-bg text-foreground cursor-wait',
-  btnOwned: 'bg-plans-active-chip-bg text-plans-active-chip-text border border-plans-active-chip-border cursor-default',
-  btnLowBalance: 'bg-amber-500/10 text-amber-400 border border-amber-500/20 hover:bg-amber-500/20',
-  btnReady: 'bg-transparent hover:bg-plans-skeleton-bg text-foreground border border-plans-divider hover:border-plans-divider-popular transition-all',
-}
+
+  // Computed totals for confirm modal
+  const deviceFee = extraDevices * TV_DEVICE_PRICE
+  const planFee = confirmPlan ? Number(confirmPlan.price) : 0
+  const totalFee = planFee + deviceFee
+
+  const t = {
+    bg: 'bg-plans-bg',
+    cardDefault: [
+      'border border-plans-divider bg-plans-card-bg',
+      'hover:border-plans-divider-popular hover:shadow-[0_0_0_1.5px_#c01111,0_8px_32px_rgba(192,17,17,0.10)]',
+      'dark:hover:shadow-[0_0_0_1.5px_#e03333,0_8px_32px_rgba(224,51,51,0.15)]',
+      'hover:-translate-y-1 transition-all duration-300',
+    ].join(' '),
+    cardPopular: [
+      'bg-plans-card-popular-bg',
+      'border-2 border-plans-popular-head',
+      'shadow-[0_0_0_0px_transparent,0_8px_40px_rgba(192,17,17,0.18)]',
+      'hover:-translate-y-1 hover:shadow-[0_0_0_0px_transparent,0_16px_48px_rgba(192,17,17,0.28)]',
+      'dark:shadow-[0_0_0_0px_transparent,0_8px_40px_rgba(224,51,51,0.22)]',
+      'dark:hover:shadow-[0_0_0_0px_transparent,0_16px_48px_rgba(224,51,51,0.32)]',
+      'transition-all duration-300',
+    ].join(' '),
+    skeletonCard: 'bg-plans-skeleton-bg',
+    skeletonInner: 'bg-plans-skeleton-inner',
+    divider: 'bg-plans-divider',
+    dividerPopular: 'bg-plans-divider-popular',
+    balanceCard: 'bg-plans-balance-card-bg',
+    featureBadge: 'bg-plans-feature-badge-bg text-plans-feature-badge-text',
+    channelBtn: 'flex items-center gap-1.5 text-xs text-plans-channel-btn-text hover:text-form-highlights transition-colors cursor-pointer',
+    activeChip: 'bg-plans-active-chip-bg border-plans-active-chip-border text-plans-active-chip-text',
+    text: 'text-foreground',
+    textMuted: 'text-muted-foreground',
+    textFaint: 'text-muted-foreground',
+    priceColor: 'text-foreground',
+    priceMuted: 'text-muted-foreground',
+    balancePulse: 'bg-plans-skeleton-inner',
+    balanceLabel: 'text-muted-foreground',
+    featureText: 'text-foreground',
+    balanceRegisterText: 'text-form-highlights',
+    btnGuest: 'bg-transparent hover:bg-plans-skeleton-bg text-foreground border border-plans-divider hover:border-plans-divider-popular transition-all',
+    btnPurchasing: 'bg-plans-skeleton-bg text-foreground cursor-wait',
+    btnOwned: 'bg-plans-active-chip-bg text-plans-active-chip-text border border-plans-active-chip-border cursor-default',
+    btnLowBalance: 'bg-amber-500/10 text-amber-400 border border-amber-500/20 hover:bg-amber-500/20',
+    btnReady: 'bg-transparent hover:bg-plans-skeleton-bg text-foreground border border-plans-divider hover:border-plans-divider-popular transition-all',
+  }
 
   const renderButton = (plan: Plan, popular: boolean) => {
     const owned = isOwned(plan.id)
@@ -382,17 +552,15 @@ const t = {
             {tx.purchasing}
           </button>
         )
-
       case 'guest':
         return (
           <button
-            onClick={(e) =>{ e.stopPropagation();  navigate('/authentication/register')}}
+            onClick={(e) => { e.stopPropagation(); navigate('/authentication/register') }}
             className={`${base} ${t.btnGuest} active:scale-[0.98]`}
           >
             {tx.registerPrompt}
           </button>
         )
-
       case 'owned':
         return (
           <button disabled className={`${base} ${t.btnOwned}`}>
@@ -400,30 +568,28 @@ const t = {
             {tx.activeBadge}
           </button>
         )
-
       case 'low_balance':
         return (
           <button
-            onClick={(e) =>{  e.stopPropagation(); navigate('/profile')}}
+            onClick={(e) => { e.stopPropagation(); navigate('/profile') }}
             className={`${base} ${t.btnLowBalance} active:scale-[0.98]`}
           >
             {tx.topUp}
           </button>
         )
-
       case 'ready':
-  return (
-    <button
-      onClick={(e) => { e.stopPropagation(); setConfirmPlan(plan)}}
-      className={`${base} ${
-        popular
-          ? 'bg-plans-popular-head hover:bg-button-hover text-white shadow-[0_2px_16px_rgba(192,17,17,0.35)] hover:shadow-[0_4px_24px_rgba(192,17,17,0.5)]'
-          : t.btnReady
-      } active:scale-[0.98]`}
-    >
-      {tx.buy}
-    </button>
-  )
+        return (
+          <button
+            onClick={(e) => { e.stopPropagation(); setConfirmPlan(plan) }}
+            className={`${base} ${
+              popular
+                ? 'bg-plans-popular-head hover:bg-button-hover text-white shadow-[0_2px_16px_rgba(192,17,17,0.35)] hover:shadow-[0_4px_24px_rgba(192,17,17,0.5)]'
+                : t.btnReady
+            } active:scale-[0.98]`}
+          >
+            {tx.buy}
+          </button>
+        )
     }
   }
 
@@ -435,7 +601,7 @@ const t = {
   }
 
   return (
-    <div className={`min-h-screen ${t.bg} ${t.text} font-sans transition-colors duration-300`} style={{ fontFamily: "'DM Sans', 'Segoe UI', sans-serif" }}>
+    <div className={`min-h ${t.bg} ${t.text} font-sans transition-colors duration-300`} style={{ fontFamily: "'DM Sans', 'Segoe UI', sans-serif" }}>
 
       {/* Toast */}
       {toast && (
@@ -457,62 +623,106 @@ const t = {
           onClose={() => setChannelModalPlan(null)}
         />
       )}
+
+      {/* Confirm Purchase Modal */}
       {confirmPlan && (
-  <div
-    className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm"
-    onClick={() => setConfirmPlan(null)}
-  >
-    <div
-      className="relative w-full max-w-sm rounded-2xl border-2 border-yellow-500/60 bg-auth-card-bg shadow-2xl p-6"
-      onClick={e => e.stopPropagation()}
-    >
-      {/* Icon */}
-      <div className="flex items-center justify-center w-12 h-12 rounded-full bg-yellow-500/15 border border-yellow-500/30 mx-auto mb-4">
-        <svg className="w-6 h-6 text-yellow-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-            d="M12 9v4m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" />
-        </svg>
-      </div>
-
-      {/* Title */}
-      <h2 className="text-center text-lg font-bold text-foreground mb-1">
-        {language === 'Ge' ? 'დაადასტურეთ შეძენა' : 'Confirm Purchase'}
-      </h2>
-
-      {/* Plan info */}
-      <p className="text-center text-sm text-muted-foreground mb-1">
-        {confirmPlan[`name_${lang}`]}
-      </p>
-      <p className="text-center text-2xl font-bold text-yellow-400 mb-5">
-        {Number(confirmPlan.price).toFixed(2)} ₾
-      </p>
-
-      {/* Buttons */}
-      <div className="flex gap-3">
-        <button
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm"
           onClick={() => setConfirmPlan(null)}
-          className="flex-1 py-2.5 rounded-xl text-sm font-semibold border border-plans-divider text-muted-foreground hover:bg-plans-skeleton-bg transition-all"
         >
-          {language === 'Ge' ? 'გაუქმება' : 'Cancel'}
-        </button>
-        <button
-          onClick={() => { handlePurchase(confirmPlan.id); setConfirmPlan(null) }}
-          className="flex-1 py-2.5 rounded-xl text-sm font-semibold bg-yellow-500 hover:bg-yellow-400 text-black transition-all shadow-[0_2px_16px_rgba(234,179,8,0.35)]"
-        >
-          {language === 'Ge' ? 'დიახ, ყიდვა' : 'Yes, Buy'}
-        </button>
-      </div>
-    </div>
-  </div>
-)}
+          <div
+            className="relative w-full max-w-sm rounded-2xl border-2 border-yellow-500/60 bg-auth-card-bg shadow-2xl p-6"
+            onClick={e => e.stopPropagation()}
+          >
+            {/* Icon */}
+            <div className="flex items-center justify-center w-12 h-12 rounded-full bg-yellow-500/15 border border-yellow-500/30 mx-auto mb-4">
+              <svg className="w-6 h-6 text-yellow-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                  d="M12 9v4m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" />
+              </svg>
+            </div>
 
-      <div className="max-w-7xl mx-auto px-4 py-16 sm:px-6 lg:px-8">
+            {/* Title */}
+            <h2 className="text-center text-lg font-bold text-foreground mb-4">
+              {language === 'Ge' ? 'დაადასტურეთ შეძენა' : 'Confirm Purchase'}
+            </h2>
+
+            {/* Breakdown */}
+            <div className="rounded-xl border border-plans-divider bg-plans-skeleton-bg overflow-hidden mb-5">
+              {/* Plan row */}
+              <div className="flex items-center justify-between px-4 py-3">
+                <div className="flex items-center gap-2">
+                  <div className="w-1.5 h-1.5 rounded-full bg-form-highlights" />
+                  <span className="text-sm text-foreground">{confirmPlan[`name_${lang}`]}</span>
+                  <span className="text-xs text-muted-foreground">({tx.tvAddonPlanFee})</span>
+                </div>
+                <span className="text-sm font-semibold text-foreground tabular-nums">
+                  {planFee.toFixed(2)} ₾
+                </span>
+              </div>
+
+              {/* TV device row — only shown if extras selected */}
+              {extraDevices > 0 && (
+                <>
+                  <div className="h-px bg-plans-divider mx-4" />
+                  <div className="flex items-center justify-between px-4 py-3">
+                    <div className="flex items-center gap-2">
+                      <div className="w-1.5 h-1.5 rounded-full bg-amber-400" />
+                      <span className="text-sm text-foreground">{tx.tvAddonDeviceFee}</span>
+                      <span className="text-xs text-muted-foreground">
+                        ({extraDevices} × {TV_DEVICE_PRICE} ₾)
+                      </span>
+                    </div>
+                    <span className="text-sm font-semibold text-amber-400 tabular-nums">
+                      +{deviceFee.toFixed(2)} ₾
+                    </span>
+                  </div>
+                </>
+              )}
+
+              {/* Total row */}
+              <div className="h-px bg-plans-divider" />
+              <div className="flex items-center justify-between px-4 py-3 bg-yellow-500/5">
+                <span className="text-sm font-bold text-foreground">{tx.tvAddonTotal}</span>
+                <span className="text-lg font-bold text-yellow-400 tabular-nums">
+                  {totalFee.toFixed(2)} ₾
+                </span>
+              </div>
+            </div>
+
+            {/* Device limit note */}
+            {extraDevices > 0 && (
+              <p className="text-xs text-center text-amber-500/70 mb-4">
+                {tx.tvAddonConfirmNote} · {DEFAULT_TV_DEVICES + extraDevices} {language === 'Ge' ? 'მოწყობილობა' : 'devices max'}
+              </p>
+            )}
+
+            {/* Buttons */}
+            <div className="flex gap-3">
+              <button
+                onClick={() => setConfirmPlan(null)}
+                className="flex-1 py-2.5 rounded-xl text-sm font-semibold border border-plans-divider text-muted-foreground hover:bg-plans-skeleton-bg transition-all"
+              >
+                {language === 'Ge' ? 'გაუქმება' : 'Cancel'}
+              </button>
+              <button
+                onClick={() => { handlePurchase(confirmPlan.id); setConfirmPlan(null) }}
+                className="flex-1 py-2.5 rounded-xl text-sm font-semibold bg-yellow-500 hover:bg-yellow-400 text-black transition-all shadow-[0_2px_16px_rgba(234,179,8,0.35)]"
+              >
+                {language === 'Ge' ? 'დიახ, ყიდვა' : 'Yes, Buy'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <div className="max-w-7xl mx-auto px-4 py-3 sm:px-6 lg:px-8">
 
         {/* Header + Balance */}
-        <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-6 mb-16">
+        <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-6 mb-3">
           <div>
             <p className="text-xs uppercase tracking-[0.2em] text-form-highlights font-semibold mb-2">{tx.subscriptionLabel}</p>
-            <h1 className={`text-4xl sm:text-5xl font-bold tracking-tight ${t.text}`}>{tx.heading}</h1>
+            <h1 className={`text-3xl sm:text-3xl font-bold tracking-tight ${t.text}`}>{tx.heading}</h1>
             <p className={`mt-3 ${t.textMuted} text-base`}>{tx.subtitle}</p>
           </div>
 
@@ -553,6 +763,15 @@ const t = {
             )}
           </div>
         </div>
+
+        {/* ── TV Device Add-on Banner ── */}
+        <TvDeviceAddon
+          tx={tx}
+          extraDevices={extraDevices}
+          setExtraDevices={setExtraDevices}
+          isAuthenticated={isAuthenticated}
+          navigate={navigate}
+        />
 
         {/* Plans Grid */}
         {plansLoading ? (
@@ -621,7 +840,7 @@ const t = {
 
                     <button
                       type="button"
-                      onClick={(e) => { e.stopPropagation(); setChannelModalPlan(plan)}}
+                      onClick={(e) => { e.stopPropagation(); setChannelModalPlan(plan) }}
                       className={`${t.channelBtn} mb-4`}
                     >
                       <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -645,11 +864,7 @@ const t = {
           </div>
         )}
 
-        {isAuthenticated && isLowBalance && plans.length > 0 && (
-          <p className="text-center text-sm text-plans-popular-head mt-10">
-            {tx.lowBalanceHint}
-          </p>
-        )}
+        
       </div>
     </div>
   )

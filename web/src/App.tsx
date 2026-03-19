@@ -59,7 +59,7 @@ const App: React.FC = () => {
       </div>
 
 
-   <div className="page-content flex-1 min-h-0 overflow-hidden relative bg-background">
+   <div className="page-content flex-1 min-h-0 overflow-y-auto relative bg-background">
           <Routes>
           <Route path="/" element={<Home />} />
           <Route path="/TV" element={<Stream />} />

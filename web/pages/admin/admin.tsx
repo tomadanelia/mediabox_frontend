@@ -207,21 +207,6 @@ function PlanMenu({
 export default function AdminDashboard() {
   const { user, isLoading, isAuthenticated } = useAuthStore();
 
-  if (isLoading) {
-    return (
-      <div className="flex h-screen items-center justify-center bg-zinc-950">
-        <div className="flex items-center gap-2 text-zinc-500 text-sm">
-          <IconSpinner />
-          <span>Loading…</span>
-        </div>
-      </div>
-    );
-  }
-
-  if (!isAuthenticated || !user || user.role !== "admin") {
-    window.location.href = "/";
-    return null;
-  }
 
   const [section, setSection] = useState<AdminSection>("Overview");
 
@@ -711,6 +696,22 @@ useEffect(() => {
     }
     return pages;
   })();
+  
+  if (isLoading) {
+    return (
+      <div className="flex h-screen items-center justify-center bg-zinc-950">
+        <div className="flex items-center gap-2 text-zinc-500 text-sm">
+          <IconSpinner />
+          <span>Loading…</span>
+        </div>
+      </div>
+    );
+  }
+
+  if (!isAuthenticated || !user || user.role !== "admin") {
+    window.location.href = "/";
+    return null;
+  }
 
   return (
     <div className="flex h-screen bg-zinc-950 text-zinc-300 text-sm font-sans overflow-hidden">
