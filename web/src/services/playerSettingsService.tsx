@@ -31,13 +31,14 @@ export interface SubtitleTrack {
 }
 
 export interface PlayerSettings {
-  levels:       QualityLevel[];
-  currentLevel: number;       // -1 = auto
-  audioTracks:  AudioTrack[];
-  currentAudio: number;
-  subTracks:    SubtitleTrack[];
-  currentSub:   number;       // -1 = off
-  speed:        number;
+  levels:        QualityLevel[];
+  currentLevel:  number;       // -1 = auto
+  currentAutoLevel: number;    // actual level HLS picked when in auto mode
+  audioTracks:   AudioTrack[];
+  currentAudio:  number;
+  subTracks:     SubtitleTrack[];
+  currentSub:    number;       // -1 = off
+  speed:         number;
 }
 
 export type SettingsSubscriber = (s: PlayerSettings) => void;
@@ -51,14 +52,20 @@ export class PlayerSettingsService {
   private subscribers: Set<SettingsSubscriber> = new Set();
 
   private state: PlayerSettings = {
-    levels:       [],
-    currentLevel: -1,
-    audioTracks:  [],
-    currentAudio: 0,
-    subTracks:    [],
-    currentSub:   -1,
-    speed:        1,
+    levels:           [],
+    currentLevel:     -1,
+    currentAutoLevel: -1,
+    audioTracks:      [],
+    currentAudio:     0,
+    subTracks:        [],
+    currentSub:       -1,
+    speed:            1,
   };
+
+  // Persists the user's explicit choice across stream switches.
+  // -1 means auto (never explicitly set by user).
+  private userChosenLevel = -1;
+  private userChosenAudio = -1; // -1 = no explicit choice
 
   // ── Attach / detach ──────────────────────────────────────────────────────────
 
@@ -67,7 +74,17 @@ export class PlayerSettingsService {
 
     const sync = () => this.syncFromHls();
 
-    hls.on(Hls.Events.MANIFEST_PARSED,       sync);
+    hls.on(Hls.Events.MANIFEST_PARSED, () => {
+      // Restore user's chosen level before syncing so it sticks
+      if (this.userChosenLevel !== -1) {
+        hls.currentLevel = this.userChosenLevel;
+        hls.nextLevel    = this.userChosenLevel;
+      }
+      if (this.userChosenAudio !== -1 && this.userChosenAudio < (hls.audioTracks?.length ?? 0)) {
+        hls.audioTrack = this.userChosenAudio;
+      }
+      sync();
+    });
     hls.on(Hls.Events.LEVEL_SWITCHED,        sync);
     hls.on(Hls.Events.AUDIO_TRACK_SWITCHED,  sync);
     hls.on(Hls.Events.SUBTITLE_TRACK_SWITCH, sync);
@@ -78,7 +95,7 @@ export class PlayerSettingsService {
   detach(): void {
     this.hls = null;
     this.state = {
-      levels: [], currentLevel: -1,
+      levels: [], currentLevel: -1, currentAutoLevel: -1,
       audioTracks: [], currentAudio: 0,
       subTracks: [], currentSub: -1,
       speed: 1,
@@ -92,6 +109,10 @@ export class PlayerSettingsService {
     const hls = this.hls;
     if (!hls) return;
 
+    // If user has an explicit choice, enforce it — don't let HLS auto-switches override it
+    const effectiveLevel = this.userChosenLevel !== -1 ? this.userChosenLevel : -1;
+    const isAuto = this.userChosenLevel === -1;
+
     this.state = {
       levels: [
         { index: -1, label: 'Auto', bitrate: 0 },
@@ -101,14 +122,15 @@ export class PlayerSettingsService {
           bitrate: l.bitrate ?? 0,
         })),
       ],
-      currentLevel: hls.currentLevel ?? -1,
+      currentLevel:     effectiveLevel,
+      currentAutoLevel: isAuto ? (hls.currentLevel ?? -1) : -1,
 
       audioTracks: (hls.audioTracks ?? []).map((t: any, i: number) => ({
         index: i,
         name:  t.name || `Track ${i + 1}`,
         lang:  t.lang  || '',
       })),
-      currentAudio: hls.audioTrack ?? 0,
+      currentAudio: this.userChosenAudio !== -1 ? this.userChosenAudio : (hls.audioTrack ?? 0),
 
       subTracks: (hls.subtitleTracks ?? []).map((t: any, i: number) => ({
         index: i,
@@ -117,7 +139,7 @@ export class PlayerSettingsService {
       })),
       currentSub: hls.subtitleTrack ?? -1,
 
-      speed: this.state.speed, // preserve — not stored in HLS
+      speed: this.state.speed,
     };
 
     this.notify();
@@ -127,16 +149,18 @@ export class PlayerSettingsService {
 
   setQuality(levelIndex: number): void {
     if (!this.hls) return;
-    this.hls.currentLevel  = levelIndex;
-    this.hls.nextLevel     = levelIndex;
+    this.hls.currentLevel   = levelIndex;
+    this.hls.nextLevel      = levelIndex;
     this.state.currentLevel = levelIndex;
+    this.userChosenLevel    = levelIndex; // persist across stream switches
     this.notify();
   }
 
   setAudioTrack(index: number): void {
     if (!this.hls) return;
-    this.hls.audioTrack    = index;
+    this.hls.audioTrack     = index;
     this.state.currentAudio = index;
+    this.userChosenAudio    = index; // persist across stream switches
     this.notify();
   }
 
