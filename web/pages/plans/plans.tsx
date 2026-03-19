@@ -385,7 +385,7 @@ const t = {
       case 'guest':
         return (
           <button
-            onClick={() => navigate('/authentication/register')}
+            onClick={(e) =>{ e.stopPropagation();  navigate('/authentication/register')}}
             className={`${base} ${t.btnGuest} active:scale-[0.98]`}
           >
             {tx.registerPrompt}
@@ -403,7 +403,7 @@ const t = {
       case 'low_balance':
         return (
           <button
-            onClick={() => navigate('/profile')}
+            onClick={(e) =>{  e.stopPropagation(); navigate('/profile')}}
             className={`${base} ${t.btnLowBalance} active:scale-[0.98]`}
           >
             {tx.topUp}
@@ -413,7 +413,7 @@ const t = {
       case 'ready':
   return (
     <button
-      onClick={() => handlePurchase(plan.id)}
+      onClick={(e) => { e.stopPropagation(); handlePurchase(plan.id)}}
       className={`${base} ${
         popular
           ? 'bg-plans-popular-head hover:bg-button-hover text-white shadow-[0_2px_16px_rgba(192,17,17,0.35)] hover:shadow-[0_4px_24px_rgba(192,17,17,0.5)]'
@@ -572,7 +572,7 @@ const t = {
 
                     <button
                       type="button"
-                      onClick={() => setChannelModalPlan(plan)}
+                      onClick={(e) => { e.stopPropagation(); setChannelModalPlan(plan)}}
                       className={`${t.channelBtn} mb-4`}
                     >
                       <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">

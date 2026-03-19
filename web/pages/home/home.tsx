@@ -233,7 +233,7 @@ const Home: React.FC = () => {
   }, [channels, categories])
 
   return (
-<main className={`overflow-y-auto bg-backround mx-auto w-full max-w-screen-2xl flex flex-col gap-8 px-4 pb-12 pt-6 sm:px-6 lg:px-10 xl:px-14`}>
+<main className={`overflow-y-auto bg-backround mx-auto w-full max-w-screen flex flex-col gap-8 px-4 pb-12 pt-6 sm:px-6 lg:px-10 xl:px-14`}>
       <HeroBanner heroImage={null} language={language} />
       {[...categories]
   .sort((a, b) => (channelsByCategory.get(b.id)?.length ?? 0) - (channelsByCategory.get(a.id)?.length ?? 0))
