@@ -3,17 +3,9 @@
 import React, { useState, useRef, useEffect, useMemo } from 'react';
 import Hls from 'hls.js';
 import { CometRing } from './AnimatedComponents/CometBuffer';
-import {
-  ArrowsPointingOutIcon,
-  SpeakerWaveIcon,
-  SpeakerXMarkIcon,
-} from '@heroicons/react/24/solid';
-import {
-  Play, Pause,
-  RotateCcw, RotateCw, ScreenShare,
-  PictureInPicture2, Forward, Radio,
-} from 'lucide-react';
-import FullScreenList from './FullScreenList'
+import FullScreenList from './FullScreenList';
+import { SettingsButton } from './settingsButton';
+import { PlayerSettingsService } from './playerSettingsService';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -60,14 +52,6 @@ function formatClock(unixSec: number): string {
   });
 }
 
-function formatBehind(secs: number): string {
-  if (secs < 60) return `${Math.floor(secs)}s behind live`;
-  if (secs < 3600) return `${Math.floor(secs / 60)}m behind live`;
-  const h = Math.floor(secs / 3600);
-  const m = Math.floor((secs % 3600) / 60);
-  return `${h}h ${m}m behind live`;
-}
-
 function getWatchingUnix(
   mode: 'live' | 'archive',
   liveNow: number,
@@ -79,6 +63,30 @@ function getWatchingUnix(
   }
   return liveNow;
 }
+
+// ─── Material icon helper ─────────────────────────────────────────────────────
+
+const MI = ({
+  name, size = 20, fill = false, className = '', style = {},
+}: {
+  name: string; size?: number; fill?: boolean; className?: string; style?: React.CSSProperties;
+}) => (
+  <span
+    className={`material-symbols-outlined ${className}`}
+    style={{
+      fontSize: size,
+      display: 'block',
+      fontVariationSettings: fill
+        ? "'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 24"
+        : "'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24",
+      lineHeight: 1,
+      userSelect: 'none',
+      ...style,
+    }}
+  >
+    {name}
+  </span>
+);
 
 // ─── Component ────────────────────────────────────────────────────────────────
 
@@ -96,9 +104,9 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
   programs = [],
   nextDayPrograms = [],
 }) => {
-  const videoRef      = useRef<HTMLVideoElement | null>(null);
-  const containerRef  = useRef<HTMLDivElement | null>(null);
-  const hlsRef        = useRef<Hls | null>(null);
+  const videoRef     = useRef<HTMLVideoElement | null>(null);
+  const containerRef = useRef<HTMLDivElement | null>(null);
+  const hlsRef       = useRef<Hls | null>(null);
 
   const [isPlaying,        setIsPlaying]        = useState(false);
   const [currentTime,      setCurrentTime]      = useState(0);
@@ -111,14 +119,15 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
   const [showChannels,     setShowChannels]     = useState(false);
   const [isBuffering,      setIsBuffering]      = useState(false);
 
+  const settingsService = useRef(new PlayerSettingsService());
+
   const [liveNow, setLiveNow] = useState(Math.floor(Date.now() / 1000));
   useEffect(() => {
     const id = setInterval(() => setLiveNow(Math.floor(Date.now() / 1000)), 1000);
     return () => clearInterval(id);
   }, []);
 
-  const watchingUnix   = getWatchingUnix(mode, liveNow, archiveTimestamp, currentTime);
-  const behindLiveSecs = mode === 'archive' ? Math.max(0, liveNow - watchingUnix) : 0;
+  const watchingUnix = getWatchingUnix(mode, liveNow, archiveTimestamp, currentTime);
 
   // ─── Program-based range ──────────────────────────────────────────────────────
 
@@ -128,11 +137,11 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
       const midnight = new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime() / 1000;
       return { rangeStart: midnight, rangeEnd: midnight + 86400 };
     }
-    const sorted  = [...programs].sort((a, b) => a.START_TIME - b.START_TIME);
-    const start   = sorted[0].START_TIME;
-    const lastEnd = sorted[sorted.length - 1].END_TIME;
+    const sorted     = [...programs].sort((a, b) => a.START_TIME - b.START_TIME);
+    const start      = sorted[0].START_TIME;
+    const lastEnd    = sorted[sorted.length - 1].END_TIME;
     const nextSorted = [...nextDayPrograms].sort((a, b) => a.START_TIME - b.START_TIME);
-    const end = nextSorted.length > 0 ? nextSorted[0].START_TIME : lastEnd;
+    const end        = nextSorted.length > 0 ? nextSorted[0].START_TIME : lastEnd;
     return { rangeStart: start, rangeEnd: end };
   }, [programs, nextDayPrograms, watchingUnix]);
 
@@ -149,6 +158,7 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
 
     hlsRef.current?.destroy();
     hlsRef.current = null;
+    settingsService.current.detach();
     setIsBuffering(true);
     setCurrentTime(0);
     setDuration(0);
@@ -167,7 +177,11 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
       hlsRef.current = hls;
       hls.loadSource(streamUrl);
       hls.attachMedia(video);
-      hls.on(Hls.Events.MANIFEST_PARSED, () => { setIsBuffering(false); tryPlay(); });
+      hls.on(Hls.Events.MANIFEST_PARSED, () => {
+        setIsBuffering(false);
+        settingsService.current.attach(hls);
+        tryPlay();
+      });
       hls.on(Hls.Events.ERROR, (_e, data) => {
         if (data.fatal) {
           switch (data.type) {
@@ -183,7 +197,11 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
       tryPlay();
     }
 
-    return () => { hlsRef.current?.destroy(); hlsRef.current = null; };
+    return () => {
+      hlsRef.current?.destroy();
+      hlsRef.current = null;
+      settingsService.current.detach();
+    };
   }, [streamUrl]);
 
   // ── Video events ──────────────────────────────────────────────────────────────
@@ -296,6 +314,26 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
       : document.exitFullscreen();
   };
 
+  // ── Icon button helper ────────────────────────────────────────────────────────
+
+  const IconBtn = ({
+    icon, onClick, title, size = 20, fill = false, disabled = false,
+  }: {
+    icon: string; onClick?: () => void; title?: string;
+    size?: number; fill?: boolean; disabled?: boolean;
+  }) => (
+    <button
+      onClick={onClick}
+      title={title}
+      disabled={disabled}
+      className="text-white hover:text-[#d52b1e] cursor-pointer disabled:opacity-30 disabled:cursor-default flex items-center justify-center w-8 h-8"
+    >
+      <div className="pointer-events-none flex items-center justify-center" style={{ width: size, height: size }}>
+        <MI name={icon} size={size} fill={fill} className="pointer-events-none" />
+      </div>
+    </button>
+  );
+
   // ─── Render ───────────────────────────────────────────────────────────────────
 
   return (
@@ -334,7 +372,7 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
               onMouseEnter={e => (e.currentTarget.style.backgroundColor = '#b82419')}
               onMouseLeave={e => (e.currentTarget.style.backgroundColor = '#d52b1e')}
             >
-              <span className="material-symbols-outlined text-4xl">sensors</span>
+              <MI name="sensors" size={18} fill />
               Go Live
             </button>
           </div>
@@ -345,7 +383,6 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
           <button
             onClick={() => setShowChannels(!showChannels)}
             className={`absolute top-6 right-6 z-50 text-white transition-all cursor-pointer px-4 py-2 bg-black/60 backdrop-blur-sm rounded-lg border border-white/20 ${showControls ? 'opacity-100' : 'opacity-0'}`}
-            style={{ ['--tw-ring-color' as string]: '#d52b1e' }}
             onMouseEnter={e => (e.currentTarget.style.color = '#d52b1e')}
             onMouseLeave={e => (e.currentTarget.style.color = 'white')}
           >
@@ -368,36 +405,13 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
 
         {/* Controls overlay */}
         <div
-          className={`absolute inset-0 flex flex-col justify-between transition-opacity duration-300 ${showControls ? 'opacity-100' : 'opacity-0'}`}
-        >
+  className={`absolute inset-0 flex flex-col justify-between transition-opacity duration-300 ${showControls ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'}`}
+>
           {/* Center playback controls */}
           <div className="absolute h-full w-full flex items-center justify-center gap-6">
-            <button
-              onClick={() => skip(-10)}
-              className="text-white transition-colors"
-              title="Rewind 10s"
-              onMouseEnter={e => (e.currentTarget.style.color = '#d52b1e')}
-              onMouseLeave={e => (e.currentTarget.style.color = 'white')}
-            >
-              <RotateCcw className="w-7 h-7" />
-            </button>
-            <button
-              onClick={togglePlay}
-              className="text-white transition-colors"
-              onMouseEnter={e => (e.currentTarget.style.color = '#d52b1e')}
-              onMouseLeave={e => (e.currentTarget.style.color = 'white')}
-            >
-              {isPlaying ? <Pause className="w-10 h-10" /> : <Play className="w-10 h-10" />}
-            </button>
-            <button
-              onClick={() => skip(10)}
-              className="text-white transition-colors"
-              title="Forward 10s"
-              onMouseEnter={e => (e.currentTarget.style.color = '#d52b1e')}
-              onMouseLeave={e => (e.currentTarget.style.color = 'white')}
-            >
-              <RotateCw className="w-7 h-7" />
-            </button>
+            <IconBtn icon="replay_10"  onClick={() => skip(-10)} title="Rewind 10s"  size={28} />
+            <IconBtn icon={isPlaying ? 'pause' : 'play_arrow'} onClick={togglePlay} size={40} fill />
+            <IconBtn icon="forward_10" onClick={() => skip(10)}  title="Forward 10s" size={28} />
           </div>
 
           {/* Bottom bar */}
@@ -410,11 +424,11 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
                 onMouseEnter={() => setShowVolumeSlider(true)}
                 onMouseLeave={() => setShowVolumeSlider(false)}
               >
-                <button onClick={toggleMute} className="text-white w-6 h-6 flex items-center justify-center">
-                  {isMuted
-                    ? <SpeakerXMarkIcon className="w-6 h-6 cursor-pointer" />
-                    : <SpeakerWaveIcon  className="w-6 h-6 cursor-pointer" />
-                  }
+                <button
+                  onClick={toggleMute}
+                  className="text-white w-6 h-6 flex items-center justify-center"
+                >
+                  <MI name={isMuted ? 'volume_off' : 'volume_up'} size={22} fill={isMuted} />
                 </button>
                 {showVolumeSlider && (
                   <>
@@ -456,35 +470,22 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
                 >
                   <div
                     className="h-full rounded-full"
-                    style={{
-                      width: `${progressPct}%`,
-                      backgroundColor: '#d52b1e',
-                    }}
+                    style={{ width: `${progressPct}%`, backgroundColor: '#d52b1e' }}
                   />
                   <div
                     className="absolute top-1/2 -translate-y-1/2 -translate-x-1/2 w-3 h-3 rounded-full shadow"
-                    style={{
-                      left: `${progressPct}%`,
-                      backgroundColor: '#d52b1e',
-                    }}
+                    style={{ left: `${progressPct}%`, backgroundColor: '#d52b1e' }}
                   />
                 </div>
               </div>
 
               {/* Right controls */}
               <div className="flex items-center gap-3 flex-shrink-0">
-                <button onClick={() => skip(-30)} className="text-white cursor-pointer" title="Rewind 30s">
-                  <Forward className="w-5 h-5" />
-                </button>
-                <button onClick={() => skip(30)} className="text-white cursor-pointer" title="Forward 30s">
-                  <PictureInPicture2 className="w-5 h-5" />
-                </button>
-                <button className="text-white cursor-default">
-                  <ScreenShare className="w-5 h-5 opacity-40" />
-                </button>
-                <button onClick={toggleFullscreen} className="text-white cursor-pointer">
-                  <ArrowsPointingOutIcon className="w-5 h-5" />
-                </button>
+                <IconBtn icon="replay_30"  onClick={() => skip(-30)} title="Rewind 30s"  size={20} />
+                <IconBtn icon="forward_30" onClick={() => skip(30)}  title="Forward 30s" size={20} />
+                <IconBtn icon="cast"       disabled title="Cast"    size={20} />
+                <SettingsButton service={settingsService.current} />
+                <IconBtn icon={isFullscreen ? 'fullscreen_exit' : 'fullscreen'} onClick={toggleFullscreen} size={22} />
               </div>
             </div>
           </div>
