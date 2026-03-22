@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import AdminUsersExtended from "./AdminUsersExtended";
 import AdminChannelsSection from "./AdminChannelsSection";
+import TvPriceSettings from "./TvPriceSettings";
 import api from "../../src/lib/axios";
 import useAuthStore from "../../src/store/AuthStore"; 
 type AdminSection = "Overview" | "Users" | "Category-Channels" | "Categories" | "Plans" | "Plan-Channels" |"Channels"| "Support" | "Settings";
@@ -1606,7 +1607,7 @@ const isActive =
                         <span className="text-[0.6rem] text-zinc-600">მუქი</span>
                       </div>
                     </div>
-
+                    
                     {/* Feedback + button */}
                     <div className="flex items-center gap-3">
                       {logoSaveSuccess && (
@@ -1633,10 +1634,12 @@ const isActive =
                           </>
                         )}
                       </button>
+
                     </div>
                   </div>
                 </div>
               </div>
+            <TvPriceSettings />
             </div>
           )}
 
