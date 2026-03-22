@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { SettingsPanel } from './settingsPanel';
-import { PlayerSettingsService } from './playerSettingsService';
+import { PlayerSettingsService } from '../services/playerSettingsService';
 
 interface SettingsButtonProps {
   service: PlayerSettingsService;
@@ -47,7 +47,7 @@ export const SettingsButton: React.FC<SettingsButtonProps> = ({ service }) => {
               lineHeight: 1,
               fontVariationSettings: open
                 ? "'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 24"
-                : "'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24",
+                : "'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 24",
               transition: 'font-variation-settings 0.15s',
             }}
           >

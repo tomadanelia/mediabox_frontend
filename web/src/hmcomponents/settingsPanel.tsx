@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
-import type { PlayerSettings } from './playerSettingsService';
-import { PlayerSettingsService, SPEED_OPTIONS } from './playerSettingsService';
+import type { PlayerSettings } from '../services/playerSettingsService';
+import { PlayerSettingsService, SPEED_OPTIONS } from '../services/playerSettingsService';
 
 type SubPage = null | 'quality' | 'speed' | 'subtitles' | 'audio';
 
@@ -70,7 +70,51 @@ const OptionList = ({
   </>
 );
 
+// ─── Row ─────────────────────────────────────────────────────────────────────
+
+const Row = ({
+  icon, label, value, onClick, active = false, disabled = false,
+}: {
+  icon: string; label: string; value: string;
+  onClick?: () => void; active?: boolean; disabled?: boolean;
+}) => (
+  <button
+    onMouseDown={e => e.preventDefault()}
+    onClick={onClick}
+    disabled={disabled}
+    className={`
+      w-full flex items-center gap-3 px-4 py-3 text-left transition-colors
+      ${disabled  ? 'opacity-30 cursor-default'
+        : onClick ? 'cursor-pointer hover:bg-white/6'
+                  : 'cursor-default'}
+    `}
+  >
+    <span
+      className="material-symbols-outlined shrink-0"
+      style={{
+        fontSize: '18px',
+        color: active ? '#ef4444' : 'rgba(255,255,255,0.4)',
+        fontVariationSettings: active
+          ? "'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 24"
+          : "'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24",
+      }}
+    >
+      {icon}
+    </span>
+    <span className={`flex-1 text-sm ${active ? 'text-white' : 'text-zinc-400 group-hover:text-white'}`}>
+      {label}
+    </span>
+    <span className="text-xs text-zinc-600 shrink-0">{value}</span>
+    {onClick && !disabled && (
+      <span className="material-symbols-outlined text-zinc-700 shrink-0" style={{ fontSize: '15px' }}>
+        chevron_right
+      </span>
+    )}
+  </button>
+);
+
 // ─── Main panel ───────────────────────────────────────────────────────────────
+
 
 export const SettingsPanel: React.FC<SettingsPanelProps> = ({ service, onClose }) => {
   const [settings, setSettings] = useState<PlayerSettings>(service.getState());
@@ -78,57 +122,18 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({ service, onClose }
 
   useEffect(() => service.subscribe(setSettings), [service]);
 
-  const { levels, currentLevel, audioTracks, currentAudio,
+  const { levels, currentLevel, currentAutoLevel, audioTracks, currentAudio,
           subTracks, currentSub, speed } = settings;
 
-  const qualityLabel = levels.find(l => l.index === currentLevel)?.label ?? 'Auto';
+  const qualityLabel = (() => {
+    if (currentLevel !== -1) return levels.find(l => l.index === currentLevel)?.label ?? 'Auto';
+    const autoLabel = levels.find(l => l.index === currentAutoLevel)?.label;
+    return autoLabel ? `Auto (${autoLabel})` : 'Auto';
+  })();
   const audioLabel   = audioTracks.find(t => t.index === currentAudio)?.name ?? '—';
   const subLabel     = currentSub === -1
     ? 'Off'
     : subTracks.find(t => t.index === currentSub)?.name ?? 'Off';
-
-  // ── Row ──────────────────────────────────────────────────────────────────────
-
-  const Row = ({
-    icon, label, value, onClick, active = false, disabled = false,
-  }: {
-    icon: string; label: string; value: string;
-    onClick?: () => void; active?: boolean; disabled?: boolean;
-  }) => (
-    <button
-      onMouseDown={e => e.preventDefault()}   // ← prevents blur before click
-      onClick={onClick}
-      disabled={disabled}
-      className={`
-        w-full flex items-center gap-3 px-4 py-3 text-left transition-colors
-        ${disabled  ? 'opacity-30 cursor-default'
-          : onClick ? 'cursor-pointer hover:bg-white/6'
-                    : 'cursor-default'}
-      `}
-    >
-      <span
-        className="material-symbols-outlined shrink-0"
-        style={{
-          fontSize: '18px',
-          color: active ? '#ef4444' : 'rgba(255,255,255,0.4)',
-          fontVariationSettings: active
-            ? "'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 24"
-            : "'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24",
-        }}
-      >
-        {icon}
-      </span>
-      <span className={`flex-1 text-sm ${active ? 'text-white' : 'text-zinc-400 group-hover:text-white'}`}>
-        {label}
-      </span>
-      <span className="text-xs text-zinc-600 shrink-0">{value}</span>
-      {onClick && !disabled && (
-        <span className="material-symbols-outlined text-zinc-700 shrink-0" style={{ fontSize: '15px' }}>
-          chevron_right
-        </span>
-      )}
-    </button>
-  );
 
   return (
     <div
