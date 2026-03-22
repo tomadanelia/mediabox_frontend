@@ -185,7 +185,7 @@ export default function UserProfile() {
     spinnerColor: "border-form-highlights border-t-transparent",
     mobileTopbar: "bg-profile-sidebar-bg border-border",
     editBtn:
-      "border border-border text-muted-foreground hover:text-foreground hover:border-form-border bg-transparent",
+      "border border-border text-white hover:text-foreground hover:bg-form-highlights hover:border-form-border ",
   };
 
   const [tab, setTab] = useState<Tab>("Overview");
@@ -411,7 +411,7 @@ export default function UserProfile() {
           {/* ── Edit Profile button ── */}
           <button
             onClick={() => setEditModalOpen(true)}
-            className={`mt-4 w-full flex items-center justify-center gap-2 py-2 rounded-xl text-xs font-medium transition-all duration-150 cursor-pointer ${c.editBtn}`}
+            className={`mt-4 w-full flex items-center border justify-center gap-2 py-2 rounded-xl text-xs font-medium transition-all duration-150 cursor-pointer ${c.editBtn}`}
           >
             <span style={{ fontSize: "0.75rem" }}>✎</span>
             {tx.sidebar.editProfile}
@@ -501,7 +501,7 @@ export default function UserProfile() {
           {/* mobile edit shortcut */}
           <button
             onClick={() => setEditModalOpen(true)}
-            className={`ml-auto text-xs px-3 py-1.5 rounded-lg font-medium transition-all duration-150 cursor-pointer ${c.editBtn}`}
+            className={`ml-auto text-xs borderborder-red-800 px-3 py-1.5 rounded-lg font-medium transition-all duration-150 cursor-pointer ${c.editBtn}`}
           >
             ✎
           </button>
