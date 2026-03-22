@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from "react";
 import api from "../../src/lib/axios";
-import useAuthStore from "@/store/AuthStore";
+import useAuthStore from "../../src/store/AuthStore";
 
 interface EditProfileModalProps {
   isOpen: boolean;

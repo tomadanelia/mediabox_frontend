@@ -185,7 +185,7 @@ export default function UserProfile() {
     spinnerColor: "border-form-highlights border-t-transparent",
     mobileTopbar: "bg-profile-sidebar-bg border-border",
     editBtn:
-      "border border-border text-white hover:text-foreground hover:bg-form-highlights hover:border-form-border ",
+      "border border-border text-muted-foreground hover:text-foreground hover:bg-form-highlights hover:border-form-border ",
   };
 
   const [tab, setTab] = useState<Tab>("Overview");
