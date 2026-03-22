@@ -284,7 +284,7 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
       <div
         ref={containerRef}
         className={`relative bg-black overflow-hidden aspect-video w-full max-h-full ${isFullscreen ? '' : 'rounded-[10px]'}`}
-        style={{ maxWidth: 'calc((100vh - 40px) * (16/9))' }}
+        style={{ maxWidth: 'calc((100vh - 80px) * (16/9))' }}
         onMouseEnter={cancelHide}
         onMouseLeave={scheduleHide}
       >
