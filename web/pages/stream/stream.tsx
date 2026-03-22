@@ -293,9 +293,9 @@ const ProgramsList: React.FC<ProgramsListProps> = ({
     <div className="divide-y divide-black/5 dark:divide-white/5">
       {sorted.map(p => {
         const isCurrent = p.UID === activeUID;
-        const isPast    = nowSec >= p.END_TIME;
+        const isPast = nowSec >= p.END_TIME;
         const isClickable = p.START_TIME <= nowSec;
-        const isFuture  = !isClickable;
+        const isFuture = !isClickable;
 
         return (
           <div
@@ -308,8 +308,8 @@ const ProgramsList: React.FC<ProgramsListProps> = ({
               isCurrent
                 ? 'bg-gradient-to-r from-orange-50 to-yellow-50/60 dark:from-orange-500/10 dark:to-yellow-400/5 border-l-orange-400'
                 : isPast
-                ? 'border-l-transparent opacity-50 active:opacity-80 active:bg-black/3 dark:active:bg-white/4'
-                : 'border-l-transparent opacity-40',
+                  ? 'border-l-transparent opacity-50 active:opacity-80 active:bg-black/3 dark:active:bg-white/4'
+                  : 'border-l-transparent opacity-40',
             ].join(' ')}
           >
             <span className={[
@@ -602,7 +602,7 @@ export const Stream: React.FC = () => {
 
   if (isMobilePortrait) {
     return (
-      <div className="flex flex-col w-full h-[calc(100vh-80px)] overflow-hidden">
+      <div className="flex flex-col w-full h-full overflow-hidden">
 
         {pendingChannel && (
           <div className="absolute inset-0 bg-black/50 z-30">
@@ -629,7 +629,7 @@ export const Stream: React.FC = () => {
             onChannelSelect={handleChannelSelect}
             currentChannelId={selectedChannel?.id}
             rewindableDays={rewindableDays}
-          />      
+          />
         </div>
 
         {/* Now-watching strip */}
@@ -738,7 +738,7 @@ export const Stream: React.FC = () => {
   // ════════════════════════════════════════════════════════════
 
   return (
-    <div className="flex flex-col justify-between w-full h-[calc(100vh-80px)]  relative">
+    <div className="flex flex-col justify-between w-full h-full  relative">
       {pendingChannel && (
         <div className='absolute w-full h-full bg-black/50 z-30'>
           <PlansModal
@@ -749,20 +749,20 @@ export const Stream: React.FC = () => {
           />
         </div>
       )}
-      <div className="flex-1 flex w-full">
+      <div className="flex h-full lg:h-[calc(100%-60px)] w-full">
         <div className='w-[65px] flex lg:hidden' />
 
         {/* LEFT */}
         <div className={`
           lg:relative lg:w-1/5
-          absolute z-20 flex flex-col h-screen lg:h-[calc(100vh-128px)] overflow bg-yel
+          absolute z-20 flex flex-col h-full lg:h-full overflow bg-yel
           transition-all duration-300 ease-in-out
           ${isMobile ? (leftExpanded ? 'w-2/5' : 'w-[65px]') : ''}
         `}>
           {isMobile && (
             <button
               onClick={() => setLeftExpanded(v => !v)}
-              className="absolute -right-3 top-[50vh] -translate-y-1/2 z-30
+              className="absolute -right-3 top-[calc(50vh-32px)] -translate-y-1/2 z-30
                 w-6 h-10 flex items-center justify-center
                 bg-white dark:bg-zinc-800
                 border border-black/10 dark:border-white/10
@@ -787,8 +787,8 @@ export const Stream: React.FC = () => {
         </div>
 
         {/* CENTER */}
-        <div className="w-[calc(100vw-130px)] lg:w-3/5 relative lg:h-full flex flex-col">
-          <div className='flex flex-col lg:h-[calc(100vh-250px)]'>
+        <div className="w-[calc(100vw-130px)] lg:w-3/5 relative h-full flex flex-col">
+          <div className='flex flex-col h-[calc(100%-40px)]'>
             <VideoPlayer
               programs={programs}
               nextDayPrograms={nextDayPrograms}
@@ -803,14 +803,14 @@ export const Stream: React.FC = () => {
               rewindableDays={rewindableDays}
             />
           </div>
-<div className='flex px-2 py-1 justify-center items-center w-full'>
-  <FavouriteButton channelId={selectedChannel?.id} />
-  <DownloadButton
-  channelId={selectedChannel?.id}
-  currentTimestamp={archiveTimestamp}
-  oldestTimestamp={Math.floor(Date.now() / 1000) - rewindableHours * 3600}
-/>
-</div>
+          <div className='flex px-2 h-10 py-1 justify-center items-center w-full'>
+            <FavouriteButton channelId={selectedChannel?.id} />
+            <DownloadButton
+              channelId={selectedChannel?.id}
+              currentTimestamp={archiveTimestamp}
+              oldestTimestamp={Math.floor(Date.now() / 1000) - rewindableHours * 3600}
+            />
+          </div>
 
           {isCalendarVisible && (
             <div className="lg:hidden z-20 w-full h-full absolute flex top-0">
@@ -894,7 +894,7 @@ export const Stream: React.FC = () => {
         {/* RIGHT */}
         <div className={`
           lg:relative lg:w-1/5
-          absolute right-0 z-10 flex flex-col h-screen lg:h-[calc(100vh-128px)] bg-yel
+          absolute right-0 z-10 flex flex-col h-full bg-yel
           transition-all duration-300 ease-in-out
           ${isMobile ? (rightExpanded ? 'w-2/5' : 'w-[65px]') : ''}
         `}>
@@ -982,14 +982,20 @@ export const Stream: React.FC = () => {
       {/* BOTTOM */}
       {!isMobile && (
         <div>
-          <div className='flex-1 h-10'>
-            <Timeline
+          <div className='relative w-[calc(100vw-40px)] h-15'>
+            <div className='h-5 w-full'>
+
+            </div>
+            <div className='w-full ml-5'>
+               <Timeline
               timeProgramm={programs}
               nextDayPrograms={nextDayPrograms}
               liveUnixSec={liveUnixSec}
               currentUnixSec={archiveTimestamp}
               onSelectTime={handleRewind}
             />
+            </div>
+           
           </div>
         </div>
       )}

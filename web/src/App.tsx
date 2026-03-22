@@ -54,12 +54,12 @@ const App: React.FC = () => {
   return (
     <div className="app-shell h-screen overflow-hidden flex flex-col">
 
-      <div className="shrink-0 w-full z-50 lg:relative overflow-X-hidden ">
+      <div className="shrink-0 h-[64px] w-full z-50 lg:relative overflow-X-hidden ">
         <Navbar />
       </div>
 
 
-   <div className="page-content flex-1 min-h-0 overflow-y-auto relative bg-background">
+   <div className="page-content h-[calc(100vh-64px)] flex-1 min-h-0 overflow-y-auto relative bg-background">
           <Routes>
           <Route path="/" element={<Home />} />
           <Route path="/TV" element={<Stream />} />

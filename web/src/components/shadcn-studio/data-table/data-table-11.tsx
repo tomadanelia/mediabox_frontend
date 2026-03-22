@@ -52,7 +52,7 @@ const DataTableDemo = ({
   }, [safeChannels, query])
 
   return (
-    <div className='flex-1 flex flex-col h-screen lg:h-[calc(100vh-128px)] overflow-hidden gap-3'>
+    <div className='flex-1 flex flex-col h-full lg:h-full overflow-hidden gap-3'>
 
       {/* ── Search bar ── */}
       {!iconOnly && (
@@ -122,7 +122,7 @@ const DataTableDemo = ({
                     transition-all duration-150
                     ${iconOnly ? 'justify-center px-0' : ''}
                     ${isSelected
-                      ? 'bg-linear-to-r from-red-500/30 to-yellow-50/0 dark:from-[#d52b1e1a] dark:to-black/5 border-l-2 border-l-[#d52b1e]'
+                      ? 'bg-linear-to-r from-form-highlights/20 to-white/20 dark:from-[#d52b1e1a] dark:to-black/5 border-l-2 border-l-[#d52b1e]'
                       : 'border-l-2 border-l-transparent hover:bg-black/3 dark:hover:bg-white/4'
                     }
                   `}
