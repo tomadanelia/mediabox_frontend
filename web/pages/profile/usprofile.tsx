@@ -153,7 +153,7 @@ export default function UserProfile() {
   const tx = translations[language];
   const c = {
     page: "bg-background text-foreground",
-    sidebar: "bg-profile-sidebar-bg",
+    sidebar: "bg-background",
     sidebarBorder: "border-border",
     heading: "text-foreground",
     sub: "text-muted-foreground",
@@ -165,9 +165,9 @@ export default function UserProfile() {
       "border-transparent text-muted-foreground hover:text-foreground",
     verifiedText: "text-emerald-500",
     unverifiedText: "text-muted-foreground",
-    balanceBg: "bg-profile-sidebar-bg",
+    balanceBg: "bg-background",
     balanceNum: "text-foreground",
-    interpayBg: "bg-profile-interpay-bg border border-border",
+    interpayBg: "bg-background border border-border",
     btnGhost:
       "border border-border text-muted-foreground hover:border-form-border hover:text-foreground bg-transparent",
     btnCopied: "border border-emerald-500/40 text-emerald-500",
@@ -176,8 +176,8 @@ export default function UserProfile() {
     planHover: "hover:bg-form-highlight-subtle/50",
     expiringSoon: "text-red-400",
     expiringOk: "text-emerald-500",
-    progressBg: "bg-border",
-    tableRow: "border-border hover:bg-form-highlight-subtle/30",
+    progressBg: "bg-background",
+tableRow:  "border-border hover:bg-muted/40",
     logoBg: "bg-muted text-muted-foreground",
     removeBtn: "text-red-400/60 hover:text-red-400",
     rolePill: "bg-muted text-muted-foreground",
@@ -185,7 +185,7 @@ export default function UserProfile() {
     spinnerColor: "border-form-highlights border-t-transparent",
     mobileTopbar: "bg-profile-sidebar-bg border-border",
     editBtn:
-      "border border-border text-muted-foreground hover:text-foreground hover:bg-form-highlights hover:border-form-border ",
+  "border border-border text-muted-foreground hover:text-form-highlights hover:border-form-highlights bg-transparent",
   };
 
   const [tab, setTab] = useState<Tab>("Overview");
@@ -338,7 +338,7 @@ export default function UserProfile() {
       <aside
         className={`
         fixed top-0 left-0 z-30 h-full w-64 flex flex-col
-        ${c.sidebar} border-r ${c.sidebarBorder}
+        ${c.sidebar} border-r border-form-highlights ${c.sidebarBorder}
         transition-transform duration-300
         lg:static lg:translate-x-0 lg:shrink-0
         ${sidebarOpen ? "translate-x-0" : "-translate-x-full"}
@@ -389,18 +389,14 @@ export default function UserProfile() {
           )}
 
           <div className="flex items-center gap-2 mt-2">
-            <div className="flex flex-col gap-0.5">
-              <p
-                className={`text-[0.55rem] uppercase tracking-widest ${c.sub}`}
-              >
-                {tx.overview.accountId}
-              </p>
-              <span
-                className={`inline-block text-[0.6rem] font-semibold font-mono px-2 py-0.5 rounded-md ${c.rolePill}`}
-              >
-                {user?.numeric_id ?? "—"}
-              </span>
-            </div>
+            <div className="flex flex-col gap-0.5 mt-2">
+  <p className={`text-[0.55rem] uppercase tracking-widest ${c.sub}`}>
+    {tx.overview.accountId}
+  </p>
+  <p className={`text-xs font-mono font-semibold text-foreground border-l-2 border-form-highlights pl-2`}>
+    {user?.numeric_id ?? "—"}
+  </p>
+</div>
           </div>
 
           <p className={`text-[0.65rem] mt-3 ${c.sub}`}>
@@ -456,7 +452,7 @@ export default function UserProfile() {
         )}
 
         {/* Nav */}
-        <div className={`border-t ${c.divider} shrink-0`}>
+        <div className={`border-t ${c.divider}  shrink-0`}>
           {(["Overview", "History", "Favourites"] as Tab[]).map((t) => (
             <button
               key={t}
@@ -465,7 +461,7 @@ export default function UserProfile() {
                 setSidebarOpen(false);
               }}
               className={`
-                w-full flex items-center gap-3 px-6 py-3.5 text-sm font-medium
+                w-full flex  items-center gap-3 px-6 py-3.5 text-sm font-medium
                 transition-all duration-150 cursor-pointer border-l-2
                 ${tab === t ? c.tabActive : c.tabInactive}
               `}
@@ -501,7 +497,7 @@ export default function UserProfile() {
           {/* mobile edit shortcut */}
           <button
             onClick={() => setEditModalOpen(true)}
-            className={`ml-auto text-xs borderborder-red-800 px-3 py-1.5 rounded-lg font-medium transition-all duration-150 cursor-pointer ${c.editBtn}`}
+            className={`ml-auto text-xs border border-form-highlights px-3 py-1.5 rounded-lg font-medium transition-all duration-150 cursor-pointer ${c.editBtn}`}
           >
             ✎
           </button>
@@ -534,7 +530,7 @@ export default function UserProfile() {
                 </div>
 
                 {/* Interpay */}
-                <div className={`mt-8 rounded-xl ${c.interpayBg} p-5`}>
+                <div className={`mt-8 border border-form-highlights  rounded-xl ${c.interpayBg} p-5`}>
                   <p
                     className={`text-xs leading-relaxed ${c.sub} mb-4`}
                     dangerouslySetInnerHTML={{
@@ -563,7 +559,7 @@ export default function UserProfile() {
               </div>
 
               {/* Plans */}
-              <div className="px-8 py-8 lg:px-14 lg:py-10">
+              <div className={`px-8 py-8 lg:px-14 lg:py-10 ${c.sidebar}`}>
                 <p
                   className={`text-[0.65rem] uppercase tracking-[0.2em] font-semibold ${c.sub} mb-6`}
                 >
