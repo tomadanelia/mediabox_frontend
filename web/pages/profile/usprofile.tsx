@@ -160,7 +160,7 @@ export default function UserProfile() {
     faint: "text-muted-foreground/40",
     accent: "text-form-highlights",
     divider: "border-border",
-    tabActive: "border-form-highlights text-foreground",
+tabActive: "border-form-highlights text-foreground bg-form-highlight-subtle",
     tabInactive:
       "border-transparent text-muted-foreground hover:text-foreground",
     verifiedText: "text-emerald-500",
