@@ -295,7 +295,8 @@ export default function RemotePage() {
       `}</style>
 
       <div style={{
-        minHeight: '100svh',
+        height: '100%',
+        minHeight: '100%',
         background: 'transparent',
         display: 'flex', flexDirection: 'column', alignItems: 'center',
         fontFamily: "'DM Sans','Segoe UI',sans-serif",
@@ -546,14 +547,7 @@ export default function RemotePage() {
 
         </div>
 
-        <div style={{
-          padding:'8px 20px 16px',
-          display:'flex', alignItems:'center', justifyContent:'center', gap:4,
-          fontSize:10, color:'rgba(255,255,255,0.18)', fontWeight:600, letterSpacing:'0.05em',
-        }}>
-          <Icon name={isFullscreen ? 'close_fullscreen' : 'open_in_full'} size={12} color="rgba(255,255,255,0.18)" />
-          <span>{isFullscreen ? 'Tap ⊠ to exit fullscreen' : 'Tap ⊡ for fullscreen & lock portrait'}</span>
-        </div>
+
 
       </div>
     </>

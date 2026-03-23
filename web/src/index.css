@@ -130,9 +130,9 @@
 --button-hover: #b01a1a;
   --eye-icon: #0d90b166;
 
---plans-bg: oklch(97% 0 0);
+--plans-bg: oklch(97.015% 0.00011 271.152 / 0);
 --plans-card-bg: oklch(100% 0 0);
---plans-card-popular-bg: oklch(100% 0 0);
+--plans-card-popular-bg: oklch(94.732% 0.02628 17.401 / 0.568);
 --plans-skeleton-bg: oklch(93% 0 0);
 --plans-skeleton-inner: oklch(87% 0 0);
 --plans-divider: oklch(88% 0 0);
@@ -163,14 +163,14 @@
   --auth-heading: oklch(0.984 0.003 247.858);
   --eye-icon: #0d90b166;
   
---plans-bg: oklch(8% 0 0);
---plans-card-bg: oklch(12% 0 0);
---plans-card-popular-bg: oklch(10% 0.015 20);
+--plans-bg: rgb(33, 38, 44);
+--plans-card-bg: oklch(20.904% 0.00002 271.152 / 0.349);
+--plans-card-popular-bg: oklch(25.409% 0.01392 17.995);
 --plans-skeleton-bg: oklch(16% 0 0);
 --plans-skeleton-inner: oklch(20% 0 0);
 --plans-divider: oklch(20% 0 0);
 --plans-divider-popular: #e0202060;
---plans-balance-card-bg: oklch(14% 0 0);
+--plans-balance-card-bg: oklch(13.979% 0.00002 271.152 / 0.397);
 --plans-feature-badge-bg: #e0202015;
 --plans-feature-badge-text: #f87171;
 --plans-channel-btn-text: oklch(55% 0 0);
