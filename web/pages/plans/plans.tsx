@@ -4,7 +4,7 @@ import api from '../../src/lib/axios'
 import useUIStore from '../../src/store/ui-store'
 import useAuthStore from '../../src/store/AuthStore'
 import TvDeviceAddon from './TvDevices'
-
+import type {PlanPurchaseInvoiceData,DeviceLimitInvoiceData,InvoiceData} from "../../src/types/invoice"
 const DEFAULT_TV_DEVICES = 1
 const MAX_TV_DEVICES = 10
 
@@ -319,11 +319,10 @@ const Plans = () => {
 
   // TV Device add-on state
   const [extraDevices, setExtraDevices] = useState(0)
-  // Real price fetched from API — TvDeviceAddon calls onPriceLoaded to sync it here
   const [tvDevicePrice, setTvDevicePrice] = useState(5)
-  // Track whether a tv-limit purchase is in progress (separate from plan purchase)
   const [purchasingTvLimit, setPurchasingTvLimit] = useState(false)
-
+  const [limitInvoice,setLimitInvoice]=useState<DeviceLimitInvoiceData|null>(null)
+  const [planInvoice,setPlanInvoice]=useState<PlanPurchaseInvoiceData|null>(null)
   const balance = user?.account?.balance != null ? parseFloat(user.account.balance) : null
   const isLowBalance = balance !== null && balance < 1.00
 
@@ -366,12 +365,7 @@ const Plans = () => {
     try {
       const res = await api.post('/api/plans/purchase', { plan_id: planId })
       const data: PurchaseResult = res.data
-      showToast(data.message || tx.activeBadge, 'success')
-      if (data.remaining_balance !== undefined && user) {
-        setUser({ ...user, account: { ...user.account!, balance: String(data.remaining_balance) } })
-      }
-      const activeRes = await api.get('/api/plans/my')
-      setActivePlans(activeRes.data)
+      navigate('/invoice', { state: { invoiceData: res.data } })  
     } catch (err: any) {
       showToast(err?.response?.data?.message || 'Error', 'error')
     } finally {
@@ -379,16 +373,12 @@ const Plans = () => {
     }
   }
 
-  // Purchase TV limit increase separately
   const handleTvLimitPurchase = async () => {
     if (extraDevices === 0) return
     setPurchasingTvLimit(true)
     try {
-      await api.post('/api/plans/tv-limit', { quantity: extraDevices })
-      showToast(tx.tvLimitSuccess, 'success')
-      // Refresh user balance
-      await fetchUser()
-      setExtraDevices(0)
+      const res=await api.post('/api/plans/tv-limit', { quantity: extraDevices })
+      navigate('/invoice', { state: { invoiceData: res.data } })  
     } catch (err: any) {
       showToast(err?.response?.data?.message || tx.tvLimitError, 'error')
     } finally {
@@ -396,19 +386,12 @@ const Plans = () => {
     }
   }
 
-  // Combined confirm: buy plan + optionally buy tv limit
   const handleConfirmPurchase = async () => {
     if (!confirmPlan) return
     const planId = confirmPlan.id
     setConfirmPlan(null)
-
-    // Purchase plan first
     await handlePurchase(planId)
-
-    // Then purchase tv limit if any selected
-    if (extraDevices > 0) {
-      await handleTvLimitPurchase()
-    }
+    
   }
 
   const isOwned = (planId: string) => activePlans.some(ap => ap.plan_id === planId)

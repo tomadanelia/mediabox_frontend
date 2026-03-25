@@ -1,6 +1,5 @@
-import { useState } from 'react'
+/*import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import type { Invoice, InvoiceType } from '../../src/types/invoice'
 
 // ─── Translations ─────────────────────────────────────────────────────────────
 
@@ -88,7 +87,7 @@ const TYPE_CONFIG = {
     glow: 'hover:border-amber-500/40',
     dot: 'bg-amber-400',
   },
-} satisfies Record<InvoiceType, {
+} satisfies Record<any, {
   icon: React.ReactNode
   iconBg: string
   labelColor: string
@@ -101,7 +100,7 @@ const TYPE_CONFIG = {
 // ─── Single Invoice Card ──────────────────────────────────────────────────────
 
 interface InvoiceCardProps {
-  invoice: Invoice
+  invoice: any
   language?: 'En' | 'Ge'
   onDismiss?: (id: string) => void
   className?: string
@@ -110,8 +109,8 @@ interface InvoiceCardProps {
 export function InvoiceCard({ invoice, language = 'En', onDismiss, className = '' }: InvoiceCardProps) {
   const navigate = useNavigate()
   const t = tx[language]
-  const cfg = TYPE_CONFIG[invoice.type]
-  const copy = t[invoice.type]
+  const cfg = TYPE_CONFIG[invoice.type as keyof typeof TYPE_CONFIG]
+  const copy = t[invoice.type as keyof typeof t]
 
   // Build sub-label
   const subLabel = invoice.type === 'purchase'
@@ -144,7 +143,6 @@ export function InvoiceCard({ invoice, language = 'En', onDismiss, className = '
       `}
       onClick={() => navigate(`/invoice/${invoice.id}`)}
     >
-      {/* Type icon */}
       <div className={`
         shrink-0 w-10 h-10 rounded-xl border flex items-center justify-center
         transition-transform duration-200 group-hover:scale-105
@@ -153,7 +151,6 @@ export function InvoiceCard({ invoice, language = 'En', onDismiss, className = '
         {cfg.icon}
       </div>
 
-      {/* Text block */}
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2 mb-0.5">
           <span className={`text-[9px] font-bold uppercase tracking-[0.18em] ${cfg.labelColor}`}>
@@ -168,7 +165,6 @@ export function InvoiceCard({ invoice, language = 'En', onDismiss, className = '
         <p className="text-xs text-muted-foreground mt-0.5 truncate">{subLabel}</p>
       </div>
 
-      {/* Right: amount + date + chevron */}
       <div className="shrink-0 text-right flex flex-col items-end gap-0.5">
         <span className={`text-sm font-bold tabular-nums ${cfg.amountColor}`}>
           {amountDisplay}
@@ -176,7 +172,6 @@ export function InvoiceCard({ invoice, language = 'En', onDismiss, className = '
         <span className="text-[10px] text-muted-foreground/60 font-mono">{dateStr}</span>
       </div>
 
-      {/* Dismiss (only for warning / insufficient) */}
       {onDismiss && (invoice.type === 'warning' || invoice.type === 'insufficient') && (
         <button
           onClick={(e) => { e.stopPropagation(); onDismiss(invoice.id) }}
@@ -193,7 +188,6 @@ export function InvoiceCard({ invoice, language = 'En', onDismiss, className = '
         </button>
       )}
 
-      {/* Arrow */}
       <svg
         className="shrink-0 w-4 h-4 text-muted-foreground/30 group-hover:text-muted-foreground/60 group-hover:translate-x-0.5 transition-all duration-150"
         fill="none" stroke="currentColor" viewBox="0 0 24 24"
@@ -201,7 +195,6 @@ export function InvoiceCard({ invoice, language = 'En', onDismiss, className = '
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
       </svg>
 
-      {/* Pulse dot for unseen alerts */}
       {(invoice.type === 'insufficient' || invoice.type === 'warning') && (
         <span className={`absolute top-3 right-3 w-2 h-2 rounded-full ${cfg.dot} animate-pulse`} />
       )}
@@ -212,7 +205,7 @@ export function InvoiceCard({ invoice, language = 'En', onDismiss, className = '
 // ─── Invoice Feed (used in Profile page) ─────────────────────────────────────
 
 interface InvoiceFeedProps {
-  invoices: Invoice[]
+  invoices: any[]
   language?: 'En' | 'Ge'
   maxVisible?: number
 }
@@ -266,3 +259,4 @@ export function InvoiceFeed({ invoices, language = 'En', maxVisible = 6 }: Invoi
 }
 
 export default InvoiceCard
+*/
