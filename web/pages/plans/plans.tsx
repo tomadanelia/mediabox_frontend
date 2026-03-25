@@ -4,8 +4,10 @@ import api from '../../src/lib/axios'
 import useUIStore from '../../src/store/ui-store'
 import useAuthStore from '../../src/store/AuthStore'
 import TvDeviceAddon from './TvDevices'
-const TV_DEVICE_PRICE=5;
-const DEFAULT_TV_DEVICES=1;
+
+const DEFAULT_TV_DEVICES = 1
+const MAX_TV_DEVICES = 10
+
 interface Plan {
   id: string
   name_ka: string
@@ -84,6 +86,15 @@ const translations = {
     tvAddonPlanFee: 'პაკეტის ფასი',
     tvAddonDeviceFee: 'TV მოწყობილობები',
     tvAddonConfirmNote: 'ეს არის ერთჯერადი დამატება',
+    tvAddonActiveDevices: 'აქტიური',
+    tvAddonNoDevices: 'აქტიური მოწყობილობები არ არის',
+    tvAddonRename: 'სახელის შეცვლა',
+    tvAddonFreeSlot: 'სლოტის გათავისუფლება',
+    tvAddonSlotsRemaining: 'თავისუფალი სლოტები',
+    tvAddonPopupHint: 'გაათავისუფლეთ სლოტი ახალი მოწყობილობის დასაკავშირებლად, ან შეცვალეთ სახელი მარტივი იდენტიფიკაციისთვის.',
+    tvLimitPurchasing: 'ლიმიტი ემატება...',
+    tvLimitSuccess: 'TV ლიმიტი წარმატებით გაიზარდა',
+    tvLimitError: 'TV ლიმიტის გაზრდა ვერ მოხერხდა',
   },
   En: {
     subscriptionLabel: 'SUBSCRIPTION',
@@ -125,6 +136,15 @@ const translations = {
     tvAddonPlanFee: 'Plan fee',
     tvAddonDeviceFee: 'TV devices',
     tvAddonConfirmNote: 'This is a one-time add-on purchase',
+    tvAddonActiveDevices: 'active',
+    tvAddonNoDevices: 'No active devices',
+    tvAddonRename: 'Rename',
+    tvAddonFreeSlot: 'Free slot',
+    tvAddonSlotsRemaining: 'Slots remaining',
+    tvAddonPopupHint: 'Free a slot to allow a new device to connect, or rename devices for easy identification.',
+    tvLimitPurchasing: 'Adding limit...',
+    tvLimitSuccess: 'TV limit increased successfully',
+    tvLimitError: 'Failed to increase TV limit',
   },
 } as const
 
@@ -142,8 +162,6 @@ function getScenario(
   if (!canAfford) return 'low_balance'
   return 'ready'
 }
-
-
 
 // ─── Channel Modal ────────────────────────────────────────────────────────────
 
@@ -301,6 +319,10 @@ const Plans = () => {
 
   // TV Device add-on state
   const [extraDevices, setExtraDevices] = useState(0)
+  // Real price fetched from API — TvDeviceAddon calls onPriceLoaded to sync it here
+  const [tvDevicePrice, setTvDevicePrice] = useState(5)
+  // Track whether a tv-limit purchase is in progress (separate from plan purchase)
+  const [purchasingTvLimit, setPurchasingTvLimit] = useState(false)
 
   const balance = user?.account?.balance != null ? parseFloat(user.account.balance) : null
   const isLowBalance = balance !== null && balance < 1.00
@@ -357,12 +379,44 @@ const Plans = () => {
     }
   }
 
+  // Purchase TV limit increase separately
+  const handleTvLimitPurchase = async () => {
+    if (extraDevices === 0) return
+    setPurchasingTvLimit(true)
+    try {
+      await api.post('/api/plans/tv-limit', { quantity: extraDevices })
+      showToast(tx.tvLimitSuccess, 'success')
+      // Refresh user balance
+      await fetchUser()
+      setExtraDevices(0)
+    } catch (err: any) {
+      showToast(err?.response?.data?.message || tx.tvLimitError, 'error')
+    } finally {
+      setPurchasingTvLimit(false)
+    }
+  }
+
+  // Combined confirm: buy plan + optionally buy tv limit
+  const handleConfirmPurchase = async () => {
+    if (!confirmPlan) return
+    const planId = confirmPlan.id
+    setConfirmPlan(null)
+
+    // Purchase plan first
+    await handlePurchase(planId)
+
+    // Then purchase tv limit if any selected
+    if (extraDevices > 0) {
+      await handleTvLimitPurchase()
+    }
+  }
+
   const isOwned = (planId: string) => activePlans.some(ap => ap.plan_id === planId)
   const getActivePlan = (planId: string) => activePlans.find(ap => ap.plan_id === planId)
   const popularIndex = Math.min(3, plans.length - 1)
 
-  // Computed totals for confirm modal
-  const deviceFee = extraDevices * TV_DEVICE_PRICE
+  // Computed totals for confirm modal — use the real price synced from TvDeviceAddon
+  const deviceFee = extraDevices * tvDevicePrice
   const planFee = confirmPlan ? Number(confirmPlan.price) : 0
   const totalFee = planFee + deviceFee
 
@@ -540,7 +594,7 @@ const Plans = () => {
                       <div className="w-1.5 h-1.5 rounded-full bg-amber-400" />
                       <span className="text-sm text-foreground">{tx.tvAddonDeviceFee}</span>
                       <span className="text-xs text-muted-foreground">
-                        ({extraDevices} × {TV_DEVICE_PRICE} ₾)
+                        ({extraDevices} × {tvDevicePrice} ₾)
                       </span>
                     </div>
                     <span className="text-sm font-semibold text-amber-400 tabular-nums">
@@ -571,17 +625,57 @@ const Plans = () => {
             <div className="flex gap-3">
               <button
                 onClick={() => setConfirmPlan(null)}
-                className="flex-1 py-2.5 rounded-xl text-sm font-semibold border border-plans-divider text-muted-foreground hover:bg-plans-skeleton-bg transition-all"
+                className="flex-1 py-2.5 rounded-xl text-sm font-semibold border border-plans-divider text-muted-foreground hover:bg-plans-skeleton-bg transition-all cursor-pointer"
               >
                 {language === 'Ge' ? 'გაუქმება' : 'Cancel'}
               </button>
               <button
-                onClick={() => { handlePurchase(confirmPlan.id); setConfirmPlan(null) }}
-                className="flex-1 py-2.5 rounded-xl text-sm font-semibold bg-yellow-500 hover:bg-yellow-400 text-black transition-all shadow-[0_2px_16px_rgba(234,179,8,0.35)]"
+                onClick={handleConfirmPurchase}
+                disabled={purchasingTvLimit || purchasing !== null}
+                className="flex-1 py-2.5 rounded-xl text-sm font-semibold bg-yellow-500 hover:bg-yellow-400 text-black transition-all shadow-[0_2px_16px_rgba(234,179,8,0.35)] disabled:opacity-60 disabled:cursor-wait cursor-pointer flex items-center justify-center gap-2"
               >
+                {(purchasingTvLimit || purchasing !== null) && (
+                  <span className="w-4 h-4 border-2 border-black/20 border-t-black rounded-full animate-spin" />
+                )}
                 {language === 'Ge' ? 'დიახ, ყიდვა' : 'Yes, Buy'}
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* TV limit standalone confirm (when no plan is being purchased) */}
+      {extraDevices > 0 && !confirmPlan && isAuthenticated && (
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-40">
+          <div
+            className="flex items-center gap-3 px-4 py-3 rounded-2xl border border-amber-500/30 bg-auth-card-bg shadow-2xl"
+            style={{ boxShadow: '0 0 0 1px rgba(245,158,11,0.15), 0 16px 48px rgba(0,0,0,0.35)' }}
+          >
+            <div className="flex items-center gap-1.5">
+              <span className="text-sm text-amber-400 font-semibold">
+                +{(extraDevices * tvDevicePrice).toFixed(2)} ₾
+              </span>
+              <span className="text-xs text-muted-foreground">·</span>
+              <span className="text-xs text-muted-foreground">{tx.tvAddonDevices(extraDevices)}</span>
+            </div>
+            <button
+              onClick={handleTvLimitPurchase}
+              disabled={purchasingTvLimit}
+              className="px-4 py-1.5 rounded-xl text-xs font-bold bg-amber-500 hover:bg-amber-400 text-black transition-all disabled:opacity-60 disabled:cursor-wait cursor-pointer flex items-center gap-1.5"
+            >
+              {purchasingTvLimit && (
+                <span className="w-3 h-3 border-2 border-black/20 border-t-black rounded-full animate-spin" />
+              )}
+              {language === 'Ge' ? 'ლიმიტის გაზრდა' : 'Increase Limit'}
+            </button>
+            <button
+              onClick={() => setExtraDevices(0)}
+              className="w-7 h-7 rounded-lg flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-plans-skeleton-bg transition-colors cursor-pointer"
+            >
+              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
           </div>
         </div>
       )}
@@ -639,11 +733,12 @@ const Plans = () => {
           tx={tx}
           extraDevices={extraDevices}
           setExtraDevices={setExtraDevices}
-          MAX_TV_DEVICES={10}
+          MAX_TV_DEVICES={MAX_TV_DEVICES}
           isAuthenticated={isAuthenticated}
           navigate={navigate}
           DEFAULT_TV_DEVICES={DEFAULT_TV_DEVICES}
-          TV_DEVICE_PRICE={TV_DEVICE_PRICE}
+          TV_DEVICE_PRICE={tvDevicePrice}
+          onPriceLoaded={setTvDevicePrice}
         />
 
         {/* Plans Grid */}
@@ -737,7 +832,6 @@ const Plans = () => {
           </div>
         )}
 
-        
       </div>
     </div>
   )
