@@ -22,7 +22,6 @@ import RemotePage from "../pages/remoteC/remotec"
 import RadioPage from "../pages/radio/radioP"
 import api from "./lib/axios"
 import InvoicePage from "../pages/invoice/invoice"
-import type { DeviceLimitInvoiceData } from "./types/invoice"
 const App: React.FC = () => {
   const isDark = useUIStore((state: UIStore) => state.isDark);
   const setLogos = useUIStore((state) => state.setLogos);

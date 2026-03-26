@@ -133,7 +133,7 @@ if (savedTvCode) {
 };
 
   return (
-    <div className="flex h-screen items-start justify-center mt-5 p-3 pt-0 bg-auth-page-bg overflow-hidden">
+    <div className="flex h-full items-start pt-10 justify-center  p-3  bg-auth-page-bg overflow-hidden">
       <div className="w-full max-w-100 rounded-xl border border-form-border bg-auth-card-bg shadow-form-shadow px-8 py-10">
 
         {/* Header */}
