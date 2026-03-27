@@ -200,7 +200,7 @@ tableRow:  "border-border hover:bg-muted/40",
   const [copiedBalance, setCopiedBalance] = useState(false);
   const [deletingId, setDeletingId] = useState<number | string | null>(null);
   const { user: storeUser, fetchUser, isLoading: authLoading } = useAuthStore();
-
+  const [companyName, setCompanyName] = useState<string | null>(null);
   useEffect(() => {
     if (!storeUser) fetchUser();
   }, []);
@@ -224,6 +224,16 @@ tableRow:  "border-border hover:bg-muted/40",
         .catch(() => {});
     }
   }, []);
+  useEffect(() => {
+  api
+    .get("/api/user/company")
+    .then((res) => {
+      if (res.data?.has_company && res.data?.company_name) {
+        setCompanyName(res.data.company_name);
+      }
+    })
+    .catch(() => {});
+}, []);
   useEffect(() => {
     api
       .get("/api/plans/my")
@@ -398,6 +408,16 @@ tableRow:  "border-border hover:bg-muted/40",
   </p>
 </div>
           </div>
+          {companyName && (
+  <div className="flex flex-col gap-0.5 mt-2">
+    <p className={`text-[0.55rem] uppercase tracking-widest ${c.sub}`}>
+      {language === "Ge" ? "კომპანია" : "Company"}
+    </p>
+    <p className={`text-xs font-mono font-semibold text-foreground border-l-2 border-form-highlights pl-2`}>
+      {companyName}
+    </p>
+  </div>
+)}
 
           <p className={`text-[0.65rem] mt-3 ${c.sub}`}>
             {tx.sidebar.memberSince}:{" "}
