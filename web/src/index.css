@@ -280,3 +280,9 @@ input[type="checkbox"] {
 * {
   font-family: 'Calibri', sans-serif;
 }
+
+@import "tailwindcss";
+
+@theme {
+  --breakpoint-2_5xl: 1800px;
+}
