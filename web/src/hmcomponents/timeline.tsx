@@ -102,12 +102,22 @@ const Timeline: React.FC<TimelineProps> = ({
 
   const livePct = toPercent(live)
   const currentPct = toPercent(current)
-
+const handleTrackClick = (e: React.MouseEvent<HTMLDivElement>) => {
+  const rect = e.currentTarget.getBoundingClientRect()
+  const pct = Math.min(1, Math.max(0, (e.clientX - rect.left) / rect.width))
+  const ts = Math.floor(rangeStart + pct * rangeDuration)
+  if (ts >= Math.floor(Date.now() / 1000)) return
+  onSelectTime?.(ts)
+}
   return (
     <div className="w-full px-4">
-      <div className="relative w-full h-10">
-        {/* TRACK */}
-        <div className="absolute top-0 left-0 right-0 h-0.5 bg-gray-400 -translate-y-[1px] rounded-full overflow-hidden">
+    <div className="relative w-full h-10">
+  {/* Invisible full-width click zone */}
+  <div
+    className="absolute top-0 left-0 right-0 h-8 -translate-y-3 cursor-pointer z-10"
+    onClick={handleTrackClick}
+  />
+  <div className="absolute top-0 left-0 right-0 h-0.5 bg-gray-400 ...">
           {/* LIVE (red) */}
           <Tooltip>
             <TooltipTrigger asChild>
@@ -119,7 +129,7 @@ const Timeline: React.FC<TimelineProps> = ({
           {/* CURRENT (blue) */}
           <Tooltip>
             <TooltipTrigger asChild>
-              <div className="absolute left-0 top-0 h-full bg-blue-500" style={{ width: `${currentPct}%` }} />
+              <div className="absolute left-0 top-0 h-full bg-teal-500" style={{ width: `${currentPct}%` }} />
             </TooltipTrigger>
             <TooltipContent side="bottom">CURRENT · {unixToHHmm(current)}</TooltipContent>
           </Tooltip>
@@ -140,17 +150,20 @@ const Timeline: React.FC<TimelineProps> = ({
 
         {/* program circles */}
         {programs.map((p) => (
-          <div
-            key={p.id}
-            className="absolute top-0 -translate-x-1/2 -translate-y-1/2 cursor-pointer"
-            style={{ left: `${toPercent(p.startUnixSec)}%` }}
-            onClick={() => {
-              const original = Array.isArray(timeProgramm)
-                ? timeProgramm.find((x) => String(x.UID) === p.id)
-                : undefined
-              onSelectTime?.(p.startUnixSec, original)
-            }}
-          >
+   <div
+  key={p.id}
+  className={`absolute top-0 -translate-x-1/2 -translate-y-1/2 z-20 ${
+    p.startUnixSec < live ? 'cursor-pointer' : 'cursor-default opacity'
+  }`}
+  style={{ left: `${toPercent(p.startUnixSec)}%` }}
+  onClick={() => {
+    if (p.startUnixSec >= live) return
+    const original = Array.isArray(timeProgramm)
+      ? timeProgramm.find((x) => String(x.UID) === p.id)
+      : undefined
+    onSelectTime?.(p.startUnixSec, original)
+  }}
+>
             <div className="group w-2 h-2 dark:bg-white rounded-full bg-gray-800">
               <Tooltip>
                 <TooltipTrigger asChild>
