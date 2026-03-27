@@ -321,8 +321,10 @@ const Plans = () => {
   const [extraDevices, setExtraDevices] = useState(0)
   const [tvDevicePrice, setTvDevicePrice] = useState(5)
   const [purchasingTvLimit, setPurchasingTvLimit] = useState(false)
+  const [confirmTvLimit, setConfirmTvLimit] = useState(false)
   const [limitInvoice,setLimitInvoice]=useState<DeviceLimitInvoiceData|null>(null)
   const [planInvoice,setPlanInvoice]=useState<PlanPurchaseInvoiceData|null>(null)
+  const [successInvoice, setSuccessInvoice] = useState<{ data: InvoiceData; type: 'plan' | 'tv' } | null>(null)
   const balance = user?.account?.balance != null ? parseFloat(user.account.balance) : null
   const isLowBalance = balance !== null && balance < 1.00
 
@@ -364,8 +366,7 @@ const Plans = () => {
     setPurchasing(planId)
     try {
       const res = await api.post('/api/plans/purchase', { plan_id: planId })
-      const data: PurchaseResult = res.data
-      navigate('/invoice', { state: { invoiceData: res.data } })  
+      setSuccessInvoice({ data: res.data, type: 'plan' })
     } catch (err: any) {
       showToast(err?.response?.data?.message || 'Error', 'error')
     } finally {
@@ -377,8 +378,9 @@ const Plans = () => {
     if (extraDevices === 0) return
     setPurchasingTvLimit(true)
     try {
-      const res=await api.post('/api/plans/tv-limit', { quantity: extraDevices })
-      navigate('/invoice', { state: { invoiceData: res.data } })  
+      const res = await api.post('/api/plans/tv-limit', { quantity: extraDevices })
+      setExtraDevices(0)
+      setSuccessInvoice({ data: res.data, type: 'tv' })
     } catch (err: any) {
       showToast(err?.response?.data?.message || tx.tvLimitError, 'error')
     } finally {
@@ -538,70 +540,41 @@ const Plans = () => {
           onClick={() => setConfirmPlan(null)}
         >
           <div
-            className="relative w-full max-w-sm rounded-2xl border-2 border-yellow-500/60 bg-auth-card-bg shadow-2xl p-6"
+            className="relative w-full max-w-sm rounded-2xl border border-plans-divider bg-auth-card-bg shadow-2xl p-6 overflow-hidden"
             onClick={e => e.stopPropagation()}
           >
-            {/* Icon */}
-            <div className="flex items-center justify-center w-12 h-12 rounded-full bg-yellow-500/15 border border-yellow-500/30 mx-auto mb-4">
-              <svg className="w-6 h-6 text-yellow-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-                  d="M12 9v4m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" />
-              </svg>
-            </div>
+            <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-form-highlights/50 to-transparent" />
 
             {/* Title */}
-            <h2 className="text-center text-lg font-bold text-foreground mb-4">
+            <h2 className="text-base font-bold text-foreground mb-1">
               {language === 'Ge' ? 'დაადასტურეთ შეძენა' : 'Confirm Purchase'}
             </h2>
+            <p className="text-xs text-muted-foreground mb-5">
+              {language === 'Ge' ? 'გთხოვთ გადაამოწმოთ შეძენის დეტალები' : 'Please review your purchase details'}
+            </p>
 
-            {/* Breakdown */}
-            <div className="rounded-xl border border-plans-divider bg-plans-skeleton-bg overflow-hidden mb-5">
-              {/* Plan row */}
-              <div className="flex items-center justify-between px-4 py-3">
-                <div className="flex items-center gap-2">
-                  <div className="w-1.5 h-1.5 rounded-full bg-form-highlights" />
-                  <span className="text-sm text-foreground">{confirmPlan[`name_${lang}`]}</span>
-                  <span className="text-xs text-muted-foreground">({tx.tvAddonPlanFee})</span>
+            {/* Plan detail */}
+            <div className="rounded-xl border border-plans-divider bg-plans-skeleton-bg p-4 mb-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-xs text-muted-foreground mb-0.5">{tx.tvAddonPlanFee}</p>
+                  <p className="text-sm font-semibold text-foreground">{confirmPlan[`name_${lang}`]}</p>
+                  <p className="text-xs text-muted-foreground mt-0.5">{confirmPlan.duration_days} {tx.daysUnit}</p>
                 </div>
-                <span className="text-sm font-semibold text-foreground tabular-nums">
-                  {planFee.toFixed(2)} ₾
-                </span>
-              </div>
-
-              {/* TV device row — only shown if extras selected */}
-              {extraDevices > 0 && (
-                <>
-                  <div className="h-px bg-plans-divider mx-4" />
-                  <div className="flex items-center justify-between px-4 py-3">
-                    <div className="flex items-center gap-2">
-                      <div className="w-1.5 h-1.5 rounded-full bg-amber-400" />
-                      <span className="text-sm text-foreground">{tx.tvAddonDeviceFee}</span>
-                      <span className="text-xs text-muted-foreground">
-                        ({extraDevices} × {tvDevicePrice} ₾)
-                      </span>
-                    </div>
-                    <span className="text-sm font-semibold text-amber-400 tabular-nums">
-                      +{deviceFee.toFixed(2)} ₾
-                    </span>
-                  </div>
-                </>
-              )}
-
-              {/* Total row */}
-              <div className="h-px bg-plans-divider" />
-              <div className="flex items-center justify-between px-4 py-3 bg-yellow-500/5">
-                <span className="text-sm font-bold text-foreground">{tx.tvAddonTotal}</span>
-                <span className="text-lg font-bold text-yellow-400 tabular-nums">
-                  {totalFee.toFixed(2)} ₾
-                </span>
+                <p className="text-2xl font-bold text-foreground tabular-nums">{Number(confirmPlan.price).toFixed(2)} <span className="text-lg text-form-highlights">₾</span></p>
               </div>
             </div>
 
-            {/* Device limit note */}
-            {extraDevices > 0 && (
-              <p className="text-xs text-center text-amber-500/70 mb-4">
-                {tx.tvAddonConfirmNote} · {DEFAULT_TV_DEVICES + extraDevices} {language === 'Ge' ? 'მოწყობილობა' : 'devices max'}
-              </p>
+            {/* Balance after */}
+            {balance !== null && (
+              <div className="flex items-center justify-between px-4 py-2.5 rounded-xl bg-plans-skeleton-bg border border-plans-divider mb-5">
+                <span className="text-xs text-muted-foreground">
+                  {language === 'Ge' ? 'შეძენის შემდეგ' : 'Balance after'}
+                </span>
+                <span className={`text-sm font-bold tabular-nums ${balance - Number(confirmPlan.price) < 0 ? 'text-red-400' : 'text-foreground'}`}>
+                  {(balance - Number(confirmPlan.price)).toFixed(2)} ₾
+                </span>
+              </div>
             )}
 
             {/* Buttons */}
@@ -614,11 +587,11 @@ const Plans = () => {
               </button>
               <button
                 onClick={handleConfirmPurchase}
-                disabled={purchasingTvLimit || purchasing !== null}
-                className="flex-1 py-2.5 rounded-xl text-sm font-semibold bg-yellow-500 hover:bg-yellow-400 text-black transition-all shadow-[0_2px_16px_rgba(234,179,8,0.35)] disabled:opacity-60 disabled:cursor-wait cursor-pointer flex items-center justify-center gap-2"
+                disabled={purchasing !== null}
+                className="flex-1 py-2.5 rounded-xl text-sm font-semibold bg-form-highlights hover:bg-button-hover text-white transition-all shadow-[0_2px_16px_rgba(192,17,17,0.35)] disabled:opacity-60 disabled:cursor-wait cursor-pointer flex items-center justify-center gap-2"
               >
-                {(purchasingTvLimit || purchasing !== null) && (
-                  <span className="w-4 h-4 border-2 border-black/20 border-t-black rounded-full animate-spin" />
+                {purchasing !== null && (
+                  <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
                 )}
                 {language === 'Ge' ? 'დიახ, ყიდვა' : 'Yes, Buy'}
               </button>
@@ -641,8 +614,8 @@ const Plans = () => {
               <span className="text-xs text-muted-foreground">·</span>
               <span className="text-xs text-muted-foreground">{tx.tvAddonDevices(extraDevices)}</span>
             </div>
-            <button
-              onClick={handleTvLimitPurchase}
+           <button
+              onClick={() => setConfirmTvLimit(true)}
               disabled={purchasingTvLimit}
               className="px-4 py-1.5 rounded-xl text-xs font-bold bg-amber-500 hover:bg-amber-400 text-black transition-all disabled:opacity-60 disabled:cursor-wait cursor-pointer flex items-center gap-1.5"
             >
@@ -662,7 +635,127 @@ const Plans = () => {
           </div>
         </div>
       )}
+      {/* TV Limit Confirm Modal */}
+      {confirmTvLimit && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm"
+          onClick={() => setConfirmTvLimit(false)}
+        >
+          <div
+            className="relative w-full max-w-sm rounded-2xl border border-amber-500/30 bg-auth-card-bg shadow-2xl p-6 overflow-hidden"
+            onClick={e => e.stopPropagation()}
+          >
+            <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-amber-400/60 to-transparent" />
 
+            <div className="w-10 h-10 rounded-xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center mb-4">
+              <svg className="w-5 h-5 text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <rect x="2" y="3" width="20" height="14" rx="2" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+                <path d="M8 21h8M12 17v4" strokeWidth="1.8" strokeLinecap="round" />
+              </svg>
+            </div>
+
+            <h2 className="text-base font-bold text-foreground mb-1">
+              {language === 'Ge' ? 'ლიმიტის გაზრდა' : 'Increase Device Limit'}
+            </h2>
+            <p className="text-xs text-muted-foreground mb-5">
+              {language === 'Ge' ? 'გთხოვთ გადაამოწმოთ შეძენის დეტალები' : 'Please review your purchase details'}
+            </p>
+
+            <div className="rounded-xl border border-amber-500/20 bg-amber-500/5 p-4 mb-4">
+              <div className="flex items-center justify-between mb-3">
+                <span className="text-xs text-muted-foreground">{tx.tvAddonDevices(extraDevices)}</span>
+                <span className="text-2xl font-bold text-amber-400 tabular-nums">{(extraDevices * tvDevicePrice).toFixed(2)} <span className="text-lg">₾</span></span>
+              </div>
+              <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                <span>{extraDevices} × {tvDevicePrice.toFixed(2)} ₾ / {tx.tvAddonPricePerDevice}</span>
+              </div>
+            </div>
+
+            {balance !== null && (
+              <div className="flex items-center justify-between px-4 py-2.5 rounded-xl bg-plans-skeleton-bg border border-plans-divider mb-5">
+                <span className="text-xs text-muted-foreground">
+                  {language === 'Ge' ? 'შეძენის შემდეგ' : 'Balance after'}
+                </span>
+                <span className={`text-sm font-bold tabular-nums ${balance - extraDevices * tvDevicePrice < 0 ? 'text-red-400' : 'text-foreground'}`}>
+                  {(balance - extraDevices * tvDevicePrice).toFixed(2)} ₾
+                </span>
+              </div>
+            )}
+
+            <div className="flex gap-3">
+              <button
+                onClick={() => setConfirmTvLimit(false)}
+                className="flex-1 py-2.5 rounded-xl text-sm font-semibold border border-plans-divider text-muted-foreground hover:bg-plans-skeleton-bg transition-all cursor-pointer"
+              >
+                {language === 'Ge' ? 'გაუქმება' : 'Cancel'}
+              </button>
+              <button
+                onClick={() => { setConfirmTvLimit(false); handleTvLimitPurchase() }}
+                disabled={purchasingTvLimit}
+                className="flex-1 py-2.5 rounded-xl text-sm font-semibold bg-amber-500 hover:bg-amber-400 text-black transition-all disabled:opacity-60 disabled:cursor-wait cursor-pointer flex items-center justify-center gap-2"
+              >
+                {purchasingTvLimit && (
+                  <span className="w-4 h-4 border-2 border-black/20 border-t-black rounded-full animate-spin" />
+                )}
+                {language === 'Ge' ? 'დიახ, გაზრდა' : 'Yes, Increase'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Success Modal */}
+      {successInvoice && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm"
+          onClick={() => setSuccessInvoice(null)}
+        >
+          <div
+            className="relative w-full max-w-sm rounded-2xl border border-emerald-500/30 bg-auth-card-bg shadow-2xl p-6 overflow-hidden"
+            onClick={e => e.stopPropagation()}
+          >
+            <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-emerald-400/60 to-transparent" />
+
+            {/* Animated check */}
+            <div className="flex items-center justify-center mb-5">
+              <div className="w-16 h-16 rounded-full bg-emerald-500/10 border border-emerald-500/25 flex items-center justify-center">
+                <svg className="w-8 h-8 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                </svg>
+              </div>
+            </div>
+
+            <h2 className="text-center text-lg font-bold text-foreground mb-1">
+              {language === 'Ge' ? 'გადახდა წარმატებულია' : 'Payment Successful'}
+            </h2>
+            <p className="text-center text-xs text-muted-foreground mb-6">
+              {successInvoice.type === 'plan'
+                ? (language === 'Ge' ? 'თქვენი პაკეტი გააქტიურდა' : 'Your plan has been activated')
+                : (language === 'Ge' ? 'TV ლიმიტი გაიზარდა' : 'Your TV device limit has been increased')}
+            </p>
+
+            <div className="flex gap-3">
+              <button
+                onClick={() => setSuccessInvoice(null)}
+                className="flex-1 py-2.5 rounded-xl text-sm font-semibold border border-plans-divider text-muted-foreground hover:bg-plans-skeleton-bg transition-all cursor-pointer"
+              >
+                {language === 'Ge' ? 'დახურვა' : 'Close'}
+              </button>
+              <button
+                onClick={() => {
+                  const inv = successInvoice.data
+                  setSuccessInvoice(null)
+                  navigate('/invoice', { state: { invoiceData: inv } })
+                }}
+                className="flex-1 py-2.5 rounded-xl text-sm font-semibold bg-emerald-600 hover:bg-emerald-500 text-white transition-all shadow-[0_2px_16px_rgba(16,185,129,0.3)] cursor-pointer flex items-center justify-center gap-2"
+              >
+                <span className="material-symbols-outlined" style={{ fontSize: '1rem', lineHeight: 1 }}>receipt_long</span>
+                {language === 'Ge' ? 'ინვოისი' : 'View Invoice'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
       <div className="max-w-7xl mx-auto px-4 py-3 sm:px-6 lg:px-8">
 
         {/* Header + Balance */}
