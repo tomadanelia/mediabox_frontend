@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react'
-
+import Footer from '@/hmcomponents/footer'
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 type FormField = 'name' | 'email' | 'topic' | 'message'
@@ -214,6 +214,9 @@ export default function SupportPage() {
 
   /* ── Main ── */
   return (
+    <div>
+
+    
     <div className="flex w-full h-full overflow-hidden">
 
       {/* ── Sidebar ── */}
@@ -351,7 +354,10 @@ export default function SupportPage() {
             Send message
           </button>
         </div>
+      
       </div>
+    </div>
+    <Footer/>
     </div>
   )
 }

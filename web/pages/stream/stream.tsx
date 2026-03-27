@@ -788,7 +788,7 @@ export const Stream: React.FC = () => {
 
         {/* CENTER */}
         <div className="w-[calc(100vw-130px)] lg:w-3/5 relative h-full flex flex-col">
-          <div className='flex flex-col h-[calc(100%-40px)]'>
+          <div className='flex flex-col h-[calc(100%-80px)]'>
             <VideoPlayer
               programs={programs}
               nextDayPrograms={nextDayPrograms}

@@ -546,9 +546,6 @@ export default function RemotePage() {
           </div>
 
         </div>
-
-
-
       </div>
     </>
   )

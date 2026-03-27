@@ -21,7 +21,6 @@ interface Translation {
   live: string
   navLinks: NavLinkItem[]
   profile: string
-  settings: string
   logout: string
   signin: string
 }
@@ -39,7 +38,6 @@ const T: Record<Language, Translation> = {
       { to: "/remote",  label: "პულტი"     },
     ],
     profile:  "პროფილი",
-    settings: "პარამეტრები",
     logout:   "გასვლა",
     signin:   "შესვლა",
   },
@@ -54,7 +52,6 @@ const T: Record<Language, Translation> = {
       { to: "/remote",  label: "Remote" },
     ],
     profile:  "Profile",
-    settings: "Settings",
     logout:   "Sign out",
     signin:   "Sign in",
   },
@@ -179,7 +176,6 @@ const ProfileDropdown = ({ user, tx, onLogout }: ProfileDropdownProps) => {
 
   const menuItems = [
     { icon: "manage_accounts", label: tx.profile,  to: "/profile"  },
-    { icon: "settings",        label: tx.settings, to: "/settings" },
   ]
 
   return (
@@ -454,8 +450,8 @@ const Navbar = () => {
 
   return (
     <>
-      <header className="w-full h-16 bg-nav-bg border border-black/10 dark:border-white/10 backdrop-blur-lg transition-colors duration-300">
-        <div className="flex h-full items-center justify-between px-4 sm:px-6 w-full">
+      <header className="w-full h-16 bg-nav-bg border border-black/10 dark:border-white/10 backdrop-blur-lg transition-colors duration-300 flex justify-center items-center">
+        <div className="flex h-full items-center justify-between px-4 sm:px-6 w-full 2xl:w-400">
 
           {/* LEFT */}
           <div className="flex items-center gap-2 shrink-0 min-w-0">
