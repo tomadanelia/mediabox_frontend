@@ -21,7 +21,6 @@ interface Translation {
   live: string
   navLinks: NavLinkItem[]
   profile: string
-  settings: string
   logout: string
   signin: string
 }
@@ -39,7 +38,6 @@ const T: Record<Language, Translation> = {
       { to: "/remote",  label: "პულტი"     },
     ],
     profile:  "პროფილი",
-    settings: "პარამეტრები",
     logout:   "გასვლა",
     signin:   "შესვლა",
   },
@@ -54,7 +52,6 @@ const T: Record<Language, Translation> = {
       { to: "/remote",  label: "Remote" },
     ],
     profile:  "Profile",
-    settings: "Settings",
     logout:   "Sign out",
     signin:   "Sign in",
   },
@@ -141,7 +138,7 @@ const SearchPanel = ({ open, onClose, placeholder }: SearchPanelProps) => {
       ].join(" ")}>
         <div className="w-full max-w-lg bg-white dark:bg-zinc-900 rounded-2xl shadow-2xl shadow-black/20 dark:shadow-black/50 border border-black/8 dark:border-white/10 overflow-hidden">
           <div className="relative flex items-center px-4 py-3">
-            <Icon name="search" size={20} className="text-zinc-400 flex-shrink-0 mr-3" />
+            {/* <Icon name="search" size={20} className="text-zinc-400 flex-shrink-0 mr-3" /> */}
             <input
               ref={inputRef}
               placeholder={placeholder}
@@ -179,7 +176,6 @@ const ProfileDropdown = ({ user, tx, onLogout }: ProfileDropdownProps) => {
 
   const menuItems = [
     { icon: "manage_accounts", label: tx.profile,  to: "/profile"  },
-    { icon: "settings",        label: tx.settings, to: "/settings" },
   ]
 
   return (
@@ -324,7 +320,7 @@ const MobileSidebar = ({
         {/* search */}
         <div className="px-4 py-3 border-b border-black/8 dark:border-white/8">
           <div className="relative">
-            <Icon name="search" size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400 pointer-events-none" />
+            {/* <Icon name="search" size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400 pointer-events-none" /> */}
             <input
               placeholder={tx.search}
               className="w-full rounded-xl bg-zinc-100 dark:bg-white/8 pl-9 pr-3 py-2.5 text-sm text-zinc-900 dark:text-white placeholder:text-zinc-400 focus:outline-none"
@@ -454,8 +450,8 @@ const Navbar = () => {
 
   return (
     <>
-      <header className="w-full h-16 bg-nav-bg border border-black/10 dark:border-white/10 backdrop-blur-lg transition-colors duration-300">
-        <div className="flex h-full items-center justify-between px-4 sm:px-6 w-full">
+      <header className="w-full h-16 bg-nav-bg border border-black/10 dark:border-white/10 backdrop-blur-lg transition-colors duration-300 flex justify-center items-center">
+        <div className="flex h-full items-center justify-between px-4 sm:px-6 w-full 2_5xl:w-500">
 
           {/* LEFT */}
           <div className="flex items-center gap-2 shrink-0 min-w-0">
@@ -513,7 +509,7 @@ const Navbar = () => {
               onClick={() => setSearchOpen(true)}
               className="rounded-full p-2 hover:bg-zinc-100 dark:hover:bg-white/8 transition-colors"
             >
-              <Icon name="search" size={20} className="text-zinc-600 dark:text-zinc-400" />
+              {/* <Icon name="search" size={20} className="text-zinc-600 dark:text-zinc-400" /> */}
             </button>
 
             <button

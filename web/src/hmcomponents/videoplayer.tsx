@@ -89,24 +89,24 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
   onRewind, onGoLive, onChannelSelect, currentChannelId,
   rewindableDays, channels = [], programs = [], nextDayPrograms = [],
 }) => {
-  const videoRef     = useRef<HTMLVideoElement | null>(null);
-  const containerRef = useRef<HTMLDivElement | null>(null);
-  const hlsRef       = useRef<Hls | null>(null);
+  const videoRef        = useRef<HTMLVideoElement | null>(null);
+  const containerRef    = useRef<HTMLDivElement | null>(null);
+  const hlsRef          = useRef<Hls | null>(null);
   const settingsService = useRef(new PlayerSettingsService());
-  const hideTimer    = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const volHideTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const hideTimer       = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const volHideTimer    = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const scheduleHide = () => {
     if (hideTimer.current) clearTimeout(hideTimer.current);
     hideTimer.current = setTimeout(() => {
       setShowControls(false);
       setShowVolumeSlider(false);
-    }, 300);
+    }, 3000);
   };
 
   const cancelHide = () => {
     if (hideTimer.current) { clearTimeout(hideTimer.current); hideTimer.current = null; }
-    setShowControls(true);
+    setShowControls(prev => prev ? prev : true);
   };
 
   const [isPlaying,        setIsPlaying]        = useState(false);
@@ -123,6 +123,15 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
   useEffect(() => {
     const id = setInterval(() => setLiveNow(Math.floor(Date.now() / 1000)), 1000);
     return () => clearInterval(id);
+  }, []);
+
+  // ── Timer cleanup on unmount ──────────────────────────────────────────────────
+
+  useEffect(() => {
+    return () => {
+      if (hideTimer.current) clearTimeout(hideTimer.current);
+      if (volHideTimer.current) clearTimeout(volHideTimer.current);
+    };
   }, []);
 
   const watchingUnix = getWatchingUnix(mode, liveNow, archiveTimestamp, currentTime);
@@ -154,11 +163,18 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
     setIsBuffering(true);
     setCurrentTime(0);
 
-    const tryPlay = () =>
-      video.play().then(() => setIsPlaying(true)).catch(() => {
+    // Capture mute/volume state before reinitializing so rewinds don't mute
+    const wasMuted  = video.muted;
+    const wasVolume = video.volume;
+
+    const tryPlay = () => {
+      video.muted  = wasMuted;
+      video.volume = wasVolume;
+      return video.play().then(() => setIsPlaying(true)).catch(() => {
         video.muted = true; setIsMuted(true);
         video.play().then(() => setIsPlaying(true)).catch(() => {});
       });
+    };
 
     if (Hls.isSupported()) {
       const hls = new Hls({ enableWorker: true, lowLatencyMode: true });
@@ -230,7 +246,10 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
   }, []);
 
   useEffect(() => {
-    const onChange = () => setIsFullscreen(!!document.fullscreenElement);
+    const onChange = () => {
+      setIsFullscreen(!!document.fullscreenElement);
+      if (document.fullscreenElement) scheduleHide();
+    };
     document.addEventListener('fullscreenchange', onChange);
     return () => document.removeEventListener('fullscreenchange', onChange);
   }, []);
@@ -269,6 +288,7 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
     const now    = Math.floor(Date.now() / 1000);
     if (seconds < 0) onRewind(Math.max(0, target));
     else if (mode === 'archive') target >= now ? onGoLive() : onRewind(target);
+    // forward skip is disabled in live mode via the button's disabled prop
   };
 
   const toggleFullscreen = () => {
@@ -285,7 +305,8 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
         ref={containerRef}
         className={`relative bg-black overflow-hidden aspect-video w-full max-h-full ${isFullscreen ? '' : 'rounded-[10px]'}`}
         style={{ maxWidth: 'calc((100vh - 80px) * (16/9))' }}
-        onMouseEnter={cancelHide}
+        onMouseEnter={() => { cancelHide(); scheduleHide(); }}
+        onMouseMove={() => { cancelHide(); scheduleHide(); }}
         onMouseLeave={scheduleHide}
       >
         {/* ── Video ── */}
@@ -320,19 +341,19 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
           {/* Fullscreen channels button */}
           {isFullscreen && (
             <button
-  onClick={() => setShowChannels(v => !v)}
-  className="pointer-events-auto absolute top-4 right-4
-    text-white hover:text-[#d52b1e] cursor-pointer
-    flex items-center justify-center w-9 h-9
-    bg-black/60 backdrop-blur-sm rounded-lg border border-white/15"
->
-  <span
-    className="material-symbols-outlined pointer-events-none select-none"
-    style={{ fontSize: '20px', display: 'block', lineHeight: 1 }}
-  >
-    list
-  </span>
-</button>
+              onClick={() => setShowChannels(v => !v)}
+              className="pointer-events-auto absolute top-4 right-4
+                text-white hover:text-[#d52b1e] cursor-pointer
+                flex items-center justify-center w-9 h-9
+                bg-black/60 backdrop-blur-sm rounded-lg border border-white/15"
+            >
+              <span
+                className="material-symbols-outlined pointer-events-none select-none"
+                style={{ fontSize: '20px', display: 'block', lineHeight: 1 }}
+              >
+                list
+              </span>
+            </button>
           )}
 
           {/* Center play controls — own absolute box, doesn't overlap bottom bar */}
@@ -340,7 +361,7 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
             style={{ top: '50%', transform: 'translateY(-50%)', bottom: 'auto' }}>
             <Btn icon="replay_10"  onClick={() => skip(-10)} title="−10s" size={28} />
             <Btn icon={isPlaying ? 'pause' : 'play_arrow'} onClick={togglePlay} size={42} fill />
-            <Btn icon="forward_10" onClick={() => skip(10)}  title="+10s" size={28} />
+            <Btn icon="forward_10" onClick={() => skip(10)}  title="+10s" size={28} disabled={mode === 'live'} />
           </div>
 
           {/* Bottom bar — own absolute box pinned to bottom */}
@@ -363,7 +384,7 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
             )}
 
             {/* Single row: volume | clock | seekbar | right buttons */}
-            <div className="pointer-events-auto flex items-center gap-2" onMouseEnter={cancelHide}>
+            <div className="pointer-events-auto flex items-center gap-2">
 
               {/* Volume */}
               <div className="relative shrink-0"
