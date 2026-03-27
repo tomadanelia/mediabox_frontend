@@ -33,7 +33,7 @@ const tx = {
     qrLabel: 'Scan for support',
     download: 'Download PDF',
     downloading: 'Generating…',
-    issuedBy: 'YourApp LLC',
+    issuedBy: 'Telecom 1 LLC',
     address: 'Tbilisi, Georgia',
   },
   Ge: {
@@ -58,7 +58,7 @@ const tx = {
     qrLabel: 'სკანირება მხარდაჭერისთვის',
     download: 'PDF ჩამოტვირთვა',
     downloading: 'მომზადება…',
-    issuedBy: 'YourApp შპს',
+    issuedBy: 'შპს Telecom 1',
     address: 'თბილისი, საქართველო',
   },
 } as const

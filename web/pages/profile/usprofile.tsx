@@ -4,7 +4,7 @@ import useUIStore from "../../src/store/ui-store";
 import useAuthStore from "../../src/store/AuthStore";
 import type { User } from "../../src/types/user";
 import EditProfileModal from "./EditModal";
-
+import TransactionsTab from "./transactionsTab";
 interface WatchedChannel {
   id: number | string;
   name?: string;
@@ -39,7 +39,7 @@ const translations = {
     loading: "Loading",
     tabs: {
       Overview: "Overview",
-      History: "History",
+      Transactions: "Transactions",
       Favourites: "Favourites",
     },
     sidebar: {
@@ -92,7 +92,7 @@ const translations = {
   },
   Ge: {
     loading: "იტვირთება",
-    tabs: { Overview: "მთავარი", History: "ისტორია", Favourites: "ფავორიტები" },
+    tabs: { Overview: "მთავარი", Transactions: "ტრანზაქციები", Favourites: "ფავორიტები" },
     sidebar: {
       memberSince: "დარეგისტრირების თარიღი",
       notVerified: "ანგარიში დაუდასტურებელია",
@@ -143,7 +143,7 @@ const translations = {
   },
 } as const;
 
-type Tab = "Overview" | "History" | "Favourites";
+type Tab = "Overview" | "Transactions" | "Favourites";
 
 export default function UserProfile() {
   const language = useUIStore((state) => state.language);
@@ -241,18 +241,7 @@ tableRow:  "border-border hover:bg-muted/40",
       .catch(() => setActivePlans([]));
   }, []);
 
-  /* ── Fetch watch history ── */
-  useEffect(() => {
-    if (tab !== "History") return;
-    api
-      .get("/user/preferences/watch/last")
-      .then((res) =>
-        setWatchHistory(
-          Array.isArray(res.data) ? res.data : (res.data?.data ?? []),
-        ),
-      )
-      .catch(() => setWatchHistory([]));
-  }, [tab]);
+
   useEffect(() => {
     if (tab !== "Favourites") return;
     fetchFavourites();
@@ -473,7 +462,7 @@ tableRow:  "border-border hover:bg-muted/40",
 
         {/* Nav */}
         <div className={`border-t ${c.divider}  shrink-0`}>
-          {(["Overview", "History", "Favourites"] as Tab[]).map((t) => (
+          {(["Overview", "Transactions", "Favourites"] as Tab[]).map((t) => (
             <button
               key={t}
               onClick={() => {
@@ -489,7 +478,7 @@ tableRow:  "border-border hover:bg-muted/40",
               <span
                 className={`text-[0.6rem] uppercase tracking-widest font-bold ${tab === t ? c.accent : c.faint}`}
               >
-                {t === "Overview" ? "" : t === "History" ? "" : ""}
+                {t === "Overview" ? "" : t === "Transactions" ? "" : ""}
               </span>
               {tx.tabs[t]}
             </button>
@@ -658,95 +647,17 @@ tableRow:  "border-border hover:bg-muted/40",
               </div>
             </div>
           )}
-
-          {/* ════ HISTORY ════ */}
-          {tab === "History" && (
-            <div className="px-8 py-8 lg:px-14 lg:py-10">
-              <p
-                className={`text-[0.65rem] uppercase tracking-[0.2em] font-semibold ${c.sub} mb-6`}
-              >
-                {tx.history.cardTitle}
-              </p>
-              {watchHistory.length === 0 ? (
-                <div className="flex items-center gap-3 py-6">
-                  <span className={`text-2xl ${c.faint}`}>⊘</span>
-                  <span className={`text-sm ${c.sub}`}>{tx.history.empty}</span>
-                </div>
-              ) : (
-                <div className="flex flex-col">
-                  <div
-                    className={`flex items-center gap-6 pb-3 border-b ${c.divider}`}
-                  >
-                    <span className="w-5 shrink-0" />
-                    <span
-                      className={`flex-1 text-[0.6rem] uppercase tracking-widest font-semibold ${c.sub}`}
-                    >
-                      {tx.history.channel}
-                    </span>
-                    <span
-                      className={`text-[0.6rem] uppercase tracking-widest font-semibold ${c.sub} w-36 text-right`}
-                    >
-                      {tx.history.watchedAt}
-                    </span>
-                  </div>
-                  {watchHistory.map((w, i) => {
-                    const name =
-                      w.name ?? w.title ?? w.channel ?? `Channel ${w.id}`;
-                    const logo = w.logo ?? w.logo_url;
-                    const watchedAt = w.watched_at ?? w.last_watched;
-                    return (
-                      <div
-                        key={w.id ?? i}
-                        className={`flex items-center gap-6 py-4 border-b ${c.tableRow} transition-colors`}
-                      >
-                        <span
-                          className={`text-[0.6rem] font-mono w-5 shrink-0 ${c.faint}`}
-                        >
-                          {String(i + 1).padStart(2, "0")}
-                        </span>
-                        <div className="flex items-center gap-3 flex-1 min-w-0">
-                          {logo ? (
-                            <img
-                              src={logo}
-                              alt={name}
-                              className="w-8 h-8 rounded-lg object-cover shrink-0"
-                            />
-                          ) : (
-                            <div
-                              className={`w-8 h-8 rounded-lg shrink-0 flex items-center justify-center text-[0.6rem] font-bold font-mono ${c.logoBg}`}
-                            >
-                              {name.slice(0, 2).toUpperCase()}
-                            </div>
-                          )}
-                          <span
-                            className={`text-sm font-medium truncate ${c.heading}`}
-                          >
-                            {name}
-                          </span>
-                        </div>
-                        <span
-                          className={`text-xs font-mono ${c.sub} w-36 text-right shrink-0`}
-                        >
-                          {watchedAt
-                            ? new Date(watchedAt).toLocaleString(
-                                language === "En" ? "en-US" : "ka-GE",
-                                {
-                                  month: "short",
-                                  day: "numeric",
-                                  hour: "2-digit",
-                                  minute: "2-digit",
-                                },
-                              )
-                            : "—"}
-                        </span>
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
-            </div>
-          )}
-
+        
+          {tab === "Transactions" && (
+  <TransactionsTab
+    language={language}
+    isDark={isDark}
+    c={c}
+    companyName={companyName}
+    userFullName={user?.full_name}
+    userNumericId={user?.numeric_id}
+  />
+)}
           {/* ════ FAVOURITES ════ */}
           {tab === "Favourites" && (
             <div className="px-8 py-8 lg:px-14 lg:py-10">
