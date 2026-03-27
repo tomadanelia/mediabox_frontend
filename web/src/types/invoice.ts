@@ -8,6 +8,9 @@ export interface PlanPurchaseInvoiceData {
     currency: string
     user_name: string
     user_id: number
+    company_name?: string
+    full_name?: string
+    customer_id?: string
   }
   expires_at: string
   remaining_balance: string | number
@@ -21,6 +24,9 @@ export interface DeviceLimitInvoiceData {
     item_name: string
     amount: string | number
     currency: string
+    company_name?: string
+    full_name?: string
+    customer_id?: string
   }
   new_limit: number
   remaining_balance: string | number

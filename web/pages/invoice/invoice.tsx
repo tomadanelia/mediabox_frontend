@@ -6,7 +6,7 @@ import { useLocation } from 'react-router-dom'
 
 
 function isPlanPurchase(data: InvoiceData): data is PlanPurchaseInvoiceData {
-  return 'expires_at' in data && 'user_name' in data.invoice
+  return 'expires_at' in data
 }
 
 
@@ -157,16 +157,17 @@ export default function InvoicePage({ onBack }: { onBack?: () => void }) {
   const isPlan = isPlanPurchase(data)
   const invoiceType: 'purchase' | 'device_upgrade' = isPlan ? 'purchase' : 'device_upgrade'
 
-  const inv = data.invoice
+  const inv = data.invoice as PlanPurchaseInvoiceData['invoice'] & DeviceLimitInvoiceData['invoice']
   const amount = parseFloat(String(inv.amount))
   const currency = inv.currency === 'GEL' ? '₾' : inv.currency
   const transactionId = String(inv.transaction_id)
   const invoiceNumber = `INV-${transactionId.slice(-8).toUpperCase()}`
 
-  const customerName = isPlan ? (data as PlanPurchaseInvoiceData).invoice.user_name : undefined
-  const customerId = isPlan
-    ? String((data as PlanPurchaseInvoiceData).invoice.user_id)
-    : undefined
+  const billedTo =
+  inv.company_name ??
+  inv.full_name ??
+  inv.customer_id ??
+  (isPlan ? (data as PlanPurchaseInvoiceData).invoice.user_name : undefined)
   const expiresAt = isPlan ? (data as PlanPurchaseInvoiceData).expires_at : undefined
   const newLimit = !isPlan ? (data as DeviceLimitInvoiceData).new_limit : undefined
 
@@ -283,8 +284,7 @@ export default function InvoicePage({ onBack }: { onBack?: () => void }) {
       </div>
       <div>
         <p style="font-size:7px;text-transform:uppercase;letter-spacing:.18em;color:${C.faintText};font-weight:600;margin-bottom:8px">${t.sections.to}</p>
-        <p style="font-size:13px;font-weight:600;color:${C.fg};margin-bottom:4px">${customerName ?? t.issuedBy}</p>
-        ${customerId ? `<p style="font-size:10px;font-family:monospace;color:${C.faintText}">ID: ${customerId}</p>` : ''}
+        <p style="font-size:13px;font-weight:600;color:${C.fg};margin-bottom:4px">${billedTo ?? '—'}</p>
       </div>
     </div>
   </div>
@@ -451,13 +451,8 @@ export default function InvoicePage({ onBack }: { onBack?: () => void }) {
                   {t.sections.to}
                 </p>
                 <p className="text-sm font-semibold text-foreground">
-                  {customerName ?? t.issuedBy}
+                 {billedTo ?? '—'}
                 </p>
-                {customerId && (
-                  <p className="text-xs font-mono text-muted-foreground/50 mt-0.5">
-                    ID: {customerId}
-                  </p>
-                )}
               </div>
             </div>
           </div>
