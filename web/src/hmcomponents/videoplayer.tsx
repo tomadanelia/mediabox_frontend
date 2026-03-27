@@ -136,19 +136,30 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
 
   const watchingUnix = getWatchingUnix(mode, liveNow, archiveTimestamp, currentTime);
 
-  const { rangeStart, rangeEnd } = useMemo(() => {
-    if (!programs.length) {
-      const d = new Date(watchingUnix * 1000);
-      const midnight = new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime() / 1000;
-      return { rangeStart: midnight, rangeEnd: midnight + 86400 };
-    }
-    const sorted     = [...programs].sort((a, b) => a.START_TIME - b.START_TIME);
-    const nextSorted = [...nextDayPrograms].sort((a, b) => a.START_TIME - b.START_TIME);
-    return {
-      rangeStart: sorted[0].START_TIME,
-      rangeEnd:   nextSorted.length > 0 ? nextSorted[0].START_TIME : sorted[sorted.length - 1].END_TIME,
-    };
-  }, [programs, nextDayPrograms, watchingUnix]);
+const { rangeStart, rangeEnd } = useMemo(() => {
+  if (!programs.length) {
+    // No programs — show full day 00:00 → 24:00
+    const d = new Date(watchingUnix * 1000)
+    const midnight = new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime() / 1000
+    return { rangeStart: midnight, rangeEnd: midnight + 86400 }
+  }
+
+  // Find the program currently being watched
+  const current = programs.find(
+    p => watchingUnix >= p.START_TIME && watchingUnix < p.END_TIME
+  )
+
+  if (current) {
+    return { rangeStart: current.START_TIME, rangeEnd: current.END_TIME }
+  }
+
+  // Fallback: first program start → last program end
+  const sorted = [...programs].sort((a, b) => a.START_TIME - b.START_TIME)
+  return {
+    rangeStart: sorted[0].START_TIME,
+    rangeEnd: sorted[sorted.length - 1].END_TIME,
+  }
+}, [programs, watchingUnix])
 
   const rangeDuration = Math.max(rangeEnd - rangeStart, 1);
   const progressPct   = Math.min(100, Math.max(0, ((watchingUnix - rangeStart) / rangeDuration) * 100));

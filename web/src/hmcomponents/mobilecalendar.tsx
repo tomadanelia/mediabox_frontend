@@ -30,7 +30,7 @@ function getDaysInMonth(year: number, month: number): number {
   return new Date(year, month + 1, 0).getDate();
 }
 
-const MONTHS = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+const MONTHS = ["იან","თებ","მარ","აპრ","მაი","ივნ","ივლ","აგვ","სექ","ოქტ","ნოე","დეკ"];
 const ITEM_H = 44;
 
 // ─── Scroll Drum ─────────────────────────────────────────────────────────────
@@ -51,7 +51,6 @@ function Drum({
   const startY = useRef(0);
   const startScroll = useRef(0);
 
-  // Snap scroll to selected
   useEffect(() => {
     const el = ref.current;
     if (!el) return;
@@ -72,14 +71,14 @@ function Drum({
     <div className="relative flex-1 flex flex-col items-center">
       {/* Fade top */}
       <div className="absolute top-0 left-0 right-0 h-16 z-10 pointer-events-none"
-        style={{ background: "linear-gradient(to bottom, rgba(24,24,27,1) 0%, transparent 100%)" }} />
+        style={{ background: "linear-gradient(to bottom, #21262c 0%, transparent 100%)" }} />
       {/* Fade bottom */}
       <div className="absolute bottom-0 left-0 right-0 h-16 z-10 pointer-events-none"
-        style={{ background: "linear-gradient(to top, rgba(24,24,27,1) 0%, transparent 100%)" }} />
+        style={{ background: "linear-gradient(to top, #21262c 0%, transparent 100%)" }} />
 
-      {/* Selection highlight */}
+      {/* Selection highlight — red tint */}
       <div className="absolute left-1 right-1 top-1/2 -translate-y-1/2 z-10 pointer-events-none"
-        style={{ height: ITEM_H, borderRadius: 10, background: "rgba(139,92,246,0.15)", border: "1px solid rgba(139,92,246,0.3)" }} />
+        style={{ height: ITEM_H, borderRadius: 10, background: "rgba(220,38,38,0.1)", border: "1px solid rgba(220,38,38,0.25)" }} />
 
       <div
         ref={ref}
@@ -92,7 +91,6 @@ function Drum({
           msOverflowStyle: "none",
         }}
       >
-        {/* padding top/bottom so first/last items can center */}
         <div style={{ height: ITEM_H * 2 }} />
         {items.map((label, i) => {
           const isSelected = i === selectedIndex;
@@ -105,7 +103,7 @@ function Drum({
               className={[
                 "flex items-center justify-center text-sm font-medium transition-all duration-150 cursor-pointer select-none",
                 isSelected ? "text-white scale-110" : "",
-                isDisabled ? "text-zinc-800 cursor-not-allowed" : !isSelected ? "text-zinc-500 hover:text-zinc-300" : "",
+                isDisabled ? "text-white/10 cursor-not-allowed" : !isSelected ? "text-gray-500 hover:text-gray-300" : "",
               ].join(" ")}
             >
               {label}
@@ -140,18 +138,15 @@ export default function MobileCalendar({
   const [month, setMonth] = useState(initDate.getMonth());
   const [day,   setDay]   = useState(initDate.getDate());
 
-  // Available years
   const years = useMemo(() => {
     const ys: number[] = [];
     for (let y = MIN_DATE.getFullYear(); y <= TODAY.getFullYear(); y++) ys.push(y);
     return ys;
   }, [MIN_DATE, TODAY]);
 
-  // Days in current month
   const daysInMonth = useMemo(() => getDaysInMonth(year, month), [year, month]);
   const days = useMemo(() => Array.from({ length: daysInMonth }, (_, i) => i + 1), [daysInMonth]);
 
-  // When month/year changes, auto-select last valid day (going back) or first valid day (going forward)
   const prevMonthRef = useRef(month);
   const prevYearRef  = useRef(year);
   useEffect(() => {
@@ -160,13 +155,11 @@ export default function MobileCalendar({
     const goingBack = currDate < prevDate;
 
     if (goingBack) {
-      // Select last valid day of this month
       const lastDay = new Date(year, month + 1, 0);
       lastDay.setHours(0, 0, 0, 0);
       const clamped = lastDay > TODAY ? TODAY : lastDay < MIN_DATE ? MIN_DATE : lastDay;
       setDay(clamped.getDate());
     } else {
-      // Select first valid day of this month
       const firstDay = new Date(year, month, 1);
       firstDay.setHours(0, 0, 0, 0);
       const clamped = firstDay < MIN_DATE ? MIN_DATE : firstDay > TODAY ? TODAY : firstDay;
@@ -177,7 +170,6 @@ export default function MobileCalendar({
     prevYearRef.current  = year;
   }, [month, year]);
 
-  // Compute the selected date and check if valid
   const selectedDate = useMemo(() => {
     const d = new Date(year, month, Math.min(day, daysInMonth));
     d.setHours(0, 0, 0, 0);
@@ -186,7 +178,6 @@ export default function MobileCalendar({
 
   const isValid = selectedDate >= MIN_DATE && selectedDate <= TODAY;
 
-  // Disabled sets
   const disabledMonths = useMemo(() => {
     const s = new Set<number>();
     for (let m = 0; m < 12; m++) {
@@ -204,7 +195,7 @@ export default function MobileCalendar({
     for (let d = 1; d <= daysInMonth; d++) {
       const date = new Date(year, month, d);
       date.setHours(0, 0, 0, 0);
-      if (date < MIN_DATE || date > TODAY) s.add(d - 1); // index
+      if (date < MIN_DATE || date > TODAY) s.add(d - 1);
     }
     return s;
   }, [year, month, daysInMonth, MIN_DATE, TODAY]);
@@ -215,11 +206,11 @@ export default function MobileCalendar({
   };
 
   const daysAgo = Math.round((TODAY.getTime() - selectedDate.getTime()) / 86400000);
-  const label = daysAgo === 0 ? "Today" : daysAgo === 1 ? "Yesterday" : `${daysAgo} days ago`;
+  const label = daysAgo === 0 ? "დღეს" : daysAgo === 1 ? "გუშინ" : `${daysAgo} დღის წინ`;
 
   return (
-    <div className="w-full max-w-xs mx-auto">
-      <div className="rounded-2xl bg-zinc-900 border border-zinc-800 overflow-hidden shadow-2xl shadow-black/60">
+    <div className="w-full lg:max-w-lg max-w-xs mx-auto">
+      <div className="rounded-2xl bg-[#21262c] border border-white/5 overflow-hidden shadow-2xl shadow-black/40">
 
         {/* Drums */}
         <div className="flex px-3 pt-3 gap-1" style={{ height: ITEM_H * 5 }}>
@@ -230,8 +221,7 @@ export default function MobileCalendar({
             onSelect={i => setDay(i + 1)}
             disabledIndices={disabledDays}
           />
-          {/* Divider */}
-          <div className="flex items-center justify-center text-zinc-700 text-lg font-light pb-px">/</div>
+          <div className="flex items-center justify-center text-white/10 text-lg font-light pb-px">/</div>
           {/* Month */}
           <Drum
             items={MONTHS}
@@ -239,8 +229,7 @@ export default function MobileCalendar({
             onSelect={i => setMonth(i)}
             disabledIndices={disabledMonths}
           />
-          {/* Divider */}
-          <div className="flex items-center justify-center text-zinc-700 text-lg font-light pb-px">/</div>
+          <div className="flex items-center justify-center text-white/10 text-lg font-light pb-px">/</div>
           {/* Year */}
           <Drum
             items={years.map(String)}
@@ -250,15 +239,15 @@ export default function MobileCalendar({
         </div>
 
         {/* Footer */}
-        <div className="px-4 py-3 border-t border-zinc-800 flex items-center justify-between gap-3">
+        <div className="px-4 py-3 border-t border-white/5 flex items-center justify-between gap-3">
           <div className="flex flex-col">
-            <span className="text-[0.6rem] text-zinc-600 uppercase tracking-widest">Selected</span>
-            <span className={`text-sm font-semibold ${isValid ? "text-zinc-100" : "text-red-400"}`}>
+            <span className="text-[0.6rem] text-gray-600 uppercase tracking-widest">მონიშნული</span>
+            <span className={`text-sm font-semibold ${isValid ? "text-gray-100" : "text-red-400"}`}>
               {isValid
                 ? selectedDate.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })
                 : "Out of range"}
             </span>
-            {isValid && <span className="text-[0.6rem] text-zinc-500">{label}</span>}
+            {isValid && <span className="text-[0.6rem] text-gray-500">{label}</span>}
           </div>
 
           <button
@@ -266,8 +255,8 @@ export default function MobileCalendar({
             disabled={!isValid}
             className={`px-4 py-2 rounded-xl text-sm font-semibold transition-all duration-150 ${
               isValid
-                ? "bg-violet-500 hover:bg-violet-400 text-white shadow-lg shadow-violet-500/30"
-                : "bg-zinc-800 text-zinc-600 cursor-not-allowed"
+                ? "bg-red-600 hover:bg-red-500 text-white shadow-lg shadow-red-600/20"
+                : "bg-white/5 text-white/20 cursor-not-allowed"
             }`}
           >
             Go
