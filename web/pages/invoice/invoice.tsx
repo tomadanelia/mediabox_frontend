@@ -34,7 +34,7 @@ const tx = {
     download: 'Download PDF',
     downloading: 'Generating…',
     issuedBy: 'Telecom 1 LLC',
-    address: 'Tbilisi, Georgia',
+    address: 'Kutaisi, Georgia',
   },
   Ge: {
     back: 'უკან',
@@ -59,11 +59,10 @@ const tx = {
     download: 'PDF ჩამოტვირთვა',
     downloading: 'მომზადება…',
     issuedBy: 'შპს Telecom 1',
-    address: 'თბილისი, საქართველო',
+    address: 'ქუთაისი, საქართველო',
   },
 } as const
 
-// ─── Visual config ────────────────────────────────────────────────────────────
 
 const STATUS_CFG = {
   paid: {

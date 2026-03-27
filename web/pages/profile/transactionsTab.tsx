@@ -11,12 +11,13 @@ interface Transaction {
   status: "completed" | "failed" | "pending";
   payment_method: string;
   date: string;
-  metadata: {
+  metadata: string | {  // API returns it as a JSON string
     type?: string;
     quantity?: number;
     old_limit?: number;
     new_limit?: number;
-    previous_balance?: string;
+    previous_balance?: string | number;
+    price_per_unit?: number;
     [key: string]: unknown;
   };
 }
@@ -50,7 +51,34 @@ interface TransactionsTabProps {
   userFullName?: string | null;
   userNumericId?: string | number | null;
 }
+function parseMeta(metadata: Transaction["metadata"]) {
+  if (typeof metadata === "string") {
+    try { return JSON.parse(metadata); } catch { return {}; }
+  }
+  return metadata ?? {};
+}
+const TYPE_LABELS = {
+  En: {
+    tv_limit_increase: "TV Device Limit Upgrade",
+    account_adjustment: "Account Adjustment",
+  },
+  Ge: {
+    tv_limit_increase: "TV მოწყობილობის ლიმიტის განახლება",
+    account_adjustment: "ანგარიშის კორექტირება",
+  },
+} as const;
 
+function resolveItemName(
+  item_name: string,
+  meta: ReturnType<typeof parseMeta>,
+  language: "En" | "Ge"
+): string {
+  const type = meta?.type as string | undefined;
+  if (type && TYPE_LABELS[language][type as keyof typeof TYPE_LABELS["En"]]) {
+    return TYPE_LABELS[language][type as keyof typeof TYPE_LABELS["En"]];
+  }
+  return item_name;
+}
 const tx = {
   En: {
     cardTitle: "Transactions",
@@ -93,8 +121,15 @@ function buildInvoiceData(
   userFullName?: string | null,
   userNumericId?: string | number | null,
 ): InvoiceData {
-  const isTvLimit =
-    t.metadata?.type === "tv_limit_increase" || t.metadata?.new_limit != null;
+  const meta = parseMeta(t.metadata);  // ← parse here
+  const isTvLimit = meta?.type === "tv_limit_increase" || meta?.new_limit != null;
+
+  const previousBalance = meta?.previous_balance != null
+    ? parseFloat(String(meta.previous_balance))
+    : null;
+  const remainingBalance = previousBalance !== null
+    ? (previousBalance - parseFloat(t.amount)).toFixed(2)
+    : "0.00";
 
   const baseInvoice = {
     transaction_id: t.id,
@@ -102,7 +137,6 @@ function buildInvoiceData(
     item_name: t.item_name,
     amount: t.amount,
     currency: t.currency,
-    // These three map directly to what InvoicePage reads for billedTo:
     company_name: companyName ?? undefined,
     full_name: userFullName ?? undefined,
     customer_id: userNumericId ? String(userNumericId) : undefined,
@@ -112,30 +146,22 @@ function buildInvoiceData(
     return {
       success: true,
       invoice: baseInvoice,
-      new_limit: t.metadata.new_limit as number,
-      remaining_balance: t.metadata.previous_balance
-        ? (parseFloat(t.metadata.previous_balance) - parseFloat(t.amount)).toFixed(2)
-        : "0.00",
+      new_limit: meta.new_limit as number,
+      remaining_balance: remainingBalance,
     } as DeviceLimitInvoiceData;
   }
 
   return {
     success: true,
-    invoice: {
-      ...baseInvoice,
-      user_name: userFullName ?? "",
-      user_id: 0,
-    },
+    invoice: { ...baseInvoice, user_name: userFullName ?? "", user_id: 0 },
     expires_at: "",
-    remaining_balance: t.metadata.previous_balance
-      ? (parseFloat(t.metadata.previous_balance) - parseFloat(t.amount)).toFixed(2)
-      : "0.00",
+    remaining_balance: remainingBalance,
   } as PlanPurchaseInvoiceData;
 }
 
 // Icon for transaction type
-function TxIcon({ metadata }: { metadata: Transaction["metadata"] }) {
-  const isTv = metadata?.type === "tv_limit_increase";
+function TxIcon({ meta }: { meta: ReturnType<typeof parseMeta> }) {
+  const isTv = meta?.type === "tv_limit_increase";
   return (
     <div
       className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 text-[0.65rem] font-bold
@@ -342,21 +368,25 @@ const handleRowClick = (transaction: Transaction) => {
           </div>
 
           <div className="flex flex-col">
-            {data.data.map((txn) => (
+            {data.data.map((txn) => {
+  const meta = parseMeta(txn.metadata);
+  const displayName = resolveItemName(txn.item_name, meta, language);
+
+  return (
               <button
                 key={txn.id}
                 onClick={() => handleRowClick(txn)}
                 className={`flex items-center gap-4 py-4 border-b text-left w-full cursor-pointer transition-colors duration-150 ${c.tableRow} group`}
               >
                 {/* Icon */}
-                <TxIcon metadata={txn.metadata} />
+                <TxIcon meta={meta} />
 
                 {/* Name + mobile date */}
                 <div className="flex-1 min-w-0">
                   <p
                     className={`text-sm font-medium truncate ${c.heading} group-hover:text-form-highlights transition-colors`}
                   >
-                    {txn.item_name}
+                    {displayName}
                   </p>
                   <p className={`text-xs font-mono mt-0.5 md:hidden ${c.sub}`}>
                     {fmtDate(txn.date)}
@@ -392,7 +422,8 @@ const handleRowClick = (transaction: Transaction) => {
                   />
                 </div>
               </button>
-            ))}
+               );
+})}
           </div>
 
           {/* Pagination */}
