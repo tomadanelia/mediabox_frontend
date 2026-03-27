@@ -20,7 +20,7 @@ const translations = {
   },
   Ge: {
     password: "პაროლი",
-    welcome: "Welcome back",
+    welcome: "გამარჯობა",
     topText:"შედით თქვენს ანგარიშში",
     email:"ელ-ფოსტა",
     phone: "მობილური",
