@@ -151,7 +151,7 @@ const ChannelGrid: React.FC<ChannelGridProps> = ({
           onClick={() => onToggleCategory('')}
           className={`shrink-0 h-7 px-3 rounded-full text-xs font-medium transition-all
             ${selectedCategory === '' && !showFavouritesOnly
-              ? 'bg-gradient-to-br from-red-500 to-yellow-400 text-white shadow-sm shadow-red-300/30'
+              ? 'bg-gradient-to-br from-red-500 to-red-400 text-white shadow-sm shadow-red-300/30'
               : 'bg-white/70 dark:bg-white/5 border border-black/10 dark:border-white/10 text-black/50 dark:text-white/40'
             }`}
         >
@@ -163,7 +163,7 @@ const ChannelGrid: React.FC<ChannelGridProps> = ({
           onClick={onToggleFavourites}
           className={`shrink-0 h-7 px-3 rounded-full text-xs font-medium transition-all flex items-center gap-1
             ${showFavouritesOnly
-              ? 'bg-gradient-to-br from-red-500 to-yellow-400 text-white shadow-sm shadow-red-300/30'
+              ? 'bg-gradient-to-br from-red-500 to-red-400 text-white shadow-sm shadow-red-300/30'
               : 'bg-white/70 dark:bg-white/5 border border-black/10 dark:border-white/10 text-black/50 dark:text-white/40'
             }`}
         >
@@ -187,7 +187,7 @@ const ChannelGrid: React.FC<ChannelGridProps> = ({
             onClick={() => onToggleCategory(cat.name_en)}
             className={`shrink-0 h-7 px-3 rounded-full text-xs font-medium transition-all flex items-center gap-1.5
               ${selectedCategory === cat.name_en && !showFavouritesOnly
-                ? 'bg-gradient-to-br from-orange-500 to-yellow-400 text-white shadow-sm shadow-orange-300/30'
+                ? 'bg-gradient-to-br from-red-500 to-red-400 text-white shadow-sm shadow-red-300/30'
                 : 'bg-white/70 dark:bg-white/5 border border-black/10 dark:border-white/10 text-black/50 dark:text-white/40'
               }`}
           >
@@ -215,25 +215,25 @@ const ChannelGrid: React.FC<ChannelGridProps> = ({
                 p-2 rounded-xl cursor-pointer
                 transition-all duration-150 active:scale-95
                 ${isSelected
-                  ? 'bg-gradient-to-br from-orange-500/20 to-yellow-400/10 border border-orange-400/40 shadow-sm shadow-orange-300/20'
+                  ? 'bg-gradient-to-br from-red-500/20 to-red-400/10 border border-red-400/40 shadow-sm shadow-red-300/20'
                   : 'bg-white/60 dark:bg-white/5 border border-black/8 dark:border-white/8'
                 }
               `}
             >
               {isFav && (
-                <span className="absolute top-1.5 right-1.5 w-1.5 h-1.5 rounded-full bg-orange-400" />
+                <span className="absolute top-1.5 right-1.5 w-1.5 h-1.5 rounded-full bg-red-400" />
               )}
               <span className="absolute top-1.5 left-1.5 text-[9px] font-bold text-black/25 dark:text-white/20">
                 {ch.number}
               </span>
               <div className={`w-10 h-10 rounded-lg flex items-center justify-center overflow-hidden
                 bg-white dark:bg-white/10 shadow-sm
-                ${isSelected ? 'ring-2 ring-orange-400/60' : ''}
+                ${isSelected ? 'ring-2 ring-red-400/60' : ''}
               `}>
                 <img src={ch.logo} alt={ch.name} className="w-9/12 h-9/12 object-contain" />
               </div>
               <span className={`text-[10px] font-medium text-center leading-tight line-clamp-2
-                ${isSelected ? 'text-orange-500 dark:text-orange-400' : 'text-black/60 dark:text-white/50'}
+                ${isSelected ? 'text-red-500 dark:text-red-400' : 'text-black/60 dark:text-white/50'}
               `}>
                 {ch.name}
               </span>
@@ -306,7 +306,7 @@ const ProgramsList: React.FC<ProgramsListProps> = ({
               'flex items-center gap-3 px-4 py-3 border-l-2 transition-all duration-150',
               isClickable ? 'cursor-pointer' : 'cursor-default',
               isCurrent
-                ? 'bg-gradient-to-r from-orange-50 to-yellow-50/60 dark:from-orange-500/10 dark:to-yellow-400/5 border-l-orange-400'
+                ? 'bg-gradient-to-r from-red-50 to-red-50/60 dark:from-red-500/10 dark:to-red-400/5 border-l-red-400'
                 : isPast
                   ? 'border-l-transparent opacity-50 active:opacity-80 active:bg-black/3 dark:active:bg-white/4'
                   : 'border-l-transparent opacity-40',
@@ -314,7 +314,7 @@ const ProgramsList: React.FC<ProgramsListProps> = ({
           >
             <span className={[
               'text-sm font-medium w-10 shrink-0 tabular-nums',
-              isCurrent ? 'text-orange-400' : 'text-black/30 dark:text-white/25',
+              isCurrent ? 'text-red-400' : 'text-black/30 dark:text-white/25',
             ].join(' ')}>
               {formatUnix(p.START_TIME)}
             </span>
@@ -324,7 +324,7 @@ const ProgramsList: React.FC<ProgramsListProps> = ({
             </span>
 
             {isCurrent && (
-              <span className="w-2 h-2 rounded-full bg-orange-400 shrink-0 animate-pulse" />
+              <span className="w-2 h-2 rounded-full bg-red-400 shrink-0 animate-pulse" />
             )}
             {isFuture && (
               <span className="text-xs text-black/25 dark:text-white/20 shrink-0 select-none">🔒</span>
@@ -659,7 +659,7 @@ export const Stream: React.FC = () => {
             onClick={handleCalendarToggle}
             className="w-8 h-8 flex items-center justify-center rounded-lg
               text-black/40 dark:text-white/35
-              hover:text-orange-400 hover:bg-orange-50 dark:hover:bg-orange-400/10
+              hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-400/10
               transition-all duration-150 shrink-0"
           >
             <CalendarDays size={16} />
@@ -690,11 +690,11 @@ export const Stream: React.FC = () => {
               key={tab}
               onClick={() => setPortraitTab(tab)}
               className={`flex-1 py-2.5 text-[12px] font-semibold capitalize transition-all relative
-                ${portraitTab === tab ? 'text-orange-500' : 'text-black/40 dark:text-white/35'}`}
+                ${portraitTab === tab ? 'text-red-500' : 'text-black/40 dark:text-white/35'}`}
             >
               {tab === 'programs' ? 'პროგრამა' : 'არხები'}
               {portraitTab === tab && (
-                <span className="absolute bottom-0 left-1/4 right-1/4 h-[2px] rounded-full bg-gradient-to-r from-orange-500 to-yellow-400" />
+                <span className="absolute bottom-0 left-1/4 right-1/4 h-[2px] rounded-full bg-gradient-to-r from-red-500 to-red-400" />
               )}
             </button>
           ))}
@@ -768,7 +768,7 @@ export const Stream: React.FC = () => {
                 border border-black/10 dark:border-white/10
                 rounded-r-lg shadow-md
                 text-black/40 dark:text-white/40
-                hover:text-orange-400 transition-colors"
+                hover:text-red-400 transition-colors"
             >
               {leftExpanded ? <ChevronLeft size={14} /> : <ChevronRight size={14} />}
             </button>
@@ -907,7 +907,7 @@ export const Stream: React.FC = () => {
                 border border-black/10 dark:border-white/10
                 rounded-l-lg shadow-md
                 text-black/40 dark:text-white/40
-                hover:text-orange-400 transition-colors"
+                hover:text-red-400 transition-colors"
             >
               {rightExpanded ? <ChevronRight size={14} /> : <ChevronLeft size={14} />}
             </button>
@@ -927,7 +927,7 @@ export const Stream: React.FC = () => {
                   </span>
                 </div>
                 <div
-                  className='w-8 h-8 flex items-center justify-center rounded-lg cursor-pointer text-black/40 dark:text-white/35 hover:text-orange-400 hover:bg-orange-50 dark:hover:bg-orange-400/10 transition-all duration-150'
+                  className='w-8 h-8 flex items-center justify-center rounded-lg cursor-pointer text-black/40 dark:text-white/35 hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-400/10 transition-all duration-150'
                   onClick={handleCalendarToggle}
                 >
                   <IconButtonCalendar />
@@ -939,7 +939,7 @@ export const Stream: React.FC = () => {
           {isMobile && !rightExpanded && (
             <div className="flex justify-center py-2">
               <div
-                className='w-8 h-8 flex items-center justify-center rounded-lg cursor-pointer text-black/40 dark:text-white/35 hover:text-orange-400 hover:bg-orange-50 dark:hover:bg-orange-400/10 transition-all duration-150'
+                className='w-8 h-8 flex items-center justify-center rounded-lg cursor-pointer text-black/40 dark:text-white/35 hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-400/10 transition-all duration-150'
                 onClick={handleCalendarToggle}
               >
                 <IconButtonCalendar />
@@ -955,17 +955,22 @@ export const Stream: React.FC = () => {
               onProgramSelect={handleProgramSelect}
               iconOnly={isMobile && !rightExpanded}
             />
-            {isCalendarVisible && (!isMobile || rightExpanded) && (
-              <div className='absolute top-0 right-0 w-full ml-4 mt-0'>
-                <div className="hidden lg:block">
+            
+          </div>
+        </div>
+
+      </div>
+{isCalendarVisible && (!isMobile || rightExpanded) && (
+              <div className='absolute top-30 right-0 w-full ml-4 mt-0 z-50'>
+                {/* <div className="hidden lg:block">
                   <ChannelCalendar
                     archiveDays={rewindableDays}
                     channelName={selectedChannel?.name || 'Channel'}
                     onSelect={handleCalendarDateSelect}
                     initialDate={programDateAsDate}
                   />
-                </div>
-                <div className="block lg:hidden">
+                </div> */}
+                <div className="block">
                   <MobileCalendar
                     archiveDays={rewindableDays}
                     initialDate={programDateAsDate}
@@ -974,11 +979,6 @@ export const Stream: React.FC = () => {
                 </div>
               </div>
             )}
-          </div>
-        </div>
-
-      </div>
-
       {/* BOTTOM */}
       {!isMobile && (
         <div>

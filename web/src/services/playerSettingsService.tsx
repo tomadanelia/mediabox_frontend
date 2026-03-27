@@ -115,7 +115,7 @@ export class PlayerSettingsService {
 
     this.state = {
       levels: [
-        { index: -1, label: 'Auto', bitrate: 0 },
+        { index: -1, label: 'ავტომატური', bitrate: 0 },
         ...(hls.levels ?? []).map((l: any, i: number) => ({
           index:   i,
           label:   l.height ? `${l.height}p` : `Level ${i + 1}`,
@@ -206,6 +206,6 @@ export class PlayerSettingsService {
   }
 
   static speedLabel(s: number): string {
-    return s === 1 ? 'Normal' : `${s}×`;
+    return s === 1 ? 'სტანდარტული' : `${s}×`;
   }
 }

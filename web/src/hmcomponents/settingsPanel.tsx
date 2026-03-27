@@ -126,9 +126,9 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({ service, onClose }
           subTracks, currentSub, speed } = settings;
 
   const qualityLabel = (() => {
-    if (currentLevel !== -1) return levels.find(l => l.index === currentLevel)?.label ?? 'Auto';
+    if (currentLevel !== -1) return levels.find(l => l.index === currentLevel)?.label ?? 'ავტომატრუი';
     const autoLabel = levels.find(l => l.index === currentAutoLevel)?.label;
-    return autoLabel ? `Auto (${autoLabel})` : 'Auto';
+    return autoLabel ? `Auto (${autoLabel})` : 'ავტომატური';
   })();
   const audioLabel   = audioTracks.find(t => t.index === currentAudio)?.name ?? '—';
   const subLabel     = currentSub === -1
@@ -153,7 +153,7 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({ service, onClose }
           {/* Header */}
           <div className="flex items-center justify-between px-4 pt-3 pb-2 border-b border-white/6">
             <span className="text-[10px] font-semibold text-zinc-600 uppercase tracking-widest">
-              Settings
+              პარამეტრები
             </span>
             <button
               onMouseDown={e => e.preventDefault()}
@@ -166,7 +166,7 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({ service, onClose }
 
           <Row
             icon="hd"
-            label="Quality"
+            label="ხარისხი"
             value={qualityLabel}
             onClick={levels.length > 1 ? () => setSubPage('quality') : undefined}
             active={currentLevel !== -1}
@@ -174,14 +174,14 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({ service, onClose }
           />
           <Row
             icon="speed"
-            label="Speed"
+            label="სიჩქარე"
             value={PlayerSettingsService.speedLabel(speed)}
             onClick={() => setSubPage('speed')}
             active={speed !== 1}
           />
           <Row
             icon="subtitles"
-            label="Subtitles"
+            label="სუბტიტრები"
             value={subLabel}
             onClick={subTracks.length > 0 ? () => setSubPage('subtitles') : undefined}
             active={currentSub !== -1}
@@ -189,7 +189,7 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({ service, onClose }
           />
           <Row
             icon="volume_up"
-            label="Audio"
+            label="ხმა"
             value={audioLabel}
             onClick={audioTracks.length > 1 ? () => setSubPage('audio') : undefined}
             active={false}
@@ -201,7 +201,7 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({ service, onClose }
       {/* ── Quality ── */}
       {subPage === 'quality' && (
         <OptionList
-          title="Quality"
+          title="ხარისხი"
           selectedIndex={currentLevel}
           onBack={() => setSubPage(null)}
           onSelect={i => { service.setQuality(i); setSubPage(null); }}
@@ -216,7 +216,7 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({ service, onClose }
       {/* ── Speed ── */}
       {subPage === 'speed' && (
         <OptionList
-          title="Speed"
+          title="სიჩქარე"
           selectedIndex={SPEED_OPTIONS.indexOf(speed)}
           onBack={() => setSubPage(null)}
           onSelect={i => { service.setSpeed(SPEED_OPTIONS[i]); setSubPage(null); }}
@@ -230,7 +230,7 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({ service, onClose }
       {/* ── Subtitles ── */}
       {subPage === 'subtitles' && (
         <OptionList
-          title="Subtitles"
+          title="სუბტიტრები"
           selectedIndex={currentSub}
           onBack={() => setSubPage(null)}
           onSelect={i => { service.setSubtitleTrack(i); setSubPage(null); }}
@@ -244,7 +244,7 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({ service, onClose }
       {/* ── Audio ── */}
       {subPage === 'audio' && (
         <OptionList
-          title="Audio"
+          title="აუდიო"
           selectedIndex={currentAudio}
           onBack={() => setSubPage(null)}
           onSelect={i => { service.setAudioTrack(i); setSubPage(null); }}
