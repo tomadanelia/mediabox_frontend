@@ -14,10 +14,11 @@ export interface User {
   phone: string | null; 
   avatar_url: string | null; 
   role: 'user' | 'admin'; 
-    email_verified_at: string | null; 
+  email_verified_at: string | null; 
   phone_verified_at: string | null;
   numeric_id:string;
   created_at: string;
   updated_at: string;
+  tv_limit?: number;
   account?: Account | null; 
 }

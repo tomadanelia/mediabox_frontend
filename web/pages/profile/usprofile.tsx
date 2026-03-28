@@ -75,6 +75,11 @@ const translations = {
       daysLeft: "days left",
       empty: "No active plans.",
     },
+    tvLimit: {
+      cardTitle: "TV Device Limit",
+      label: "Simultaneous streams allowed",
+      unit: "devices",
+    },
     history: {
       cardTitle: "Watch History",
       channel: "Channel",
@@ -125,6 +130,11 @@ const translations = {
       expires: "ვადა",
       daysLeft: "დღე დარჩა",
       empty: "აქტიური პაკეტი არ არის.",
+    },
+    tvLimit: {
+      cardTitle: "TV მოწყობილობების რაოდენობა",
+      label: "ერთდროული ყურების ლიმიტი",
+      unit: "მოწყობილობა",
     },
     history: {
       cardTitle: "ნანახი არხები",
@@ -190,7 +200,7 @@ tableRow:  "border-border hover:bg-muted/40",
 
   const [tab, setTab] = useState<Tab>("Overview");
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [editModalOpen, setEditModalOpen] = useState(false); // ← new
+  const [editModalOpen, setEditModalOpen] = useState(false);
   const [user, setUser] = useState<User | null>(null);
   const [activePlans, setActivePlans] = useState<ActivePlan[]>([]);
   const [watchHistory, setWatchHistory] = useState<WatchedChannel[]>([]);
@@ -345,7 +355,7 @@ tableRow:  "border-border hover:bg-muted/40",
       >
         {/* Avatar + Identity */}
         <div className="px-6 pt-7 pb-5 shrink-0">
-          {/* Avatar with edit overlay */}
+          {/* Avatar with edit overlay — only when no company */}
           <div className="mb-4 relative group w-14">
             {user?.avatar_url ? (
               <img
@@ -360,15 +370,16 @@ tableRow:  "border-border hover:bg-muted/40",
                 {initials}
               </div>
             )}
-            {/* Subtle edit overlay on avatar hover */}
-            <button
-              onClick={() => setEditModalOpen(true)}
-              className="absolute inset-0 rounded-2xl flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-150 cursor-pointer"
-              style={{ background: "rgba(0,0,0,0.5)" }}
-              title={tx.sidebar.editProfile}
-            >
-              <span style={{ fontSize: "0.85rem" }}>✎</span>
-            </button>
+            {!companyName && (
+              <button
+                onClick={() => setEditModalOpen(true)}
+                className="absolute inset-0 rounded-2xl flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-150 cursor-pointer"
+                style={{ background: "rgba(0,0,0,0.5)" }}
+                title={tx.sidebar.editProfile}
+              >
+                <span style={{ fontSize: "0.85rem" }}>✎</span>
+              </button>
+            )}
           </div>
 
           {user?.full_name && (
@@ -413,14 +424,16 @@ tableRow:  "border-border hover:bg-muted/40",
             <span className={`${c.heading} font-medium`}>{memberSince}</span>
           </p>
 
-          {/* ── Edit Profile button ── */}
-          <button
-            onClick={() => setEditModalOpen(true)}
-            className={`mt-4 w-full flex items-center border justify-center gap-2 py-2 rounded-xl text-xs font-medium transition-all duration-150 cursor-pointer ${c.editBtn}`}
-          >
-            <span style={{ fontSize: "0.75rem" }}>✎</span>
-            {tx.sidebar.editProfile}
-          </button>
+          {/* ── Edit Profile button — only when no company ── */}
+          {!companyName && (
+            <button
+              onClick={() => setEditModalOpen(true)}
+              className={`mt-4 w-full flex items-center border justify-center gap-2 py-2 rounded-xl text-xs font-medium transition-all duration-150 cursor-pointer ${c.editBtn}`}
+            >
+              <span style={{ fontSize: "0.75rem" }}>✎</span>
+              {tx.sidebar.editProfile}
+            </button>
+          )}
         </div>
 
         {/* Divider */}
@@ -503,13 +516,15 @@ tableRow:  "border-border hover:bg-muted/40",
           <span className={`text-sm font-medium ${c.heading}`}>
             {tx.tabs[tab]}
           </span>
-          {/* mobile edit shortcut */}
-          <button
-            onClick={() => setEditModalOpen(true)}
-            className={`ml-auto text-xs border border-form-highlights px-3 py-1.5 rounded-lg font-medium transition-all duration-150 cursor-pointer ${c.editBtn}`}
-          >
-            ✎
-          </button>
+          {/* mobile edit shortcut — only when no company */}
+          {!companyName && (
+            <button
+              onClick={() => setEditModalOpen(true)}
+              className={`ml-auto text-xs border border-form-highlights px-3 py-1.5 rounded-lg font-medium transition-all duration-150 cursor-pointer ${c.editBtn}`}
+            >
+              ✎
+            </button>
+          )}
         </div>
 
         {/* Scrollable content zone */}
@@ -645,6 +660,34 @@ tableRow:  "border-border hover:bg-muted/40",
                   </div>
                 )}
               </div>
+
+              {/* TV Device Limit */}
+              {user?.tv_limit != null && (
+                <div className={`px-8 py-8 lg:px-14 lg:py-10 border-t ${c.divider} ${c.sidebar}`}>
+                  <p
+                    className={`text-[0.65rem] uppercase tracking-[0.2em] font-semibold ${c.sub} mb-6`}
+                  >
+                    {tx.tvLimit.cardTitle}
+                  </p>
+                  <div className="flex items-center gap-5">
+                    <div
+                      className={`flex items-center justify-center w-16 h-16 rounded-2xl border ${c.sidebarBorder} bg-form-highlights/5 shrink-0`}
+                    >
+                      <span className="text-2xl font-bold text-form-highlights tabular-nums">
+                        {user.tv_limit}
+                      </span>
+                    </div>
+                    <div>
+                      <p className={`text-sm font-semibold ${c.heading}`}>
+                        {user.tv_limit} {tx.tvLimit.unit}
+                      </p>
+                      <p className={`text-xs mt-0.5 ${c.sub}`}>
+                        {tx.tvLimit.label}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
           )}
         
@@ -745,22 +788,23 @@ tableRow:  "border-border hover:bg-muted/40",
       </div>
       {/* end main content */}
 
-      {/* ════ EDIT PROFILE MODAL ════ */}
-      <EditProfileModal
-        isOpen={editModalOpen}
-        onClose={() => setEditModalOpen(false)}
-        currentFullName={user?.full_name ?? ""}
-        currentUsername={user?.username ?? ""}
-        currentAvatarUrl={user?.avatar_url ?? ""}
-        isDark={isDark}
-        language={language}
-        onSuccess={(updatedUser) => {
-          // Local optimistic update while fetchUser re-validates in background
-          setUser((prev) =>
-            prev ? ({ ...prev, ...updatedUser } as User) : prev,
-          );
-        }}
-      />
+      {/* ════ EDIT PROFILE MODAL — only when no company ════ */}
+      {!companyName && (
+        <EditProfileModal
+          isOpen={editModalOpen}
+          onClose={() => setEditModalOpen(false)}
+          currentFullName={user?.full_name ?? ""}
+          currentUsername={user?.username ?? ""}
+          currentAvatarUrl={user?.avatar_url ?? ""}
+          isDark={isDark}
+          language={language}
+          onSuccess={(updatedUser) => {
+            setUser((prev) =>
+              prev ? ({ ...prev, ...updatedUser } as User) : prev,
+            );
+          }}
+        />
+      )}
     </div>
   );
 }
