@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from "react"
 import { Link, NavLink, useNavigate } from "react-router-dom"
 import useUIStore from "@/store/ui-store"
 import api from "@/lib/axios"
-
+import useAuthStore from "@/store/AuthStore"
 type Language = "En" | "Ge"
 
 interface User {
@@ -93,7 +93,7 @@ interface AvatarProps {
 }
 
 const Avatar = ({ src, name }: AvatarProps) => (
-  <div className="h-9 w-9 rounded-full overflow-hidden ring-2 ring-white/20 bg-zinc-200 dark:bg-zinc-700 flex items-center justify-center flex-shrink-0">
+  <div className="h-9 w-9 rounded-full overflow-hidden ring-2 ring-white/20 bg-zinc-200 dark:bg-zinc-700 flex items-center justify-center shrink-0">
     {src
       ? <img src={src} alt={name ?? "avatar"} className="h-full w-full object-cover" />
       : <Icon name="person" size={20} className="text-zinc-500 dark:text-zinc-400" />
@@ -138,13 +138,13 @@ const SearchPanel = ({ open, onClose, placeholder }: SearchPanelProps) => {
       ].join(" ")}>
         <div className="w-full max-w-lg bg-white dark:bg-zinc-900 rounded-2xl shadow-2xl shadow-black/20 dark:shadow-black/50 border border-black/8 dark:border-white/10 overflow-hidden">
           <div className="relative flex items-center px-4 py-3">
-            {/* <Icon name="search" size={20} className="text-zinc-400 flex-shrink-0 mr-3" /> */}
+            {/* <Icon name="search" size={20} className="text-zinc-400 shrink-0 mr-3" /> */}
             <input
               ref={inputRef}
               placeholder={placeholder}
               className="flex-1 bg-transparent text-sm text-zinc-900 dark:text-white placeholder:text-zinc-400 focus:outline-none"
             />
-            <button onClick={onClose} className="ml-3 flex-shrink-0 rounded-full p-1 hover:bg-zinc-100 dark:hover:bg-white/10 transition-colors">
+            <button onClick={onClose} className="ml-3 shrink-0 rounded-full p-1 hover:bg-zinc-100 dark:hover:bg-white/10 transition-colors">
               <Icon name="close" size={18} className="text-zinc-400" />
             </button>
           </div>
@@ -179,28 +179,26 @@ const ProfileDropdown = ({ user, tx, onLogout }: ProfileDropdownProps) => {
   ]
 
   return (
-    <div ref={ref} className="relative">
-      <button
-        onClick={() => setOpen(v => !v)}
-        className="flex cursor-pointer items-center gap-1 rounded-full p-1 hover:bg-black/5 dark:hover:bg-white/10 transition-colors focus:outline-none"
-      >
-        <Avatar src={user?.avatar_url} name={user?.full_name} />
-        <Icon
-          name="expand_more"
-          size={16}
-          className={`text-zinc-400 transition-transform duration-200 hidden sm:block ${open ? "rotate-180" : ""}`}
-        />
-      </button>
+   <div className="relative group">
+  <button className="flex items-center cursor-pointer gap-1 rounded-full p-1 hover:bg-black/5 dark:hover:bg-white/10 transition-colors focus:outline-none">
+    <Avatar src={user?.avatar_url} name={user?.full_name} />
+    <Icon
+      name="expand_more"
+      size={16}
+      className="text-zinc-400 transition-transform duration-900 hidden sm:block group-hover:rotate-180"
+    />
+  </button>
 
-      <div className={[
-        "absolute right-0 top-[calc(100%+10px)] w-52 z-50",
-        "bg-white dark:bg-zinc-900",
-        "border border-black/10 dark:border-white/10",
-        "rounded-2xl shadow-xl shadow-black/10 dark:shadow-black/40",
-        "overflow-hidden",
-        "transition-all duration-200 origin-top-right",
-        open ? "opacity-100 scale-100 pointer-events-auto" : "opacity-0 scale-95 pointer-events-none",
-      ].join(" ")}>
+  {/* Dropdown — shown on group hover */}
+   <div className="absolute right-0 top-full h-2.5 w-20" />
+  <div className="absolute cursor-pointer right-0 top-[calc(100%+10px)] w-52 z-50
+    bg-white dark:bg-zinc-900
+    border border-black/10 dark:border-white/10
+    rounded-2xl shadow-xl shadow-black/10 dark:shadow-black/40
+    overflow-hidden
+    transition-all duration-500 origin-top-right
+    opacity-0 scale-95 pointer-events-none
+    group-hover:opacity-100 group-hover:scale-100 group-hover:pointer-events-auto">
 
         {/* User info header */}
         <div className="flex items-center gap-3 px-4 py-3 border-b border-black/8 dark:border-white/8">
@@ -431,22 +429,10 @@ const Navbar = () => {
 
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [searchOpen,  setSearchOpen]  = useState(false)
-  const [user,        setUser]        = useState<User | null>(null)
+  const user     = useAuthStore((s) => s.user)
+  const handleLogout = useAuthStore((s) => s.logout)
 
-  useEffect(() => {
-    api.get("/api/user").then((r) => setUser(r.data as User)).catch(() => {})
-  }, [])
-
-  const handleLogout = async () => {
-    try {
-      await api.post("/api/auth/logout")
-    } catch {
-      // proceed regardless
-    } finally {
-      setUser(null)
-      navigate("/login")
-    }
-  }
+  
 
   return (
     <>
@@ -465,7 +451,7 @@ const Navbar = () => {
             </button>
 
             {/* logo */}
-            <Link to="/" className="flex-shrink-0 flex items-center gap-2">
+            <Link to="/" className="shrink-0 flex items-center gap-2">
               {currentLogo
                 ? <img src={currentLogo} alt="Mediabox" className="h-8 w-auto" />
                 : (
@@ -503,7 +489,7 @@ const Navbar = () => {
           </div>
 
           {/* RIGHT */}
-          <div className="flex items-center gap-1 flex-shrink-0">
+          <div className="flex items-center gap-1 shrink-0">
 
             <button
               onClick={() => setSearchOpen(true)}

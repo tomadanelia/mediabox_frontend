@@ -54,7 +54,7 @@ const App: React.FC = () => {
   return (
     <div className="app-shell h-screen overflow-hidden flex flex-col">
 
-      <div className="shrink-0 h-[64px] w-full z-50 lg:relative overflow-X-hidden ">
+      <div className="shrink-0 h-16 w-full z-50 lg:relative overflow-X-hidden ">
         <Navbar />
       </div>
 

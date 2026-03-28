@@ -43,7 +43,7 @@ const useAuthStore = create<AuthStore>((set) => ({
       await api.post("/api/auth/web/logout");
     } finally {
       set({ user: null, isAuthenticated: false });
-      window.location.href = "/login";
+      window.location.href = "/authentication/login";
     }
   },
 }));
