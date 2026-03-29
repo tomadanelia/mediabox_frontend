@@ -120,10 +120,11 @@ function buildInvoiceData(
   companyName?: string | null,
   userFullName?: string | null,
   userNumericId?: string | number | null,
+    language: "En" | "Ge" = "En", 
 ): InvoiceData {
   const meta = parseMeta(t.metadata);  // ← parse here
   const isTvLimit = meta?.type === "tv_limit_increase" || meta?.new_limit != null;
-
+  const resolvedName = resolveItemName(t.item_name, meta, language); // ← resolve here
   const previousBalance = meta?.previous_balance != null
     ? parseFloat(String(meta.previous_balance))
     : null;
@@ -134,7 +135,7 @@ function buildInvoiceData(
   const baseInvoice = {
     transaction_id: t.id,
     date: t.date,
-    item_name: t.item_name,
+    item_name: resolvedName,  
     amount: t.amount,
     currency: t.currency,
     company_name: companyName ?? undefined,
@@ -273,7 +274,7 @@ export default function TransactionsTab({
   }, [fetchPage]);
 
 const handleRowClick = (transaction: Transaction) => {
-  const invoiceData = buildInvoiceData(transaction, companyName, userFullName, userNumericId);
+ const invoiceData = buildInvoiceData(transaction, companyName, userFullName, userNumericId, language);
   navigate("/invoice", { state: { invoiceData } });
 };
 
