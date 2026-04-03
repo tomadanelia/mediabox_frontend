@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useCallback, useMemo ,useRef} from 'react';
 import { API_BASE_URL } from '@/config';
 import VideoPlayer from '@/hmcomponents/videoplayer';
 import DataTableDemo from '@/components/shadcn-studio/data-table/data-table-11';
@@ -514,7 +514,57 @@ export const Stream: React.FC = () => {
       }
     })();
   }, []);
+const leftPanelRef = useRef<HTMLDivElement>(null);
 
+// 2. Auto-collapse after timeout when expanded
+useEffect(() => {
+  if (!leftExpanded) return;
+  
+  const timer = setTimeout(() => {
+    setLeftExpanded(false);
+  }, 3000); // 3 seconds — adjust as needed
+  
+  return () => clearTimeout(timer);
+}, [leftExpanded]);
+const rightPanelRef = useRef<HTMLDivElement>(null);
+
+// Auto-collapse after timeout
+useEffect(() => {
+  if (!rightExpanded) return;
+  
+  const timer = setTimeout(() => {
+    setRightExpanded(false);
+  }, 3000);
+  
+  return () => clearTimeout(timer);
+}, [rightExpanded]);
+
+// Collapse on outside click
+useEffect(() => {
+  if (!rightExpanded) return;
+
+  const handleClickOutside = (e: MouseEvent) => {
+    if (rightPanelRef.current && !rightPanelRef.current.contains(e.target as Node)) {
+      setRightExpanded(false);
+    }
+  };
+
+  document.addEventListener('mousedown', handleClickOutside);
+  return () => document.removeEventListener('mousedown', handleClickOutside);
+}, [rightExpanded]);
+// 3. Collapse when clicking outside
+useEffect(() => {
+  if (!leftExpanded) return;
+
+  const handleClickOutside = (e: MouseEvent) => {
+    if (leftPanelRef.current && !leftPanelRef.current.contains(e.target as Node)) {
+      setLeftExpanded(false);
+    }
+  };
+
+  document.addEventListener('mousedown', handleClickOutside);
+  return () => document.removeEventListener('mousedown', handleClickOutside);
+}, [leftExpanded]);
   useEffect(() => {
     if (!selectedChannel) return;
     const today = toApiDate();
@@ -753,12 +803,14 @@ export const Stream: React.FC = () => {
         <div className='w-[65px] flex lg:hidden' />
 
         {/* LEFT */}
-        <div className={`
-          lg:relative lg:w-1/5
-          absolute z-20 flex flex-col h-full lg:h-full overflow bg-yel
-          transition-all duration-300 ease-in-out
-          ${isMobile ? (leftExpanded ? 'w-2/5' : 'w-[65px]') : ''}
-        `}>
+      <div
+  ref={leftPanelRef}
+  className={`
+    lg:relative lg:w-1/5
+    absolute z-20 flex flex-col h-full lg:h-full overflow bg-yel
+    transition-all duration-300 ease-in-out
+    ${isMobile ? (leftExpanded ? 'w-2/5' : 'w-[65px]') : ''}
+  `}>
           {isMobile && (
             <button
               onClick={() => setLeftExpanded(v => !v)}
@@ -892,12 +944,14 @@ export const Stream: React.FC = () => {
         </div>
 
         {/* RIGHT */}
-        <div className={`
-          lg:relative lg:w-1/5
-          absolute right-0 z-10 flex flex-col h-full bg-yel
-          transition-all duration-300 ease-in-out
-          ${isMobile ? (rightExpanded ? 'w-2/5' : 'w-[65px]') : ''}
-        `}>
+        <div
+  ref={rightPanelRef} 
+  className={`
+    lg:relative lg:w-1/5
+    absolute right-0 z-10 flex flex-col h-full bg-yel
+    transition-all duration-300 ease-in-out
+    ${isMobile ? (rightExpanded ? 'w-2/5' : 'w-[65px]') : ''}
+  `}>
           {isMobile && (
             <button
               onClick={() => setRightExpanded(v => !v)}
