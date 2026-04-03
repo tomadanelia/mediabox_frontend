@@ -39,12 +39,19 @@ type Props = {
   currentChannelId?: string
   rewindableDays?: number
 }
+// qartuli saxelebi
+const GEO_MONTHS = ['იანვ', 'თებ', 'მარ', 'აპრ', 'მაი', 'ივნ', 'ივლ', 'აგვ', 'სექ', 'ოქტ', 'ნოე', 'დეკ']
+const GEO_WEEKDAYS = ['კვი', 'ორშ', 'სამ', 'ოთხ', 'ხუთ', 'პარ', 'შაბ']
 
+function geoDate(d: Date, includeWeekday = true): string {
+  const wd = includeWeekday ? GEO_WEEKDAYS[d.getDay()] + ', ' : ''
+  return `${wd}${d.getDate()} ${GEO_MONTHS[d.getMonth()]}`
+}
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 function toApiDate(d: Date): string {
-  const y  = d.getFullYear()
-  const m  = String(d.getMonth() + 1).padStart(2, '0')
+  const y = d.getFullYear()
+  const m = String(d.getMonth() + 1).padStart(2, '0')
   const dd = String(d.getDate()).padStart(2, '0')
   return `${y}/${m}/${dd}`
 }
@@ -59,11 +66,17 @@ const hhmm = new Intl.DateTimeFormat('en-GB', { hour: '2-digit', minute: '2-digi
 const fmtTime = (unix: number) => hhmm.format(new Date(unix * 1000))
 
 function dayLabel(d: Date): string {
-  const now  = new Date()
+  const now = new Date()
   const prev = new Date(); prev.setDate(now.getDate() - 1)
-  if (d.toDateString() === now.toDateString())  return 'Today'
-  if (d.toDateString() === prev.toDateString()) return 'Yesterday'
-  return d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })
+  if (d.toDateString() === now.toDateString()) return 'დღეს'
+  if (d.toDateString() === prev.toDateString()) return 'გუშინ'
+  return geoDate(d)
+}
+
+function startOfDay(unix: number): string {
+  const d = new Date(unix * 1000)
+  d.setHours(0, 0, 0, 0)
+  return d.toDateString()
 }
 
 const Spinner = () => (
@@ -89,14 +102,16 @@ const FullScreenList: React.FC<Props> = ({
     return d
   })
 
-  const [channels,        setChannels]        = useState<Channel[]>([])
-  const [loadingCh,       setLoadingCh]       = useState(true)
-  const [errorCh,         setErrorCh]         = useState<string | null>(null)
-  const [previewId,       setPreviewId]       = useState<string>(currentChannelId ?? '')
-  const [programs,        setPrograms]        = useState<Program[]>([])
-  const [nextDayPrograms, setNextDayPrograms] = useState<Program[]>([])
-  const [loadingPr,       setLoadingPr]       = useState(false)
-  const [selDate,         setSelDate]         = useState<Date>(dateStrip[dateStrip.length - 1])
+  const [channels, setChannels] = useState<Channel[]>([])
+  const [loadingCh, setLoadingCh] = useState(true)
+  const [errorCh, setErrorCh] = useState<string | null>(null)
+  const [previewId, setPreviewId] = useState<string>(currentChannelId ?? '')
+  const [programs, setPrograms] = useState<Program[]>([])
+  const [loadingPr, setLoadingPr] = useState(false)
+  const [selDate, setSelDate] = useState<Date>(dateStrip[dateStrip.length - 1])
+
+  const programListRef = React.useRef<HTMLDivElement>(null)
+  const liveRowRef = React.useRef<HTMLDivElement>(null)
 
   // ── Fetch channels ──────────────────────────────────────────────────────────
   useEffect(() => {
@@ -119,56 +134,43 @@ const FullScreenList: React.FC<Props> = ({
     return () => { dead = true }
   }, [])
 
-  // ── Fetch programs (selected day + next day) ────────────────────────────────
+  // ── Fetch all programs ──────────────────────────────────────────────────────
   useEffect(() => {
     if (!previewId) return
     let dead = false
     setLoadingPr(true)
     setPrograms([])
-    setNextDayPrograms([])
 
-    const nextDate = addOneDay(selDate)
-
-    Promise.all([
-      api.get(`/api/channels/${previewId}/programs`, { params: { date: toApiDate(selDate) } }),
-      api.get(`/api/channels/${previewId}/programs`, { params: { date: toApiDate(nextDate) } }),
-    ])
-      .then(([res, resNext]) => {
+    api.get(`/api/channels/${previewId}/programs/all`)
+      .then(res => {
         if (dead) return
         setPrograms(res.data ?? [])
-        setNextDayPrograms(resNext.data ?? [])
       })
-      .catch(() => {})
+      .catch(() => { })
       .finally(() => { if (!dead) setLoadingPr(false) })
 
     return () => { dead = true }
-  }, [previewId, selDate.toDateString()])
+  }, [previewId])
 
-  // ── Build display list: day1.p1 → day2.p1 (exclusive) ──────────────────────
+  // ── Sort programs ───────────────────────────────────────────────────────────
   const displayPrograms = useMemo(() => {
-    const sorted     = [...programs].sort((a, b) => a.START_TIME - b.START_TIME)
-    const nextSorted = [...nextDayPrograms].sort((a, b) => a.START_TIME - b.START_TIME)
-
-    if (!sorted.length) return []
-
-    const rangeStart = sorted[0].START_TIME
-    const rangeEnd   = nextSorted.length > 0 ? nextSorted[0].START_TIME : Infinity
-
-    const combined = [
-      ...sorted,
-      ...nextSorted.filter(p => p.START_TIME < rangeEnd),
-    ]
-
     const seen = new Set<number>()
-    return combined.filter(p => {
-      if (seen.has(p.UID)) return false
-      seen.add(p.UID)
-      return p.START_TIME >= rangeStart && p.START_TIME < rangeEnd
-    }).sort((a, b) => a.START_TIME - b.START_TIME)
-  }, [programs, nextDayPrograms])
+    return [...programs]
+      .filter(p => { if (seen.has(p.UID)) return false; seen.add(p.UID); return true })
+      .sort((a, b) => a.START_TIME - b.START_TIME)
+  }, [programs])
+
+  // ── Scroll to live program once loaded ─────────────────────────────────────
+  useEffect(() => {
+    if (loadingPr || !liveRowRef.current || !programListRef.current) return
+    const container = programListRef.current
+    const row = liveRowRef.current
+    const offset = row.offsetTop - container.clientHeight / 2 + row.clientHeight / 2
+    container.scrollTo({ top: Math.max(0, offset), behavior: 'smooth' })
+  }, [loadingPr])
 
   const previewChannel = channels.find(c => c.id === previewId) ?? null
-  const todaySelected  = selDate.toDateString() === new Date().toDateString()
+  const todaySelected = selDate.toDateString() === new Date().toDateString()
 
   const handleChannelClick = (ch: Channel) => {
     setPreviewId(ch.id)
@@ -192,44 +194,45 @@ const FullScreenList: React.FC<Props> = ({
     <div className="absolute inset-0 z-50 flex flex-col bg-white/80 dark:bg-black/70 backdrop-blur-lg">
 
       {/* ── Top bar ── */}
-      <div className="shrink-0 px-4 pt-3 pb-2 border-b border-black/8 dark:border-white/10">
-        <div className="flex items-center justify-between mb-2">
-          <span className="text-black/80 dark:text-white/80 font-bold text-sm tracking-wide">TV Guide</span>
-          <button
-            onClick={onClose}
-            className="w-7 h-7 flex items-center justify-center rounded-lg text-black/30 dark:text-white/40 hover:text-black/60 dark:hover:text-white/60 hover:bg-black/5 dark:hover:bg-white/10 transition-all duration-150"
-          >
-            <X className="w-4 h-4" />
-          </button>
+      <div className="shrink-0 px-3 pt-3 border-black/8  dark:border-white/10 ">
+        <div className='bg-white/3 px-2 border-t border-x border-black/8 dark:border-white/8 dark:bg-white/3 backdrop-blur-md rounded-t-[10px]'>
+          <div className="flex items-center justify-between">
+            <span className="text-black/80 dark:text-white/80 font-bold text-sm tracking-wide">MediaBox</span>
+            <button
+              onClick={onClose}
+              className="w-7 h-7 flex items-center justify-center rounded-lg text-black/30 dark:text-white/40 hover:text-black/60 dark:hover:text-white/60 hover:bg-black/5 dark:hover:bg-white/10 transition-all duration-150"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+
+          {/* Date strip */}
+          <div className="flex gap-1.5 overflow-x-auto py-3" style={{ scrollbarWidth: 'none' }}>
+            {dateStrip.map((d, i) => {
+              const isSelected = d.toDateString() === selDate.toDateString()
+              return (
+                <button
+                  key={i}
+                  onClick={() => setSelDate(d)}
+                  className={`shrink-0 px-2.5 py-1 rounded-[10px] text-[11px] font-semibold whitespace-nowrap transition-all duration-150 outline-none focus:outline-none focus-visible:outline-none ${isSelected
+                      ? 'bg-white/20 dark:bg-white/15 border border-white/30 dark:border-white/20 text-black/80 dark:text-white/90'
+                      : 'border border-black/8 dark:border-white/10 text-black/50 dark:text-white/40 hover:text-black/70 dark:hover:text-white/60 hover:bg-black/5 dark:hover:bg-white/8'
+                    }`}
+                >
+                  {dayLabel(d)}
+                </button>
+              )
+            })}
+          </div>
         </div>
 
-        {/* Date strip */}
-        <div className="flex gap-1.5 overflow-x-auto" style={{ scrollbarWidth: 'none' }}>
-          {dateStrip.map((d, i) => {
-            const isSelected = d.toDateString() === selDate.toDateString()
-            return (
-              <button
-                key={i}
-                onClick={() => setSelDate(d)}
-                className={`shrink-0 px-2.5 py-1 rounded-lg text-[11px] font-semibold whitespace-nowrap transition-all duration-150 ${
-                  isSelected
-                    ? 'text-white shadow-sm'
-                    : 'bg-white/70 dark:bg-white/5 border border-black/8 dark:border-white/10 text-black/50 dark:text-white/40 hover:text-black/70 dark:hover:text-white/60 hover:bg-white dark:hover:bg-white/10'
-                }`}
-                style={isSelected ? { background: '#d52b1e', boxShadow: 'rgba(213,43,30,0.3) 0px 1px 3px' } : {}}
-              >
-                {dayLabel(d)}
-              </button>
-            )
-          })}
-        </div>
       </div>
 
       {/* ── Body ── */}
-      <div className="flex flex-1 min-h-0 overflow-hidden gap-3 p-3">
+      <div className="flex flex-1 min-h-0 overflow-hidden px-3 pb-3">
 
         {/* Channel list */}
-        <div className="w-1/4 shrink-0 rounded-xl border border-black/8 dark:border-white/8 bg-white/50 dark:bg-white/3 backdrop-blur-md overflow-y-auto">
+        <div className="w-1/4 shrink-0 rounded-bl-[10px] border-l border-b border-t border-black/8 dark:border-white/8 bg-white/50 dark:bg-white/3 backdrop-blur-md p-1 overflow-y-auto">
           {loadingCh ? (
             <Spinner />
           ) : errorCh ? (
@@ -237,31 +240,35 @@ const FullScreenList: React.FC<Props> = ({
           ) : (
             <div className="divide-y divide-black/5 dark:divide-white/5">
               {channels.map(ch => {
-                const isStreaming  = ch.id === currentChannelId
+                const isStreaming = ch.id === currentChannelId
                 const isPreviewing = ch.id === previewId
                 return (
                   <button
                     key={ch.id}
                     onClick={() => handleChannelClick(ch)}
-                    className={`w-full flex items-center gap-2 px-3 py-2 text-left border-l-2 transition-all duration-150 ${
-                      isPreviewing && !isStreaming
-                        ? 'bg-black/3 dark:bg-white/8 border-l-transparent'
+                    className={`w-full flex items-center border-b-0 gap-2 px-3 py-2 text-left  transition-all duration-150 rounded-[10px] ${isPreviewing && !isStreaming
+                        ? 'bg-black/3 dark:bg-white/8'
                         : !isStreaming
-                        ? 'border-l-transparent hover:bg-black/3 dark:hover:bg-white/4'
-                        : ''
-                    }`}
-                    style={isStreaming ? { background: 'linear-gradient(to right, rgba(213,43,30,0.07), rgba(33,38,44,0.04))', borderLeftColor: '#d52b1e', borderLeftWidth: '2px' } : {}}
+                          ? 'border-l-transparent hover:bg-black/3 dark:hover:bg-white/4'
+                          : ''
+                      }`}
+                    style={isStreaming ? { background: "rgba(189, 189, 189, 0.1)", borderRadius: "10px", borderColor: 'rgba(189, 189, 189, 0.1)', borderWidth: '2px' } : {}}
                   >
+
                     <div className="w-7 h-7 rounded-lg bg-white dark:bg-white/10 shadow-sm shrink-0 overflow-hidden flex items-center justify-center">
                       {ch.logo
                         ? <img src={ch.logo} alt="" className="w-10/12 h-10/12 object-contain"
-                            onError={e => { e.currentTarget.style.display = 'none' }} />
+                          onError={e => { e.currentTarget.style.display = 'none' }} />
                         : <span className="text-black/40 dark:text-white/40 text-[9px] font-bold">{ch.name.slice(0, 2).toUpperCase()}</span>
                       }
                     </div>
-                    <span className="text-black/80 dark:text-white/75 text-[11px] font-medium truncate flex-1">{ch.name}</span>
-                    {isStreaming && (
-                      <span className="w-1.5 h-1.5 rounded-full shrink-0 animate-pulse" style={{ backgroundColor: '#d52b1e' }} />
+                    <div className='flex flex-col'>
+                          <span className="text-black/80 dark:text-white/75 text-[11px] font-medium truncate flex-1">{ch.name}</span>
+                            <span className="text-black/80 dark:text-white/75 text-[11px] font-medium truncate flex-1">{ch.id}</span>
+              
+                    </div>
+                      {isStreaming && (
+                      <span className=" absolute right-3 w-1.5 h-1.5 rounded-full shrink-0 animate-pulse" style={{ backgroundColor: '#d52b1e' }} />
                     )}
                   </button>
                 )
@@ -271,11 +278,11 @@ const FullScreenList: React.FC<Props> = ({
         </div>
 
         {/* Program list */}
-        <div className="flex-1 flex flex-col min-h-0 rounded-xl border border-black/8 dark:border-white/8 bg-white/50 dark:bg-white/3 backdrop-blur-md overflow-hidden">
+        <div className="flex-1 flex flex-col min-h-0 rounded-br-[10px] border border-black/8 dark:border-white/8 bg-white/50 dark:bg-white/3 backdrop-blur-md overflow-hidden">
 
           {/* Channel sub-header */}
           {previewChannel && (
-            <div className="shrink-0 flex items-center justify-between px-3 py-2 border-b border-black/5 dark:border-white/8">
+            <div className="shrink-0 flex items-center justify-between px-3 py-2  border-black/5 dark:border-white/8">
               <div className="flex items-center gap-2">
                 <div className="w-6 h-6 rounded-lg bg-white dark:bg-white/10 shadow-sm shrink-0 overflow-hidden flex items-center justify-center">
                   {previewChannel.logo
@@ -284,67 +291,89 @@ const FullScreenList: React.FC<Props> = ({
                   }
                 </div>
                 <span className="text-black/80 dark:text-white/75 text-xs font-semibold truncate">{previewChannel.name}</span>
-                <span className="text-black/30 dark:text-white/30 text-[10px]">· {dayLabel(selDate)}</span>
               </div>
-              <button
-                onClick={() => { onSelect({ channel: previewChannel, mode: 'live' }); onClose() }}
-                className="flex items-center gap-1 px-2.5 py-1 rounded-lg text-white text-[10px] font-bold transition-all hover:opacity-90"
-                style={{ background: '#d52b1e', boxShadow: 'rgba(213,43,30,0.3) 0px 1px 3px' }}
-              >
-                <Radio className="w-3 h-3" />
-                Live
-              </button>
+          
             </div>
           )}
 
           {/* Programs */}
-          <div className="flex-1 overflow-y-auto">
+          <div ref={programListRef} className="flex-1 overflow-y-auto">
             {loadingPr ? (
               <Spinner />
             ) : displayPrograms.length === 0 ? (
-              <p className="text-black/30 dark:text-white/30 text-[11px] text-center pt-8">No programs for this date</p>
+              <p className="text-black/30 dark:text-white/30 text-[11px] text-center pt-8">No programs available</p>
             ) : (
-              <div className="divide-y divide-black/5 dark:divide-white/5">
-                {displayPrograms.map(p => {
-                  const isCurrent = nowSec >= p.START_TIME && nowSec < p.END_TIME
-                  const isPast    = nowSec >= p.END_TIME
-                  const isFuture  = p.START_TIME > nowSec
-                  const clickable = !isFuture
+              <div className='px-3'>
+                {(() => {
+                  const items: React.ReactNode[] = []
+                  let lastDayKey = ''
+                  displayPrograms.forEach(p => {
+                    const dayKey = startOfDay(p.START_TIME)
+                    if (dayKey !== lastDayKey) {
+                      lastDayKey = dayKey
+                      const dayDate = new Date(p.START_TIME * 1000)
+                      items.push(
+                       <div className='flex items-center justify-center'>
+                         <div className='h-px w-2/5 bg-white/10'></div>
+                         <div
+                          key={`divider-${dayKey}`}
+                          className="top-0 z-10 px-3 py-1 flex rounded-[10px] gap-2 border w-1/7 items-center justify-center bg-white/80 dark:bg-[rgba(10,10,10,0.1)] backdrop-blur-sm border-y border-blue-400 dark:border-blue-400/70"
+                        >
+                          <span className="text-[10px] font-bold text-black/40 dark:text-red-500/70 uppercase tracking-wider">
+                            {dayLabel(dayDate)}
+                          </span>
+                          <span className="text-[10px] text-black/20 dark:text-white/20">
+                            {dayDate.toLocaleDateString('ka-GE', { month: 'short', day: 'numeric', year: 'numeric' })}
+                          </span>
+                        </div>
+                         <div className='h-px w-2/5 bg-white/10'></div>
+                       </div>
+                       
+                      )
+                    }
 
-                  return (
-                    <div
-                      key={p.UID}
-                      onClick={() => clickable && handleProgramClick(p)}
-                      className={[
-                        'flex items-center gap-2 px-3 py-2 transition-all duration-150 select-none border-l-2',
-                        isPast    ? 'border-l-transparent opacity-50 cursor-pointer hover:opacity-80 hover:bg-black/3 dark:hover:bg-white/4' : '',
-                        isFuture  ? 'border-l-transparent opacity-25 cursor-not-allowed' : '',
-                      ].join(' ')}
-                      style={isCurrent ? {
-                        background: 'linear-gradient(to right, rgba(213,43,30,0.06), rgba(33,38,44,0.03))',
-                        borderLeftColor: '#d52b1e',
-                        cursor: 'pointer',
-                      } : {}}
-                    >
-                      <span
-                        className={`text-[10px] font-mono tabular-nums shrink-0 w-8 ${!isCurrent ? 'text-black/30 dark:text-white/25' : ''}`}
-                        style={isCurrent ? { color: '#d52b1e' } : {}}
+                    const isCurrent = nowSec >= p.START_TIME && nowSec < p.END_TIME
+                    const isPast = nowSec >= p.END_TIME
+                    const isFuture = p.START_TIME > nowSec
+                    const clickable = !isFuture
+
+                    items.push(
+                      <div
+                        key={p.UID}
+                        ref={isCurrent ? liveRowRef : undefined}
+                        onClick={() => clickable && handleProgramClick(p)}
+                        className={[
+                          'flex items-center gap-2 px-3 py-2 transition-all duration-150 select-none border-l-2',
+                          isPast ? 'border-l-transparent opacity-50 cursor-pointer hover:opacity-80 hover:bg-black/3 dark:hover:bg-white/4' : '',
+                          isFuture ? 'border-l-transparent opacity-25 cursor-not-allowed' : '',
+                        ].join(' ')}
+                        style={isCurrent ? {
+                          background: 'linear-gradient(to right, rgba(213,43,30,0.06), rgba(33,38,44,0.03))',
+                          borderLeftColor: '#d52b1e',
+                          cursor: 'pointer',
+                        } : {}}
                       >
-                        {fmtTime(p.START_TIME)}
-                      </span>
-                      <span className={`text-[11px] font-medium truncate flex-1 ${isCurrent ? 'text-black/80 dark:text-white' : 'text-black/70 dark:text-white/75'}`}>
-                        {p.TITLE}
-                      </span>
-                      {isCurrent && (
-                        <span className="shrink-0 px-1.5 py-0.5 text-white text-[8px] font-bold rounded-md" style={{ background: '#d52b1e' }}>
-                          LIVE
+                        <span
+                          className={`text-[10px] font-mono tabular-nums shrink-0 w-8 ${!isCurrent ? 'text-black/30 dark:text-white/25' : ''}`}
+                          style={isCurrent ? { color: '#d52b1e' } : {}}
+                        >
+                          {fmtTime(p.START_TIME)}
                         </span>
-                      )}
-                      {isPast   && <Clock className="w-2.5 h-2.5 text-black/20 dark:text-white/20 shrink-0" />}
-                      {isFuture && <span className="text-black/20 dark:text-white/20 text-[10px] shrink-0">🔒</span>}
-                    </div>
-                  )
-                })}
+                        <span className={`text-[11px] font-medium truncate flex-1 ${isCurrent ? 'text-black/80 dark:text-white' : 'text-black/70 dark:text-white/75'}`}>
+                          {p.TITLE}
+                        </span>
+                        {isCurrent && (
+                          <span className="shrink-0 px-1.5 py-0.5 text-white text-[8px] font-bold rounded-md" style={{ background: '#d52b1e' }}>
+                            LIVE
+                          </span>
+                        )}
+                        {isPast && <Clock className="w-2.5 h-2.5 text-black/20 dark:text-white/20 shrink-0" />}
+                        {isFuture && <span className="text-black/20 dark:text-white/20 text-[10px] shrink-0">🔒</span>}
+                      </div>
+                    )
+                  })
+                  return items
+                })()}
               </div>
             )}
           </div>
