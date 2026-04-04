@@ -62,7 +62,7 @@ function addOneDay(d: Date): Date {
   return c
 }
 
-const hhmm = new Intl.DateTimeFormat('en-GB', { hour: '2-digit', minute: '2-digit', hour12: false })
+const hhmm = new Intl.DateTimeFormat('', { hour: '2-digit', minute: '2-digit', hour12: false })
 const fmtTime = (unix: number) => hhmm.format(new Date(unix * 1000))
 
 function dayLabel(d: Date): string {
@@ -317,12 +317,12 @@ const FullScreenList: React.FC<Props> = ({
                          <div className='h-px w-2/5 bg-white/10'></div>
                          <div
                           key={`divider-${dayKey}`}
-                          className="top-0 z-10 px-3 py-1 flex rounded-[10px] gap-2 border w-1/7 items-center justify-center bg-white/80 dark:bg-[rgba(10,10,10,0.1)] backdrop-blur-sm border-y border-blue-400 dark:border-blue-400/70"
+                          className="top-0 z-10 px-3 py-1 flex rounded-[10px] gap-2 border w-2/5 items-center justify-center bg-red-500/80 dark:bg-red-500/20 backdrop-blur-sm border-y border-red-500 dark:border-red-400/70"
                         >
-                          <span className="text-[10px] font-bold text-black/40 dark:text-red-500/70 uppercase tracking-wider">
+                          <span className="text-[10px] font-bold text-white dark:text-white uppercase tracking-wider">
                             {dayLabel(dayDate)}
                           </span>
-                          <span className="text-[10px] text-black/20 dark:text-white/20">
+                          <span className="text-[10px] text-black/20 dark:text-white">
                             {dayDate.toLocaleDateString('ka-GE', { month: 'short', day: 'numeric', year: 'numeric' })}
                           </span>
                         </div>
@@ -343,22 +343,27 @@ const FullScreenList: React.FC<Props> = ({
                         ref={isCurrent ? liveRowRef : undefined}
                         onClick={() => clickable && handleProgramClick(p)}
                         className={[
-                          'flex items-center gap-2 px-3 py-2 transition-all duration-150 select-none border-l-2',
-                          isPast ? 'border-l-transparent opacity-50 cursor-pointer hover:opacity-80 hover:bg-black/3 dark:hover:bg-white/4' : '',
-                          isFuture ? 'border-l-transparent opacity-25 cursor-not-allowed' : '',
+                          'flex items-center gap-2 px-3 py-2 transition-all duration-150 select-none rounded-[10px]',
+                          isPast ? 'border-l-transparent opacity-90 cursor-pointer hover:opacity-80 hover:bg-black/3 dark:hover:bg-white/4  rounded-[10px]' : '',
+                          isFuture ? 'border-l-transparent opacity-25 cursor-not-allowed  rounded-[10px]' : '',
+                          isCurrent ? 'border border-white/20 bg-white/10 rounded-[10px]':'',
                         ].join(' ')}
-                        style={isCurrent ? {
-                          background: 'linear-gradient(to right, rgba(213,43,30,0.06), rgba(33,38,44,0.03))',
-                          borderLeftColor: '#d52b1e',
-                          cursor: 'pointer',
-                        } : {}}
-                      >
+                      > 
+                      {isCurrent && <div className='w-1 h-full'>
+                       <div className=' left-0 bg-red-500 w-[4px] rounded-2xl h-[20px]'></div>
+
+                        </div>}
+                       {!isCurrent && <div className='w-1 h-full'>
+                       <div className=' left-0 bg-transparent w-[4px] rounded-2xl h-[20px]'></div>
+
+                        </div>} 
                         <span
-                          className={`text-[10px] font-mono tabular-nums shrink-0 w-8 ${!isCurrent ? 'text-black/30 dark:text-white/25' : ''}`}
-                          style={isCurrent ? { color: '#d52b1e' } : {}}
+                          className={`text-[10px] font-mono tabular-nums shrink-0 w-16 ${!isCurrent ? 'text-black/30 dark:text-white/80' : ''}`}
+                          style={isCurrent ? { color: '' } : {}}
                         >
-                          {fmtTime(p.START_TIME)}
+                          {fmtTime(p.START_TIME)} - {fmtTime(p.END_TIME)}
                         </span>
+                  
                         <span className={`text-[11px] font-medium truncate flex-1 ${isCurrent ? 'text-black/80 dark:text-white' : 'text-black/70 dark:text-white/75'}`}>
                           {p.TITLE}
                         </span>
@@ -367,8 +372,8 @@ const FullScreenList: React.FC<Props> = ({
                             LIVE
                           </span>
                         )}
-                        {isPast && <Clock className="w-2.5 h-2.5 text-black/20 dark:text-white/20 shrink-0" />}
-                        {isFuture && <span className="text-black/20 dark:text-white/20 text-[10px] shrink-0">🔒</span>}
+                        {isPast}
+                        {isFuture && <span className="text-black/20 dark:text-white/20 text-[10px] shrink-0">not avable</span>}
                       </div>
                     )
                   })
