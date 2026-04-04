@@ -17,6 +17,7 @@ interface Plan {
   price: number
   duration_days: number
   is_active: boolean
+  discounted_price?: number
 }
 
 interface ActivePlan {
@@ -26,13 +27,6 @@ interface ActivePlan {
   price: string
   expires_at: string
   days_left: number
-}
-
-interface PurchaseResult {
-  message: string
-  plan_en?: string
-  expires_at?: string
-  remaining_balance?: number
 }
 
 interface Channel {
@@ -400,11 +394,6 @@ const Plans = () => {
   const getActivePlan = (planId: string) => activePlans.find(ap => ap.plan_id === planId)
   const popularIndex = Math.min(3, plans.length - 1)
 
-  // Computed totals for confirm modal — use the real price synced from TvDeviceAddon
-  const deviceFee = extraDevices * tvDevicePrice
-  const planFee = confirmPlan ? Number(confirmPlan.price) : 0
-  const totalFee = planFee + deviceFee
-
   const t = {
     bg: 'bg-plans-bg',
     cardDefault: [
@@ -561,7 +550,7 @@ const Plans = () => {
                   <p className="text-sm font-semibold text-foreground">{confirmPlan[`name_${lang}`]}</p>
                   <p className="text-xs text-muted-foreground mt-0.5">{confirmPlan.duration_days} {tx.daysUnit}</p>
                 </div>
-                <p className="text-2xl font-bold text-foreground tabular-nums">{Number(confirmPlan.price).toFixed(2)} <span className="text-lg text-form-highlights">₾</span></p>
+                <p className="text-2xl font-bold text-foreground tabular-nums">{confirmPlan.discounted_price??Number(confirmPlan.price).toFixed(2)} <span className="text-lg text-form-highlights">₾</span></p>
               </div>
             </div>
 
@@ -856,12 +845,26 @@ const Plans = () => {
                   <div className="p-5">
                     <div className="mb-5">
                       <h3 className={`text-base font-semibold ${t.text} mb-1`}>{plan[`name_${lang}` as const]}</h3>
-                      <div className="flex items-baseline gap-1">
-                        <span className={`text-3xl font-bold ${popular ? 'text-form-highlights' : t.priceColor}`}>
-                          {Number(plan.price).toFixed(2)}
-                        </span>
-                        <span className={`${t.priceMuted} text-sm`}>₾</span>
-                      </div>
+                      <div className="flex items-baseline gap-2 flex-wrap">
+  {(plan.discounted_price ?? plan.price) < plan.price ? (
+    <>
+      <span className={`text-3xl font-bold ${popular ? 'text-form-highlights' : t.priceColor}`}>
+        {Number(plan.discounted_price).toFixed(2)}
+        <span className={`${t.priceMuted} text-sm ml-0.5`}>₾</span>
+      </span>
+      <span className="text-base text-muted-foreground line-through opacity-60">
+        {Number(plan.price).toFixed(2)}₾
+      </span>
+    </>
+  ) : (
+    <>
+      <span className={`text-3xl font-bold ${popular ? 'text-form-highlights' : t.priceColor}`}>
+        {Number(plan.price).toFixed(2)}
+      </span>
+      <span className={`${t.priceMuted} text-sm`}>₾</span>
+    </>
+  )}
+</div>
                       <p className={`text-xs ${t.textFaint} mt-1`}>{plan.duration_days} {tx.daysUnit}</p>
                     </div>
 
