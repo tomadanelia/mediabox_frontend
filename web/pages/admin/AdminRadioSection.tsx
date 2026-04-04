@@ -12,7 +12,6 @@ interface RadioChannel {
   is_free: boolean | number;
 }
 
-/* ── Icons (matching admin dashboard style) ── */
 const IconSpinner = () => (
   <svg className="animate-spin" width="14" height="14" viewBox="0 0 14 14" fill="none">
     <circle cx="7" cy="7" r="6" stroke="currentColor" strokeOpacity="0.25" strokeWidth="2"/>

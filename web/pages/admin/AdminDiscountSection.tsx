@@ -1,6 +1,140 @@
 import { useState, useEffect, useRef } from "react";
 import api from "../../src/lib/axios";
+import { Calendar } from '@/components/ui/calendar'
+import { type DateRange } from 'react-day-picker'
 
+function DiscountDatePicker({
+  startsAt,
+  expiresAt,
+  onChange,
+}: {
+  startsAt: string | null;
+  expiresAt: string | null;
+  onChange: (starts_at: string | null, expires_at: string | null) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const h = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    };
+    document.addEventListener("mousedown", h);
+    return () => document.removeEventListener("mousedown", h);
+  }, []);
+
+  const range: DateRange | undefined =
+    startsAt || expiresAt
+      ? { from: startsAt ? new Date(startsAt) : undefined, to: expiresAt ? new Date(expiresAt) : undefined }
+      : undefined;
+
+  const handleSelect = (r: DateRange | undefined) => {
+    const fmt = (d: Date | undefined) =>
+      d ? d.toISOString().split("T")[0] : null;
+    onChange(fmt(r?.from), fmt(r?.to));
+    if (r?.from && r?.to) setOpen(false);
+  };
+
+  const displayText = () => {
+    if (!startsAt && !expiresAt) return "პერიოდი არ არის მითითებული";
+    const fmt = (s: string) => new Date(s).toLocaleDateString("ka-GE");
+    if (startsAt && expiresAt) return `${fmt(startsAt)} — ${fmt(expiresAt)}`;
+    if (startsAt) return `${fmt(startsAt)} →`;
+    return `→ ${fmt(expiresAt!)}`;
+  };
+
+  return (
+    <div ref={ref} className="relative">
+      {/* Trigger button */}
+      <button
+        type="button"
+        onClick={() => setOpen(o => !o)}
+        className={`cursor-pointer w-full flex items-center justify-between gap-2 bg-zinc-800 border rounded-xl px-3 py-2.5 text-sm transition-colors ${
+          open ? "border-zinc-500" : "border-zinc-700 hover:border-zinc-600"
+        }`}
+      >
+        <div className="flex items-center gap-2">
+          <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="text-zinc-500 shrink-0">
+            <rect x="1.5" y="2.5" width="13" height="12" rx="1.5"/>
+            <path d="M5 1v3M11 1v3M1.5 6.5h13"/>
+          </svg>
+          <span className={startsAt || expiresAt ? "text-zinc-200" : "text-zinc-600"}>
+            {displayText()}
+          </span>
+        </div>
+        <div className="flex items-center gap-1.5 shrink-0">
+          {(startsAt || expiresAt) && (
+            <span
+              onClick={e => { e.stopPropagation(); onChange(null, null); }}
+              className="cursor-pointer text-zinc-600 hover:text-zinc-400 transition-colors text-base leading-none"
+            >
+              ✕
+            </span>
+          )}
+          <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" className={`text-zinc-600 transition-transform ${open ? "rotate-180" : ""}`}>
+            <path d="M2 4l4 4 4-4"/>
+          </svg>
+        </div>
+      </button>
+
+      {/* Popover */}
+      {open && (
+        <div className="absolute left-0 top-full mt-2 z-30 bg-zinc-900 border border-zinc-700 rounded-2xl shadow-2xl overflow-hidden">
+          <Calendar
+            mode="range"
+            selected={range}
+            onSelect={handleSelect}
+            defaultMonth={range?.from}
+            numberOfMonths={2}
+            classNames={{
+              months: "flex gap-4 p-3",
+              month: "space-y-3",
+              month_caption: "flex justify-center items-center px-2 py-1",
+              caption_label: "text-xs font-semibold text-zinc-300",
+              nav: "flex items-center gap-1",
+              button_previous: "cursor-pointer w-7 h-7 flex items-center justify-center rounded-lg text-zinc-500 hover:bg-zinc-800 hover:text-zinc-300 transition-colors absolute left-3 top-3",
+              button_next: "cursor-pointer w-7 h-7 flex items-center justify-center rounded-lg text-zinc-500 hover:bg-zinc-800 hover:text-zinc-300 transition-colors absolute right-3 top-3",
+              month_grid: "w-full border-collapse",
+              weekdays: "flex",
+              weekday: "w-9 text-center text-[0.6rem] text-zinc-600 uppercase font-medium py-1",
+              weeks: "space-y-0.5",
+              week: "flex",
+              day: "relative p-0 text-center",
+              day_button: [
+                "w-9 h-9 text-xs rounded-full transition-all font-medium",
+                "text-zinc-300 hover:bg-zinc-700 hover:text-zinc-100",
+                "data-[selected=true]:text-white",
+                "data-[range-start=true]:rounded-full! data-[range-start=true]:bg-orange-600! data-[range-start=true]:text-white!",
+                "data-[range-end=true]:rounded-full! data-[range-end=true]:bg-orange-500! data-[range-end=true]:text-white!",
+                "data-[range-middle=true]:rounded-none data-[range-middle=true]:bg-orange-500/15 data-[range-middle=true]:text-orange-200",
+                "data-[disabled=true]:opacity-30 data-[disabled=true]:cursor-not-allowed",
+                "data-[today=true]:ring-1 data-[today=true]:ring-zinc-500",
+              ].join(" "),
+              range_start: "rounded-l-full bg-orange-600/15",
+              range_end: "rounded-r-full bg-orange-500/15",
+              range_middle: "bg-orange-500/10",
+              outside: "opacity-20 pointer-events-none",
+              hidden: "invisible",
+            }}
+          />
+          <div className="px-4 py-2.5 border-t border-zinc-800 flex items-center justify-between">
+            <p className="text-[0.6rem] text-zinc-600">
+              {range?.from && !range?.to ? "აირჩიეთ დასრულების თარიღი" : "აირჩიეთ დაწყების თარიღი"}
+            </p>
+            {(startsAt || expiresAt) && (
+              <button
+                onClick={() => { onChange(null, null); setOpen(false); }}
+                className="cursor-pointer text-[0.6rem] text-zinc-600 hover:text-red-400 transition-colors"
+              >
+                გასუფთავება
+              </button>
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
 interface Plan {
   id: string;
   name_en: string;
@@ -291,16 +425,14 @@ function DiscountForm({
         </div>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-        <div>
-          {label("დაწყების თარიღი (optional)")}
-          <input type="date" className={inp} value={form.starts_at ?? ""} onChange={e => setForm({ ...form, starts_at: e.target.value || null })} />
-        </div>
-        <div>
-          {label("დასრულების თარიღი (optional)")}
-          <input type="date" className={inp} value={form.expires_at ?? ""} onChange={e => setForm({ ...form, expires_at: e.target.value || null })} />
-        </div>
-      </div>
+      <div>
+  {label("პერიოდი (optional)")}
+  <DiscountDatePicker
+    startsAt={form.starts_at}
+    expiresAt={form.expires_at}
+    onChange={(starts_at, expires_at) => setForm({ ...form, starts_at, expires_at })}
+  />
+</div>
 
       {error && (
         <p className="text-xs text-red-400 bg-red-500/10 border border-red-500/20 rounded-xl px-3 py-2">{error}</p>
@@ -767,7 +899,7 @@ export default function AdminDiscountsSection({ plans }: { plans: Plan[] }) {
                   <div className="flex items-center gap-2 text-[0.6rem] text-zinc-600 border-t border-zinc-800 pt-2.5">
                     {d.starts_at && (
                       <span>
-                        <span className="text-zinc-700">დაწყება: </span>
+                        <span className="text-zinc-700">დასაწყისი: </span>
                         {new Date(d.starts_at).toLocaleDateString("ka-GE")}
                       </span>
                     )}
