@@ -1,9 +1,8 @@
 'use client'
 
-import { useState, useEffect, useCallback, useMemo } from 'react'
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import { Search, X, Radio, Wifi, WifiOff, Volume2, VolumeX, ChevronUp, ChevronDown } from 'lucide-react'
 import api from '@/lib/axios'
-import { useMpegtsPlayer } from '@/hooks/useMpegt'
 
 // ─── Hooks ────────────────────────────────────────────────────────────────────
 
@@ -358,25 +357,39 @@ function PlayButton({ status, onClick, disabled }: { status: PlayerStatus; onCli
 // ─── Main Page ────────────────────────────────────────────────────────────────
 
 export default function RadioPage() {
-  const [channels,     setChannels]     = useState<RadioChannel[]>([])
-  const [loading,      setLoading]      = useState(true)
-  const [fetchError,   setFetchError]   = useState<string | null>(null)
-  const [selected,     setSelected]     = useState<RadioChannel | null>(null)
-  const [playerStatus, setPlayerStatus] = useState<PlayerStatus>('idle')
-  const [volume,       setVolume]       = useState(0.75)
-  const [isMuted,      setIsMuted]      = useState(false)
-  const [leftExpanded, setLeftExpanded] = useState(false)
+  const [channels,       setChannels]       = useState<RadioChannel[]>([])
+  const [loading,        setLoading]        = useState(true)
+  const [fetchError,     setFetchError]     = useState<string | null>(null)
+  const [selected,       setSelected]       = useState<RadioChannel | null>(null)
+  const [playerStatus,   setPlayerStatus]   = useState<PlayerStatus>('idle')
+  const [volume,         setVolume]         = useState(0.75)
+  const [isMuted,        setIsMuted]        = useState(false)
+  const [leftExpanded,   setLeftExpanded]   = useState(false)
   const [playerExpanded, setPlayerExpanded] = useState(false)
 
-  const isMobile        = useIsMobile()
-  const isPortrait      = useIsPortrait()
+  // ── Native <audio> ref ────────────────────────────────────────────────────
+  const audioRef = useRef<HTMLAudioElement>(null)
+
+  const isMobile         = useIsMobile()
+  const isPortrait       = useIsPortrait()
   const isMobilePortrait = isMobile && isPortrait
 
-  const { audioRef, load, destroy } = useMpegtsPlayer({
-    onStatus: setPlayerStatus,
-    volume,
-    muted: isMuted,
-  })
+  // Keep volume / mute in sync with the audio element whenever they change
+  useEffect(() => {
+    if (!audioRef.current) return
+    audioRef.current.volume = volume
+    audioRef.current.muted  = isMuted
+  }, [volume, isMuted])
+
+  // Stop and clean up audio on unmount
+  useEffect(() => {
+    return () => {
+      if (audioRef.current) {
+        audioRef.current.pause()
+        audioRef.current.src = ''
+      }
+    }
+  }, [])
 
   useEffect(() => {
     setLoading(true)
@@ -388,6 +401,8 @@ export default function RadioPage() {
 
   const playChannel = useCallback(async (ch: RadioChannel) => {
     if (!bool(ch.has_access)) return
+
+    // Toggle pause/resume for the already-selected channel
     if (sameId(selected?.id, ch.id) && playerStatus === 'playing') {
       audioRef.current?.pause()
       setPlayerStatus('paused')
@@ -398,15 +413,31 @@ export default function RadioPage() {
       setPlayerStatus('playing')
       return
     }
+
+    // New channel — stop whatever is playing first
+    if (audioRef.current) {
+      audioRef.current.pause()
+      audioRef.current.src = ''
+    }
+
     setSelected(ch)
     setPlayerStatus('loading')
+
     try {
       const res = await api.get<StreamResponse>(`/api/radio/${ch.id}/stream`)
-      await load(res.data.url, res.data.type)
+      const url = res.data.url
+
+      if (audioRef.current) {
+        audioRef.current.src    = url
+        audioRef.current.volume = volume
+        audioRef.current.muted  = isMuted
+        await audioRef.current.play()
+        setPlayerStatus('playing')
+      }
     } catch {
       setPlayerStatus('error')
     }
-  }, [selected, playerStatus, audioRef, load])
+  }, [selected, playerStatus, volume, isMuted])
 
   const togglePlay = useCallback(() => {
     if (!selected) return
@@ -419,9 +450,7 @@ export default function RadioPage() {
     } else {
       playChannel(selected)
     }
-  }, [selected, playerStatus, audioRef, playChannel])
-
-  useEffect(() => () => destroy(), [destroy])
+  }, [selected, playerStatus, playChannel])
 
   const isPlaying = playerStatus === 'playing'
   const isLoading = playerStatus === 'loading'
