@@ -4,7 +4,8 @@ import AdminChannelsSection from "./AdminChannelsSection";
 import TvPriceSettings from "./TvPriceSettings";
 import api from "../../src/lib/axios";
 import useAuthStore from "../../src/store/AuthStore"; 
-type AdminSection = "Overview" | "Users" | "Category-Channels" | "Categories" | "Plans" | "Plan-Channels" |"Channels"| "Support" | "Settings";
+import AdminRadioSection from "./AdminRadioSection";
+type AdminSection = "Overview" | "Users" | "Category-Channels" | "Categories" | "Plans" | "Plan-Channels" |"Channels"|"Radios"| "Support" | "Settings";
 const adminSectionLabels: Record<AdminSection, string> = {
   "Overview": "მთავარი",
   "Users": "მომხმარებლები",
@@ -12,6 +13,7 @@ const adminSectionLabels: Record<AdminSection, string> = {
   "Categories": "კატეგორიები",
   "Plans": "პაკეტები",
   "Plan-Channels": "პაკეტების შევსება",
+  "Radios": "რადიო არხები",
   "Support": "მხარდაჭერა",
   "Settings": "პარამეტრები",
   "Channels": "არხები",
@@ -721,7 +723,7 @@ useEffect(() => {
       <aside className="hidden lg:flex flex-col w-56 bg-zinc-900 border-r border-zinc-800 shrink-0">
         <div className="p-5 border-b border-zinc-800 font-bold text-zinc-100 tracking-tight">ადმინ პანელი</div>
         <nav className="p-3 flex flex-col gap-1">
-      {(["Overview",  "Channels","Categories","Category-Channels", "Plans", "Plan-Channels", "Users", "Settings"] as AdminSection[]).map(s => (
+      {(["Overview",  "Channels","Categories","Category-Channels", "Plans", "Plan-Channels","Radios", "Users", "Settings"] as AdminSection[]).map(s => (
         <button
           key={s}
           onClick={() => setSection(s)}
@@ -1247,6 +1249,8 @@ useEffect(() => {
               </div>
             </div>
           )}
+          {/* Radios */}
+          {section === "Radios" && <AdminRadioSection />}
 
           {/* ══════════════════════════════════════════
               USERS SECTION
