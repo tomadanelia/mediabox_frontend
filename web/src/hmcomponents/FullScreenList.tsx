@@ -62,7 +62,7 @@ function addOneDay(d: Date): Date {
   return c
 }
 
-const hhmm = new Intl.DateTimeFormat('', { hour: '2-digit', minute: '2-digit', hour12: false })
+const hhmm = new Intl.DateTimeFormat('en-us', { hour: '2-digit', minute: '2-digit', hour12: false })
 const fmtTime = (unix: number) => hhmm.format(new Date(unix * 1000))
 
 function dayLabel(d: Date): string {
@@ -191,7 +191,7 @@ const FullScreenList: React.FC<Props> = ({
   // ─── Render ────────────────────────────────────────────────────────────────
 
   return (
-    <div className="absolute inset-0 z-50 flex flex-col bg-white/80 dark:bg-black/70 backdrop-blur-lg">
+    <div className="absolute inset-0 z-50 flex flex-col bg-white/80 dark:bg-black/70 backdrop-blur-lg" style={{ zoom: 2 }}>
 
       {/* ── Top bar ── */}
       <div className="shrink-0 px-3 pt-3 border-black/8  dark:border-white/10 ">
