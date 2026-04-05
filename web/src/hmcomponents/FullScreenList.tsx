@@ -62,7 +62,7 @@ function addOneDay(d: Date): Date {
   return c
 }
 
-const hhmm = new Intl.DateTimeFormat('', { hour: '2-digit', minute: '2-digit', hour12: false })
+const hhmm = new Intl.DateTimeFormat('en-us', { hour: '2-digit', minute: '2-digit', hour12: false })
 const fmtTime = (unix: number) => hhmm.format(new Date(unix * 1000))
 
 function dayLabel(d: Date): string {
