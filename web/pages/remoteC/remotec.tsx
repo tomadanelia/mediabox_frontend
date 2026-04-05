@@ -1,8 +1,8 @@
 'use client'
 
 import { useState, useCallback, useEffect, useRef } from 'react'
-import api from '@/lib/axios'
-import useUIStore from '@/store/ui-store'
+import api from '../../src/lib/axios'
+import useUIStore from '../../src/store/ui-store'
 
 interface Device {
   device_id: string
@@ -27,6 +27,8 @@ const KEY_MAP: Record<string, string> = {
   num8:'KEYCODE_8', num9:'KEYCODE_9',
   sc0:'KEYCODE_SHORTCUT_1', sc1:'KEYCODE_SHORTCUT_2',
   sc2:'KEYCODE_SHORTCUT_3', sc3:'KEYCODE_SHORTCUT_4',
+  skip_back: 'KEYCODE_MEDIA_SKIP_BACKWARD',
+  skip_fwd:  'KEYCODE_MEDIA_SKIP_FORWARD',
 }
 
 const LABELS: Record<string, string> = {
@@ -37,6 +39,7 @@ const LABELS: Record<string, string> = {
   num0:'0',num1:'1',num2:'2',num3:'3',num4:'4',
   num5:'5',num6:'6',num7:'7',num8:'8',num9:'9',
   sc0:'Quick CH 1', sc1:'Quick CH 2', sc2:'Quick CH 3', sc3:'Quick CH 4',
+  skip_back:'-5 min', skip_fwd:'+5 min',
 }
 
 const R = '#d52b1e'
@@ -64,7 +67,9 @@ function usePress() {
   return { pressed, press }
 }
 
-function haptic(ms = 18) { try { navigator.vibrate?.(ms) } catch {} }
+function haptic(ms = 22) {
+  try { navigator.vibrate?.(ms) } catch {}
+}
 
 interface BtnProps {
   id: string; children: React.ReactNode
@@ -74,8 +79,8 @@ interface BtnProps {
   style?: React.CSSProperties; disabled?: boolean
 }
 
-function Btn({ id, children, bg, color, w = '100%', h = 44, radius = 22,
-  fontSize = 14, glow = '', title = '', pressed, onPress, style: extra, disabled = false }: BtnProps) {
+function Btn({ id, children, bg, color, w = '100%', h = 52, radius = 26,
+  fontSize = 15, glow = '', title = '', pressed, onPress, style: extra, disabled = false }: BtnProps) {
   const isP = pressed === id
   const rippleRef = useRef<HTMLSpanElement>(null)
   const onPD = (_e: React.PointerEvent) => {
@@ -106,7 +111,7 @@ function Btn({ id, children, bg, color, w = '100%', h = 44, radius = 22,
       WebkitTapHighlightColor: 'transparent', touchAction: 'manipulation', ...extra,
     }}>
       <span ref={rippleRef} style={{
-        position:'absolute', width:80, height:80, borderRadius:'50%',
+        position:'absolute', width:90, height:90, borderRadius:'50%',
         background:'rgba(255,255,255,0.18)', top:'50%', left:'50%',
         transform:'translate(-50%,-50%) scale(0)', pointerEvents:'none',
       }} />
@@ -118,49 +123,90 @@ function Btn({ id, children, bg, color, w = '100%', h = 44, radius = 22,
 function DPad({ pressed, onPress, disabled }: {
   pressed: string|null; onPress: (id: string) => void; disabled?: boolean
 }) {
-  const size = 148
+  // Larger DPad: 180px with skip buttons flanking the center ring
+  const size = 180
+
   const Arrow = ({ id, icon, style }: { id: string; icon: string; style: React.CSSProperties }) => (
-    <button title={id} disabled={disabled} onPointerDown={() => { if(disabled) return; haptic(12); onPress(id) }} style={{
-      position:'absolute', width:40, height:40, borderRadius:'50%',
+    <button title={id} disabled={disabled} onPointerDown={() => { if(disabled) return; haptic(14); onPress(id) }} style={{
+      position:'absolute', width:48, height:48, borderRadius:'50%',
       background:'transparent', border:'none',
       cursor: disabled ? 'not-allowed' : 'pointer', opacity: disabled ? 0.35 : 1,
       display:'flex', alignItems:'center', justifyContent:'center',
       WebkitTapHighlightColor:'transparent', touchAction:'manipulation', ...style,
     }}>
       <Icon
-        name={icon} size={20}
+        name={icon} size={24}
         color={pressed === id ? '#ffffff' : 'rgba(255,255,255,0.35)'}
       />
     </button>
   )
+
+  // Skip buttons sit left and right of the DPad circle, vertically centred
+  const SkipBtn = ({ id, icon, label, side }: { id: string; icon: string; label: string; side: 'left'|'right' }) => {
+    const isP = pressed === id
+    return (
+      <button
+        title={label}
+        disabled={disabled}
+        onPointerDown={() => { if(disabled) return; haptic(30); onPress(id) }}
+        style={{
+          position:'absolute',
+          top:'50%',
+          [side]: side === 'left' ? -76 : -76,
+          width:62, height:62, borderRadius:18,
+          background: isP ? `linear-gradient(135deg,${R},#b71c1c)` : R_LIGHT,
+          border:`1px solid ${R_MED}`,
+          cursor: disabled ? 'not-allowed' : 'pointer',
+          opacity: disabled ? 0.35 : 1,
+          display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', gap:2,
+          boxShadow: isP ? `inset 0 3px 10px rgba(0,0,0,0.25)` : `0 4px 14px ${R_GLOW}`,
+          transform: isP ? 'translateY(-50%) scale(0.92)' : 'translateY(-50%) scale(1)',
+          transition:'all 0.13s cubic-bezier(.4,0,.2,1)',
+          WebkitTapHighlightColor:'transparent', touchAction:'manipulation',
+          fontFamily:"'DM Sans','Segoe UI',sans-serif",
+        }}
+      >
+        <Icon name={icon} size={20} color={isP ? '#fff' : R} />
+        <span style={{ fontSize:9, fontWeight:800, color: isP ? '#fff' : R, letterSpacing:'0.04em' }}>{label}</span>
+      </button>
+    )
+  }
+
   return (
-    <div style={{ position:'relative', width:size, height:size, margin:'0 auto', flexShrink:0 }}>
-      <div style={{
-        position:'absolute', inset:0, borderRadius:'50%',
-        background:'rgba(255,255,255,0.05)',
-        border:'1px solid rgba(255,255,255,0.08)',
-        boxShadow:'0 8px 28px rgba(0,0,0,0.30), inset 0 1px 0 rgba(255,255,255,0.08)',
-      }} />
-      <div style={{
-        position:'absolute', top:24, left:24, right:24, bottom:24,
-        borderRadius:'50%',
-        background:'rgba(255,255,255,0.03)',
-        border:'1px solid rgba(255,255,255,0.06)',
-        boxShadow:'inset 0 2px 8px rgba(0,0,0,0.20)',
-        display:'flex', alignItems:'center', justifyContent:'center',
-      }}>
-        <Btn
-          id="ok" title="OK / Select"
-          bg={`linear-gradient(135deg,${R},#b71c1c)`}
-          color="#fff"
-          w={46} h={46} radius={23} fontSize={12} glow={R_GLOW}
-          pressed={pressed} onPress={onPress} disabled={disabled}
-        >OK</Btn>
+    <div style={{ position:'relative', width: size + 160, height: size, margin:'0 auto', flexShrink:0, display:'flex', alignItems:'center', justifyContent:'center' }}>
+      {/* DPad circle */}
+      <div style={{ position:'relative', width:size, height:size, flexShrink:0 }}>
+        <div style={{
+          position:'absolute', inset:0, borderRadius:'50%',
+          background:'rgba(255,255,255,0.05)',
+          border:'1px solid rgba(255,255,255,0.08)',
+          boxShadow:'0 8px 28px rgba(0,0,0,0.30), inset 0 1px 0 rgba(255,255,255,0.08)',
+        }} />
+        <div style={{
+          position:'absolute', top:28, left:28, right:28, bottom:28,
+          borderRadius:'50%',
+          background:'rgba(255,255,255,0.03)',
+          border:'1px solid rgba(255,255,255,0.06)',
+          boxShadow:'inset 0 2px 8px rgba(0,0,0,0.20)',
+          display:'flex', alignItems:'center', justifyContent:'center',
+        }}>
+          <Btn
+            id="ok" title="OK / Select"
+            bg={`linear-gradient(135deg,${R},#b71c1c)`}
+            color="#fff"
+            w={56} h={56} radius={28} fontSize={13} glow={R_GLOW}
+            pressed={pressed} onPress={onPress} disabled={disabled}
+          >OK</Btn>
+        </div>
+        <Arrow id="up"    icon="keyboard_arrow_up"    style={{ top:6,    left:'50%', transform:'translateX(-50%)' }} />
+        <Arrow id="down"  icon="keyboard_arrow_down"  style={{ bottom:6, left:'50%', transform:'translateX(-50%)' }} />
+        <Arrow id="left"  icon="keyboard_arrow_left"  style={{ top:'50%', left:6,   transform:'translateY(-50%)' }} />
+        <Arrow id="right" icon="keyboard_arrow_right" style={{ top:'50%', right:6,  transform:'translateY(-50%)' }} />
+
+        {/* Skip buttons flanking the DPad */}
+        <SkipBtn id="skip_back" icon="replay_5"   label="-5 min" side="left"  />
+        <SkipBtn id="skip_fwd"  icon="forward_5"  label="+5 min" side="right" />
       </div>
-      <Arrow id="up"    icon="keyboard_arrow_up"    style={{ top:5,    left:'50%', transform:'translateX(-50%)' }} />
-      <Arrow id="down"  icon="keyboard_arrow_down"  style={{ bottom:5, left:'50%', transform:'translateX(-50%)' }} />
-      <Arrow id="left"  icon="keyboard_arrow_left"  style={{ top:'50%', left:5,   transform:'translateY(-50%)' }} />
-      <Arrow id="right" icon="keyboard_arrow_right" style={{ top:'50%', right:5,  transform:'translateY(-50%)' }} />
     </div>
   )
 }
@@ -303,8 +349,9 @@ export default function RemotePage() {
         paddingBottom: 'env(safe-area-inset-bottom)',
       }}>
 
+        {/* Header */}
         <div style={{
-          width: '100%', maxWidth: 480,
+          width: '100%', maxWidth: 520,
           display: 'flex', alignItems: 'center', justifyContent: 'space-between',
           padding: '16px 20px 8px',
           paddingTop: 'max(16px,env(safe-area-inset-top))',
@@ -315,17 +362,17 @@ export default function RemotePage() {
                 display: 'inline-flex', alignItems: 'center', gap: 4,
                 animation: 'fadeUp 0.2s ease, fadeOut 1.8s 0.1s forwards',
                 background: R_LIGHT, color: R,
-                padding: '3px 10px', borderRadius: 12, fontSize: 11, fontWeight: 700,
+                padding: '4px 12px', borderRadius: 14, fontSize: 12, fontWeight: 700,
                 border: `1px solid ${R_MED}`,
               }}>
-                <Icon name="ads_click" size={12} color={R} />
+                <Icon name="ads_click" size={13} color={R} />
                 {LABELS[lastAction] ?? lastAction}
               </span>
             )}
           </div>
 
           <button onClick={toggleFullscreen} title={isFullscreen ? 'Exit fullscreen' : 'Fullscreen'} style={{
-            width: 34, height: 34, borderRadius: 12, border: `1px solid rgba(255,255,255,0.08)`,
+            width: 38, height: 38, borderRadius: 13, border: `1px solid rgba(255,255,255,0.08)`,
             cursor: 'pointer',
             background: isFullscreen ? `linear-gradient(135deg,${R},#b71c1c)` : 'rgba(255,255,255,0.05)',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
@@ -333,24 +380,24 @@ export default function RemotePage() {
             transition: 'all 0.2s',
           }}>
             <Icon
-              name={isFullscreen ? 'close_fullscreen' : 'open_in_full'} size={16}
+              name={isFullscreen ? 'close_fullscreen' : 'open_in_full'} size={17}
               color={isFullscreen ? '#fff' : 'rgba(255,255,255,0.40)'}
             />
           </button>
         </div>
 
-        <div style={{ width:'100%', maxWidth:480, padding:'0 20px 10px', display:'flex', flexDirection:'column', gap:8 }}>
-
+        {/* Status bar */}
+        <div style={{ width:'100%', maxWidth:520, padding:'0 20px 12px', display:'flex', flexDirection:'column', gap:8 }}>
           <div style={{ display:'flex', alignItems:'center', gap:8 }}>
             <div style={{
               display:'flex', alignItems:'center', gap:6,
-              padding:'5px 12px', borderRadius: 20,
+              padding:'6px 14px', borderRadius: 22,
               background: sc.bg, color: sc.color,
-              fontSize:11, fontWeight:700, letterSpacing:'0.04em',
+              fontSize:12, fontWeight:700, letterSpacing:'0.04em',
               flex:1, border:`1px solid ${sc.color}22`,
               transition:'background 0.3s, color 0.3s',
             }}>
-              <Icon name={sc.icon} size={13} color={sc.color} spin={isSpinning} />
+              <Icon name={sc.icon} size={14} color={sc.color} spin={isSpinning} />
               <span>{sc.label}</span>
               {selectedDevice && status === 'connected' && (
                 <span style={{ marginLeft:4, opacity:0.5 }}>· {selectedDevice.name}</span>
@@ -358,16 +405,16 @@ export default function RemotePage() {
             </div>
 
             <button onClick={fetchDevices} disabled={isSpinning} style={{
-              height:30, padding:'0 14px', borderRadius:15, border:'none',
+              height:34, padding:'0 16px', borderRadius:17, border:'none',
               background:`linear-gradient(135deg,${R},#b71c1c)`,
-              color:'#fff', fontSize:11, fontWeight:700,
+              color:'#fff', fontSize:12, fontWeight:700,
               cursor: isSpinning ? 'not-allowed' : 'pointer',
               opacity: isSpinning ? 0.55 : 1,
               display:'flex', alignItems:'center', gap:5,
               boxShadow: `0 4px 12px ${R_GLOW}`,
               WebkitTapHighlightColor:'transparent', transition:'opacity 0.2s',
             }}>
-              <Icon name="refresh" size={13} color="#fff" spin={isSpinning} />
+              <Icon name="refresh" size={14} color="#fff" spin={isSpinning} />
               {status === 'idle' ? 'Connect' : 'Refresh'}
             </button>
           </div>
@@ -412,18 +459,18 @@ export default function RemotePage() {
                 return (
                   <button key={d.device_id} onClick={() => connectToDevice(d)} style={{
                     display:'flex', alignItems:'center', justifyContent:'space-between',
-                    padding:'9px 12px', borderRadius:12,
+                    padding:'10px 14px', borderRadius:12,
                     background: sel ? R_LIGHT : 'rgba(255,255,255,0.04)',
                     border:`1px solid ${sel ? R_MED : 'rgba(255,255,255,0.07)'}`,
-                    cursor:'pointer', fontSize:13, fontWeight:700,
+                    cursor:'pointer', fontSize:14, fontWeight:700,
                     color: sel ? R : 'rgba(255,255,255,0.70)',
                     WebkitTapHighlightColor:'transparent', transition:'background 0.15s',
                   }}>
                     <div style={{ display:'flex', alignItems:'center', gap:8 }}>
-                      <Icon name="tv" size={16} color={sel ? R : 'rgba(255,255,255,0.35)'} fill={sel ? 1 : 0} />
+                      <Icon name="tv" size={17} color={sel ? R : 'rgba(255,255,255,0.35)'} fill={sel ? 1 : 0} />
                       <span>{d.name}</span>
                     </div>
-                    <Icon name="chevron_right" size={16} color="rgba(255,255,255,0.20)" />
+                    <Icon name="chevron_right" size={17} color="rgba(255,255,255,0.20)" />
                   </button>
                 )
               })}
@@ -431,91 +478,97 @@ export default function RemotePage() {
           )}
         </div>
 
-        <div style={{ width:'100%', maxWidth:400, padding:'4px 22px 28px', display:'flex', flexDirection:'column', gap:14, flex:1 }}>
+        {/* Main controls */}
+        <div style={{ width:'100%', maxWidth:460, padding:'4px 22px 32px', display:'flex', flexDirection:'column', gap:16, flex:1 }}>
 
+          {/* Top row: power / mute home back */}
           <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center' }}>
             <B id="power" title="Power"
               bg={`linear-gradient(135deg,${R},#b71c1c)`} color="#fff"
-              w={52} h={44} radius={22} glow={R_GLOW}
+              w={60} h={52} radius={26} glow={R_GLOW}
             >
-              <Icon name="power_settings_new" size={20} color="#fff" />
+              <Icon name="power_settings_new" size={22} color="#fff" />
             </B>
-            <div style={{ display:'flex', gap:8 }}>
-              <B id="mute" title="Mute" w={52} h={44} radius={22}>
-                <Icon name="volume_off" size={20} color="rgba(255,255,255,0.45)" />
+            <div style={{ display:'flex', gap:10 }}>
+              <B id="mute" title="Mute" w={58} h={52} radius={26}>
+                <Icon name="volume_off" size={22} color="rgba(255,255,255,0.45)" />
               </B>
               <B id="home" title="Home"
                 bg={`linear-gradient(135deg,${R},#b71c1c)`} color="#fff"
-                w={52} h={44} radius={22} glow={R_GLOW}
+                w={58} h={52} radius={26} glow={R_GLOW}
               >
-                <Icon name="home" size={20} color="#fff" fill={1} />
+                <Icon name="home" size={22} color="#fff" fill={1} />
               </B>
-              <B id="back" title="Back" w={68} h={44} radius={22} fontSize={12}>
-                <Icon name="arrow_back" size={16} color="rgba(255,255,255,0.45)" />
+              <B id="back" title="Back" w={76} h={52} radius={26} fontSize={13}>
+                <Icon name="arrow_back" size={18} color="rgba(255,255,255,0.45)" />
                 <span style={{ color:'rgba(255,255,255,0.45)' }}>Back</span>
               </B>
             </div>
           </div>
 
+          {/* DPad with skip buttons */}
           <DPad pressed={pressed} onPress={handlePress} disabled={buttonsDisabled} />
 
+          {/* Playback row */}
           <div style={{ display:'flex', gap:10 }}>
-            <B id="rew"  title="Rewind"       h={48} radius={24} style={{ flex:1 }}>
-              <Icon name="fast_rewind" size={22} color="rgba(255,255,255,0.45)" />
+            <B id="rew"  title="Rewind"       h={54} radius={27} style={{ flex:1 }}>
+              <Icon name="fast_rewind" size={24} color="rgba(255,255,255,0.45)" />
             </B>
             <B id="play" title="Play / Pause"
               bg={`linear-gradient(135deg,${R},#b71c1c)`} color="#fff"
-              h={48} radius={24} glow={R_GLOW} style={{ flex:1.4 }}
+              h={54} radius={27} glow={R_GLOW} style={{ flex:1.4 }}
             >
-              <Icon name="play_pause" size={22} color="#fff" />
+              <Icon name="play_pause" size={24} color="#fff" />
             </B>
-            <B id="fwd"  title="Fast-Forward" h={48} radius={24} style={{ flex:1 }}>
-              <Icon name="fast_forward" size={22} color="rgba(255,255,255,0.45)" />
+            <B id="fwd"  title="Fast-Forward" h={54} radius={27} style={{ flex:1 }}>
+              <Icon name="fast_forward" size={24} color="rgba(255,255,255,0.45)" />
             </B>
           </div>
 
+          {/* Volume / Channel */}
           <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:10 }}>
             <B id="vol+" title="Volume Up"
-              bg="rgba(34,197,94,0.12)" color="#4ade80" h={44} radius={22} fontSize={12}
+              bg="rgba(34,197,94,0.12)" color="#4ade80" h={52} radius={26} fontSize={13}
             >
-              <Icon name="volume_up"   size={16} color="#4ade80" /><span>VOL</span>
+              <Icon name="volume_up"   size={18} color="#4ade80" /><span>VOL</span>
             </B>
             <B id="ch+"  title="Channel Up"
-              bg="rgba(255,255,255,0.06)" color="rgba(255,255,255,0.55)" h={44} radius={22} fontSize={12}
+              bg="rgba(255,255,255,0.06)" color="rgba(255,255,255,0.55)" h={52} radius={26} fontSize={13}
             >
-              <Icon name="expand_less" size={16} color="rgba(255,255,255,0.55)" /><span>CH</span>
+              <Icon name="expand_less" size={18} color="rgba(255,255,255,0.55)" /><span>CH</span>
             </B>
             <B id="vol-" title="Volume Down"
-              bg={R_LIGHT} color="#f87171" h={44} radius={22} fontSize={12}
+              bg={R_LIGHT} color="#f87171" h={52} radius={26} fontSize={13}
             >
-              <Icon name="volume_down" size={16} color="#f87171" /><span>VOL</span>
+              <Icon name="volume_down" size={18} color="#f87171" /><span>VOL</span>
             </B>
             <B id="ch-"  title="Channel Down"
-              bg="rgba(255,255,255,0.06)" color="rgba(255,255,255,0.55)" h={44} radius={22} fontSize={12}
+              bg="rgba(255,255,255,0.06)" color="rgba(255,255,255,0.55)" h={52} radius={26} fontSize={13}
             >
-              <Icon name="expand_more" size={16} color="rgba(255,255,255,0.55)" /><span>CH</span>
+              <Icon name="expand_more" size={18} color="rgba(255,255,255,0.55)" /><span>CH</span>
             </B>
           </div>
 
+          {/* Number pad */}
           <div>
             <div style={{
               fontSize:10, fontWeight:700, letterSpacing:'0.12em',
               color:'rgba(255,255,255,0.20)', textTransform:'uppercase',
-              textAlign:'center', marginBottom:8,
+              textAlign:'center', marginBottom:10,
             }}>
               Direct Channel
             </div>
-            <div style={{ display:'grid', gridTemplateColumns:'repeat(3,1fr)', gap:8 }}>
+            <div style={{ display:'grid', gridTemplateColumns:'repeat(3,1fr)', gap:10 }}>
               {[1,2,3,4,5,6,7,8,9,'',0,'del'].map((n, i) => (
                 <B key={i}
                   id={n === '' ? 'noop' : n === 'del' ? 'numdel' : `num${n}`}
                   bg={n === 'del' ? R_LIGHT : n === '' ? 'transparent' : 'rgba(255,255,255,0.05)'}
                   color={n === 'del' ? '#f87171' : 'rgba(255,255,255,0.70)'}
-                  h={44} radius={16} fontSize={16} glow=""
+                  h={52} radius={18} fontSize={18} glow=""
                   disabled={n === '' ? true : buttonsDisabled}
                 >
                   {n === 'del'
-                    ? <Icon name="backspace" size={18} color="#f87171" />
+                    ? <Icon name="backspace" size={20} color="#f87171" />
                     : <span style={{ color: 'rgba(255,255,255,0.70)' }}>{n}</span>
                   }
                 </B>
@@ -523,22 +576,23 @@ export default function RemotePage() {
             </div>
           </div>
 
+          {/* Quick channels */}
           <div>
             <div style={{
               fontSize:10, fontWeight:700, letterSpacing:'0.12em',
               color:'rgba(255,255,255,0.20)', textTransform:'uppercase',
-              textAlign:'center', marginBottom:8,
+              textAlign:'center', marginBottom:10,
             }}>
               Quick Channels
             </div>
-            <div style={{ display:'grid', gridTemplateColumns:'repeat(4,1fr)', gap:8 }}>
+            <div style={{ display:'grid', gridTemplateColumns:'repeat(4,1fr)', gap:10 }}>
               {[1,2,3,4].map((n, i) => (
                 <B key={i} id={`sc${i}`} title={`Shortcut ${n}`}
                   bg={R_LIGHT} color={R}
-                  h={38} radius={19} fontSize={11}
+                  h={46} radius={23} fontSize={12}
                   glow={R_GLOW}
                 >
-                  <Icon name="star" size={13} color={R} fill={1} />
+                  <Icon name="star" size={14} color={R} fill={1} />
                   <span style={{ marginLeft:2, color: R }}>{n}</span>
                 </B>
               ))}
