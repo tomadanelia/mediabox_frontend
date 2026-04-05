@@ -191,7 +191,7 @@ const FullScreenList: React.FC<Props> = ({
   // ─── Render ────────────────────────────────────────────────────────────────
 
   return (
-    <div className="absolute inset-0 z-50 flex flex-col bg-white/80 dark:bg-black/70 backdrop-blur-lg">
+    <div className="absolute inset-0 z-50 flex flex-col bg-white/80 dark:bg-black/70 backdrop-blur-lg" style={{ zoom: 2 }}>
 
       {/* ── Top bar ── */}
       <div className="shrink-0 px-3 pt-3 border-black/8  dark:border-white/10 ">
