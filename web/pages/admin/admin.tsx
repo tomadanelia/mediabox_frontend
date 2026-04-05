@@ -6,7 +6,8 @@ import api from "../../src/lib/axios";
 import useAuthStore from "../../src/store/AuthStore"; 
 import AdminRadioSection from "./AdminRadioSection";
 import AdminDiscountsSection from "./AdminDiscountSection";
-type AdminSection = "Overview" | "Users" | "Category-Channels" | "Categories" | "Plans" | "Plan-Channels" |"Channels"|"Radios"|"Discounts"| "Support" | "Settings";
+import AdminNotificationsSection from "./AdminNotificationSection";
+type AdminSection = "Overview" | "Users" | "Category-Channels" | "Categories" | "Plans" | "Plan-Channels" |"Channels"|"Radios"|"Discounts"|"Notifications"| "Support" | "Settings";
 const adminSectionLabels: Record<AdminSection, string> = {
   "Overview": "მთავარი",
   "Users": "მომხმარებლები",
@@ -16,6 +17,7 @@ const adminSectionLabels: Record<AdminSection, string> = {
   "Plan-Channels": "პაკეტების შევსება",
   "Radios": "რადიო არხები",
   "Discounts": "ფასდაკლებები",
+  "Notifications": "შეტყობინებები",
   "Support": "მხარდაჭერა",
   "Settings": "პარამეტრები",
   "Channels": "არხები",
@@ -725,7 +727,7 @@ useEffect(() => {
       <aside className="hidden lg:flex flex-col w-56 bg-zinc-900 border-r border-zinc-800 shrink-0">
         <div className="p-5 border-b border-zinc-800 font-bold text-zinc-100 tracking-tight">ადმინ პანელი</div>
         <nav className="p-3 flex flex-col gap-1">
-      {(["Overview",  "Channels","Categories","Category-Channels", "Plans", "Plan-Channels","Radios", "Discounts", "Users", "Settings"] as AdminSection[]).map(s => (
+      {(["Overview",  "Channels","Categories","Category-Channels", "Plans", "Plan-Channels","Radios", "Discounts","Notifications", "Users", "Settings"] as AdminSection[]).map(s => (
         <button
           key={s}
           onClick={() => setSection(s)}
@@ -741,7 +743,7 @@ useEffect(() => {
     </nav>
       </aside>
 
-      <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
+      <div className="flex-1 flex flex-col min-w-0 min-h-0 overflow-hidden">
 
         {/* HEADER */}
         <header className="px-5 py-3 border-b border-zinc-800 bg-zinc-950/80 backdrop-blur flex justify-between items-center sticky top-0 z-10">
@@ -782,7 +784,7 @@ useEffect(() => {
           )}
         </header>
 
-        <main className="flex-1 overflow-y-auto p-6 pb-25 space-y-5">
+        <main className="flex-1 overflow-y-auto p-6 pb-25 space-y-5 ">
 
           {/* ══════════════════════════════════════════
               OVERVIEW SECTION
@@ -1251,10 +1253,17 @@ useEffect(() => {
               </div>
             </div>
           )}
+
           {/* Radios */}
+
           {section === "Radios" && <AdminRadioSection />}
+
           {/* Discounts */}
+
           {section === "Discounts" && <AdminDiscountsSection plans={plans} />}
+
+          {/* Notifications */}
+          {section === "Notifications" && <AdminNotificationsSection />}
           {/* ══════════════════════════════════════════
               USERS SECTION
           ══════════════════════════════════════════ */}
