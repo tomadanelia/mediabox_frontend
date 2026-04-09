@@ -168,15 +168,6 @@ const ProfileDropdown = ({ user, tx, onLogout }: ProfileDropdownProps) => {
   const ref = useRef<HTMLDivElement>(null)
   const isGuest = !user?.numeric_id
 
-  // Detect if device supports hover (desktop)
-  const [canHover, setCanHover] = useState(false)
-
-  useEffect(() => {
-    const mq = window.matchMedia("(hover: hover)")
-    setCanHover(mq.matches)
-  }, [])
-
-  // Close on outside click
   useEffect(() => {
     const handler = (e: MouseEvent) => {
       if (ref.current && !ref.current.contains(e.target as Node)) {
@@ -195,8 +186,8 @@ const ProfileDropdown = ({ user, tx, onLogout }: ProfileDropdownProps) => {
     <div
       ref={ref}
       className="relative"
-      onMouseEnter={() => canHover && setOpen(true)}
-      onMouseLeave={() => canHover && setOpen(false)}
+      onMouseEnter={() => setOpen(true)}
+      onMouseLeave={() => setOpen(false)}
     >
       {/* BUTTON */}
       <button
@@ -213,12 +204,9 @@ const ProfileDropdown = ({ user, tx, onLogout }: ProfileDropdownProps) => {
         />
       </button>
 
-      {/* spacing buffer (keeps hover stable) */}
-      <div className="absolute right-0 top-full h-2.5 w-20" />
-
       {/* DROPDOWN */}
       <div
-        className={`absolute cursor-pointer right-0 top-[calc(100%+10px)] w-52 z-50
+        className={`absolute cursor-pointer right-0 top-[calc(100%+2px)] w-52 z-50
           bg-white dark:bg-zinc-900
           border border-black/10 dark:border-white/10
           rounded-2xl shadow-xl shadow-black/10 dark:shadow-black/40
@@ -255,8 +243,7 @@ const ProfileDropdown = ({ user, tx, onLogout }: ProfileDropdownProps) => {
               className="flex items-center gap-3 px-4 py-2.5 text-sm font-medium transition-colors"
               style={{ color: "#d52b1e" }}
               onMouseEnter={e =>
-                (e.currentTarget.style.backgroundColor =
-                  "rgba(213,43,30,0.06)")
+                (e.currentTarget.style.backgroundColor = "rgba(213,43,30,0.06)")
               }
               onMouseLeave={e =>
                 (e.currentTarget.style.backgroundColor = "transparent")
@@ -276,11 +263,7 @@ const ProfileDropdown = ({ user, tx, onLogout }: ProfileDropdownProps) => {
                   onClick={() => setOpen(false)}
                   className="flex items-center gap-3 px-4 py-2.5 text-sm text-zinc-700 dark:text-zinc-300 hover:bg-zinc-50 dark:hover:bg-white/5 transition-colors"
                 >
-                  <Icon
-                    name={item.icon}
-                    size={18}
-                    className="text-zinc-400"
-                  />
+                  <Icon name={item.icon} size={18} className="text-zinc-400" />
                   <span>{item.label}</span>
                 </Link>
               ))}
