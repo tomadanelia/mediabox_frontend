@@ -1,8 +1,11 @@
 // src/services/NotificationService.ts
-// Connects to WebSocket using a token fetched from /api/profile/socket-token
-// Base URL: https://tv-api.telecomm1.com/
+// Socket.IO client — connects to https://tv-api.telecomm1.com
+// Listens to: admin_annoucment | notification_received
+// Token fetched from /api/profile/socket-token  (field: socket_token)
 
+import { io, Socket } from "socket.io-client";
 import api from "../lib/axios";
+
 export type NotificationType =
   | "info"
   | "success"
@@ -26,100 +29,99 @@ export interface NotificationPayload {
 
 type NotificationHandler = (notification: NotificationPayload) => void;
 
-const WS_BASE = "wss://tv-api.telecomm1.com";
+const SERVER_URL = "https://tv-api.telecomm1.com";
+
+// ── Normalise whatever the server sends into NotificationPayload ─────────────
+function normalise(raw: unknown, fallbackType: NotificationType): NotificationPayload {
+  const r = (raw && typeof raw === "object" ? raw : {}) as Record<string, unknown>;
+
+  return {
+    id:        (r.id        as string)  ?? crypto.randomUUID(),
+    type:      (r.type      as NotificationType) ?? fallbackType,
+    title:     (r.title     as string)  ?? (fallbackType === "promo" ? "Announcement" : "Notification"),
+    message:   (r.message   as string)  ?? (r.body as string) ?? (r.text as string) ?? "",
+    timestamp: (r.timestamp as number)  ?? Date.now(),
+    read:      (r.read      as boolean) ?? false,
+    action:    (r.action    as NotificationPayload["action"]) ?? undefined,
+  };
+}
 
 class NotificationService {
-  private socket: WebSocket | null = null;
-  private token: string | null = null;
+  private socket: Socket | null = null;
   private handlers: Set<NotificationHandler> = new Set();
-  private reconnectTimer: ReturnType<typeof setTimeout> | null = null;
-  private reconnectDelay = 3000;
-  private maxReconnectDelay = 30000;
   private isDestroyed = false;
-  private isConnecting = false;
 
-  // ── Subscribe to incoming notifications ──────────────────────────────────
-  subscribe(handler: NotificationHandler) {
+  // ── Subscribe / unsubscribe ───────────────────────────────────────────────
+  subscribe(handler: NotificationHandler): () => void {
     this.handlers.add(handler);
-    return () => this.handlers.delete(handler);
+    return () => { this.handlers.delete(handler); };
   }
 
-  // ── Boot: fetch token then open socket ───────────────────────────────────
+  private emit(payload: NotificationPayload) {
+    this.handlers.forEach((h) => h(payload));
+  }
+
+  // ── Connect ───────────────────────────────────────────────────────────────
   async connect() {
-    if (this.isConnecting || this.socket?.readyState === WebSocket.OPEN) return;
-    this.isConnecting = true;
+    if (this.socket?.connected) return;
     this.isDestroyed = false;
+
+    let token: string | null = null;
 
     try {
       const res = await api.get("/api/profile/socket-token");
-      this.token = res.data?.socket_token ?? null;
-      if (!this.token) throw new Error("No socket_token in response");
-      this.openSocket();
+      token = res.data?.socket_token ?? null;
+      if (!token) throw new Error("No socket_token in response");
     } catch (err) {
       console.warn("[NotificationService] Token fetch failed:", err);
-      this.scheduleReconnect();
-    } finally {
-      this.isConnecting = false;
+      return;
     }
+
+    // Socket.IO handshake — token sent as query param + auth header
+    this.socket = io(SERVER_URL, {
+      transports: ["websocket", "polling"],
+      auth: { token },
+      query: { token },
+      reconnection: true,
+      reconnectionDelay: 3000,
+      reconnectionDelayMax: 30000,
+      reconnectionAttempts: Infinity,
+    });
+
+    this.socket.on("connect", () => {
+      console.info("[NotificationService] Socket.IO connected ✓", this.socket?.id);
+    });
+
+    this.socket.on("disconnect", (reason) => {
+      console.info("[NotificationService] Disconnected:", reason);
+    });
+
+    this.socket.on("connect_error", (err) => {
+      console.warn("[NotificationService] Connection error:", err.message);
+    });
+
+    // ── Event: admin_annoucment ───────────────────────────────────────────
+    this.socket.on("admin_annoucment", (data: unknown) => {
+      const payload = normalise(data, "promo");
+      // Always treat admin announcements as promo/info so they stand out
+      if (!((data as Record<string, unknown>)?.type)) payload.type = "promo";
+      this.emit(payload);
+    });
+
+    // ── Event: notification_received ──────────────────────────────────────
+    this.socket.on("notification_received", (data: unknown) => {
+      const payload = normalise(data, "info");
+      this.emit(payload);
+    });
   }
 
-  // ── Open WebSocket ────────────────────────────────────────────────────────
-  private openSocket() {
-    if (this.isDestroyed) return;
-
-    const url = `${WS_BASE}/ws/notifications?token=${this.token}`;
-    this.socket = new WebSocket(url);
-
-    this.socket.onopen = () => {
-      console.info("[NotificationService] Connected ✓");
-      this.reconnectDelay = 3000; // reset backoff
-    };
-
-    this.socket.onmessage = (event) => {
-      try {
-        const raw = JSON.parse(event.data);
-        // Server sends { payload: { ... } }  OR  the payload directly
-        const data: NotificationPayload = raw.payload ?? raw;
-        if (!data.id) data.id = crypto.randomUUID();
-        if (!data.timestamp) data.timestamp = Date.now();
-        this.handlers.forEach((h) => h(data));
-      } catch {
-        console.warn("[NotificationService] Unreadable message:", event.data);
-      }
-    };
-
-    this.socket.onerror = (e) => {
-      console.warn("[NotificationService] Socket error:", e);
-    };
-
-    this.socket.onclose = (e) => {
-      if (!this.isDestroyed) {
-        console.info(`[NotificationService] Closed (${e.code}). Reconnecting…`);
-        this.scheduleReconnect();
-      }
-    };
-  }
-
-  // ── Exponential back-off reconnect ───────────────────────────────────────
-  private scheduleReconnect() {
-    if (this.isDestroyed) return;
-    if (this.reconnectTimer) clearTimeout(this.reconnectTimer);
-    this.reconnectTimer = setTimeout(() => {
-      this.connect();
-    }, this.reconnectDelay);
-    this.reconnectDelay = Math.min(this.reconnectDelay * 1.5, this.maxReconnectDelay);
-  }
-
-  // ── Teardown ──────────────────────────────────────────────────────────────
+  // ── Disconnect ────────────────────────────────────────────────────────────
   disconnect() {
     this.isDestroyed = true;
-    if (this.reconnectTimer) clearTimeout(this.reconnectTimer);
-    this.socket?.close();
+    this.socket?.disconnect();
     this.socket = null;
-    this.token = null;
   }
 }
 
-// Singleton
 export const notificationService = new NotificationService();
 export default notificationService;
