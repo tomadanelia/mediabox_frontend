@@ -22,6 +22,7 @@ import RemotePage from "../pages/remoteC/remotec"
 import RadioPage from "../pages/radio/radioP"
 import api from "./lib/axios"
 import InvoicePage from "../pages/invoice/invoice"
+import NotificationsPage from "../pages/Notifications/notifications"
 const App: React.FC = () => {
   const isDark = useUIStore((state: UIStore) => state.isDark);
   const setLogos = useUIStore((state) => state.setLogos);
@@ -70,7 +71,8 @@ const App: React.FC = () => {
           <Route path="/radio" element={<RadioPage />} />
           <Route path="/support" element={<SupportPage />} />
           <Route path="/meetus" element={<MeetUsPage />} />
-          <Route path="/invoice" element={<InvoicePage/>}/>
+          <Route path="/meetus" element={<MeetUsPage />} />
+          <Route path="/notifications" element={<NotificationsPage/>}/>
           <Route path="/authentication">
             <Route path="login" element={<AuthLog/>} />
             <Route path="register" element={<AuthReg/>} />
