@@ -132,7 +132,7 @@ console.log('Full response:', data)
 
 if (data.code) {
   console.log('Response code:', data.code)
-  alert('Verification code: ' + data.code);}
+}
    window.location.href = '/authentication/verify'
   } catch (err: any) {
     const message = err.response?.data?.message || err.message || 'Registration failed';

@@ -103,7 +103,6 @@ const AuthLoginVerify: React.FC = () => {
 
     setUser(response.data.user ?? response.data)
 
-    alert('Verified successfully ✅');
 const savedTvCode = localStorage.getItem('tv_pair_code')
 
 if (savedTvCode) {
@@ -130,7 +129,6 @@ if (savedTvCode) {
       login: userLogin
     });
     
-    alert('Code resent!');
     setResendTimer(60);
     setCanResend(false);
   } catch (err: any) {

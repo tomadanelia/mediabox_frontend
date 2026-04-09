@@ -52,7 +52,6 @@ const ForgotPassword: React.FC = () => {
     setError('')
     try {
       const res = await api.post('/api/auth/password/forgot', { login })
-      alert("verification code is" + res.data.code ? res.data.code : "");
       localStorage.setItem('pending_reset_login', login)
       window.location.href = '/authentication/reset-password'
     } catch (err: any) {

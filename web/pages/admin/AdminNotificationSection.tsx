@@ -218,17 +218,17 @@ function GlobalBroadcastPanel() {
   const msgLeft = 500 - message.length;
 
   const doSend = async () => {
-    if (!title.trim() || !message.trim()) return;
-    setSending(true); setErr(null); setOk(false);
-    try {
-      await api.post("/api/admin/notifications/global", { title: title.trim(), message: message.trim() });
-      setOk(true);
-      setTitle(""); setMessage("");
-      setTimeout(() => setOk(false), 4000);
-    } catch (e: any) {
-      setErr(e.response?.data?.message || "გაგზავნა ვერ მოხერხდა");
-    } finally { setSending(false); }
-  };
+  if (!title.trim() || !message.trim()) return;
+  setSending(true); setErr(null); setOk(false);
+  try {
+    await api.post("/api/admin/notifications/global", { title: title.trim(), message: message.trim() });
+    setOk(true);
+    setTitle(""); setMessage("");
+    setTimeout(() => setOk(false), 4000);
+  } catch (e: any) {
+    setErr(e.response?.data?.message || "გაგზავნა ვერ მოხერხდა");
+  } finally { setSending(false); }
+};
 
   return (
     <div className="bg-zinc-900 border border-zinc-800 rounded-2xl overflow-hidden">
@@ -317,75 +317,36 @@ function GlobalBroadcastPanel() {
   );
 }
 
-/* ══════════════════════════════════════════
-   USER NOTIFICATION PANEL
-══════════════════════════════════════════ */
-
-/* Preset event types */
-const EVENT_PRESETS = [
-  { value: "account.notification",  label: "ანგარიში",        color: "text-sky-400",     bg: "bg-sky-500/10 border-sky-500/20" },
-  { value: "plan.activated",        label: "პაკეტი გააქტ.",   color: "text-emerald-400", bg: "bg-emerald-500/10 border-emerald-500/20" },
-  { value: "plan.expiring",         label: "პაკეტი იწურება",  color: "text-amber-400",   bg: "bg-amber-500/10 border-amber-500/20" },
-  { value: "plan.expired",          label: "პაკეტი ამოიწურა", color: "text-red-400",     bg: "bg-red-500/10 border-red-500/20" },
-  { value: "balance.updated",       label: "ბალანსი",         color: "text-violet-400",  bg: "bg-violet-500/10 border-violet-500/20" },
-  { value: "system.maintenance",    label: "სისტემა",         color: "text-zinc-400",    bg: "bg-zinc-700/50 border-zinc-600" },
-  { value: "custom",                label: "სხვა",             color: "text-zinc-400",    bg: "bg-zinc-800 border-zinc-700" },
-];
 
 function UserNotificationPanel() {
   const [selectedUser, setSelectedUser] = useState<UserSearchResult | null>(null);
-  const [eventType, setEventType] = useState("account.notification");
-  const [customEvent, setCustomEvent] = useState("");
-  const [dataTitle, setDataTitle] = useState("");
-  const [dataMessage, setDataMessage] = useState("");
-  const [dataExtra, setDataExtra] = useState("");
-  const [dataExtraErr, setDataExtraErr] = useState<string | null>(null);
+  const [title, setTitle] = useState("");
+  const [message, setMessage] = useState("");
   const [sending, setSending] = useState(false);
   const [ok, setOk] = useState(false);
   const [err, setErr] = useState<string | null>(null);
   const [confirm, setConfirm] = useState(false);
 
-  const titleLeft = 100 - dataTitle.length;
-  const msgLeft = 500 - dataMessage.length;
-
-  const resolvedEvent = eventType === "custom" ? customEvent.trim() : eventType;
-
-  const buildData = (): Record<string, any> | null => {
-    const base: Record<string, any> = {};
-    if (dataTitle.trim()) base.title = dataTitle.trim();
-    if (dataMessage.trim()) base.message = dataMessage.trim();
-    if (dataExtra.trim()) {
-      try {
-        const parsed = JSON.parse(dataExtra.trim());
-        Object.assign(base, parsed);
-        setDataExtraErr(null);
-      } catch {
-        setDataExtraErr("JSON ფორმატი არასწორია");
-        return null;
-      }
-    }
-    return base;
-  };
+  const titleLeft = 100 - title.length;
+  const msgLeft = 500 - message.length;
+  const canSend = selectedUser && title.trim() && message.trim();
 
   const doSend = async () => {
-    if (!selectedUser || !resolvedEvent) return;
-    const data = buildData();
-    if (!data) return;
+    if (!selectedUser || !title.trim() || !message.trim()) return;
     setSending(true); setErr(null); setOk(false);
     try {
       await api.post(`/api/admin/notifications/user/${selectedUser.user.id}`, {
-        event: resolvedEvent,
-        data,
+        title: title.trim(),
+        message: message.trim(),
+        event: "account.notification",
       });
       setOk(true);
-      setDataTitle(""); setDataMessage(""); setDataExtra("");
+      setTitle(""); setMessage("");
       setTimeout(() => setOk(false), 4000);
     } catch (e: any) {
       setErr(e.response?.data?.message || "გაგზავნა ვერ მოხერხდა");
     } finally { setSending(false); }
   };
-
-  const canSend = selectedUser && resolvedEvent && (dataTitle.trim() || dataMessage.trim());
 
   return (
     <div className="bg-zinc-900 border border-zinc-800 rounded-2xl overflow-hidden">
@@ -416,99 +377,39 @@ function UserNotificationPanel() {
           />
         </div>
 
-        {/* Step 2 — event type (only show after user found) */}
+        {/* Fields — only show after user found */}
         {selectedUser && (
           <>
+            {/* Title */}
             <div>
-              <label className="text-[0.65rem] text-zinc-500 uppercase tracking-widest block mb-2">
-                2 — ივენტის ტიპი
-              </label>
-              <div className="flex flex-wrap gap-1.5">
-                {EVENT_PRESETS.map(p => (
-                  <button
-                    key={p.value}
-                    onClick={() => setEventType(p.value)}
-                    className={`cursor-pointer text-[0.65rem] font-medium px-2.5 py-1 rounded-lg border transition-all ${
-                      eventType === p.value
-                        ? `${p.bg} ${p.color} ring-1 ring-current/30`
-                        : "bg-zinc-800 border-zinc-700 text-zinc-500 hover:border-zinc-600 hover:text-zinc-400"
-                    }`}
-                  >
-                    {p.label}
-                  </button>
-                ))}
+              <div className="flex items-center justify-between mb-1.5">
+                <label className="text-[0.65rem] text-zinc-500 uppercase tracking-widest">სათაური</label>
+                <span className={`text-[0.6rem] tabular-nums ${titleLeft < 15 ? "text-red-400" : "text-zinc-700"}`}>{titleLeft}</span>
               </div>
-              {eventType === "custom" && (
-                <input
-                  type="text"
-                  placeholder="event.name (e.g. promo.special)"
-                  value={customEvent}
-                  onChange={e => setCustomEvent(e.target.value)}
-                  className="mt-2 w-full bg-zinc-800 border border-zinc-700 p-2.5 rounded-xl text-sm font-mono focus:outline-none focus:border-zinc-500 transition-colors placeholder-zinc-600 text-zinc-300"
-                />
-              )}
-              {eventType !== "custom" && (
-                <p className="mt-1.5 text-[0.6rem] font-mono text-zinc-700">{resolvedEvent}</p>
-              )}
+              <input
+                type="text"
+                maxLength={100}
+                placeholder="შეტყობინების სათაური"
+                value={title}
+                onChange={e => setTitle(e.target.value)}
+                className="w-full bg-zinc-800 border border-zinc-700 p-2.5 rounded-xl text-sm focus:outline-none focus:border-zinc-500 transition-colors placeholder-zinc-600 text-zinc-200"
+              />
             </div>
 
-            {/* Step 3 — message data */}
+            {/* Message */}
             <div>
-              <label className="text-[0.65rem] text-zinc-500 uppercase tracking-widest block mb-2">
-                3 — შეტყობინების შინაარსი
-              </label>
-              <div className="space-y-3">
-                <div>
-                  <div className="flex items-center justify-between mb-1.5">
-                    <span className="text-[0.6rem] text-zinc-600">სათაური (data.title)</span>
-                    <span className={`text-[0.6rem] tabular-nums ${titleLeft < 15 ? "text-red-400" : "text-zinc-700"}`}>{titleLeft}</span>
-                  </div>
-                  <input
-                    type="text"
-                    maxLength={100}
-                    placeholder="შეტყობინების სათაური"
-                    value={dataTitle}
-                    onChange={e => setDataTitle(e.target.value)}
-                    className="w-full bg-zinc-800 border border-zinc-700 p-2.5 rounded-xl text-sm focus:outline-none focus:border-zinc-500 transition-colors placeholder-zinc-600 text-zinc-200"
-                  />
-                </div>
-                <div>
-                  <div className="flex items-center justify-between mb-1.5">
-                    <span className="text-[0.6rem] text-zinc-600">ტექსტი (data.message)</span>
-                    <span className={`text-[0.6rem] tabular-nums ${msgLeft < 50 ? "text-red-400" : "text-zinc-700"}`}>{msgLeft}</span>
-                  </div>
-                  <textarea
-                    maxLength={500}
-                    rows={3}
-                    placeholder="შეტყობინების ტექსტი…"
-                    value={dataMessage}
-                    onChange={e => setDataMessage(e.target.value)}
-                    className="w-full bg-zinc-800 border border-zinc-700 p-2.5 rounded-xl text-sm focus:outline-none focus:border-zinc-500 transition-colors resize-none placeholder-zinc-600 text-zinc-200 leading-relaxed"
-                  />
-                </div>
-
-                {/* Extra JSON (collapsible) */}
-                <details className="group">
-                  <summary className="cursor-pointer text-[0.6rem] text-zinc-600 hover:text-zinc-400 transition-colors list-none flex items-center gap-1.5 select-none">
-                    <svg width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" className="transition-transform group-open:rotate-90">
-                      <path d="M3 2l4 3-4 3"/>
-                    </svg>
-                    დამატებითი JSON data (optional)
-                  </summary>
-                  <div className="mt-2">
-                    <textarea
-                      rows={3}
-                      placeholder={'{ "plan_name": "Basic", "days_left": 3 }'}
-                      value={dataExtra}
-                      onChange={e => { setDataExtra(e.target.value); setDataExtraErr(null); }}
-                      className="w-full bg-zinc-800 border border-zinc-700 p-2.5 rounded-xl text-xs font-mono focus:outline-none focus:border-zinc-500 transition-colors resize-none placeholder-zinc-700 text-zinc-400 leading-relaxed"
-                    />
-                    {dataExtraErr && (
-                      <p className="text-xs text-red-400 mt-1">{dataExtraErr}</p>
-                    )}
-                  </div>
-                </details>
+              <div className="flex items-center justify-between mb-1.5">
+                <label className="text-[0.65rem] text-zinc-500 uppercase tracking-widest">შეტყობინება</label>
+                <span className={`text-[0.6rem] tabular-nums ${msgLeft < 50 ? "text-red-400" : "text-zinc-700"}`}>{msgLeft}</span>
               </div>
+              <textarea
+                maxLength={500}
+                rows={4}
+                placeholder="შეტყობინების ტექსტი…"
+                value={message}
+                onChange={e => setMessage(e.target.value)}
+                className="w-full bg-zinc-800 border border-zinc-700 p-2.5 rounded-xl text-sm focus:outline-none focus:border-zinc-500 transition-colors resize-none placeholder-zinc-600 text-zinc-200 leading-relaxed"
+              />
             </div>
 
             {/* Feedback */}
@@ -526,12 +427,11 @@ function UserNotificationPanel() {
 
             {/* Send */}
             <div className="flex items-center justify-between gap-3 pt-1">
-              <div className="text-[0.6rem] text-zinc-700 space-y-0.5">
-                <p>მიმღები: <span className="text-zinc-500">{selectedUser.user.full_name ?? selectedUser.user.username}</span></p>
-                <p className="font-mono">event: <span className="text-zinc-500">{resolvedEvent || "—"}</span></p>
-              </div>
+              <p className="text-[0.6rem] text-zinc-700">
+                მიმღები: <span className="text-zinc-500">{selectedUser.user.full_name ?? selectedUser.user.username ?? selectedUser.user.email}</span>
+              </p>
               <button
-                onClick={() => { if (buildData() !== null) setConfirm(true); }}
+                onClick={() => setConfirm(true)}
                 disabled={sending || !canSend}
                 className="cursor-pointer shrink-0 flex items-center gap-2 bg-sky-600 hover:bg-sky-500 disabled:opacity-40 disabled:cursor-not-allowed text-white text-xs font-medium px-5 py-2.5 rounded-xl transition-colors"
               >
@@ -551,7 +451,7 @@ function UserNotificationPanel() {
       {confirm && selectedUser && (
         <ConfirmModal
           title="შეტყობინების გაგზავნა"
-          message={`"${dataTitle || resolvedEvent}" გაეგზავნება ${selectedUser.user.full_name ?? selectedUser.user.username ?? selectedUser.user.email}-ს.`}
+          message={`"${title}" გაეგზავნება ${selectedUser.user.full_name ?? selectedUser.user.username ?? selectedUser.user.email}-ს.`}
           onConfirm={() => { setConfirm(false); doSend(); }}
           onCancel={() => setConfirm(false)}
         />
@@ -559,7 +459,6 @@ function UserNotificationPanel() {
     </div>
   );
 }
-
 /* ══════════════════════════════════════════
    MAIN COMPONENT
 ══════════════════════════════════════════ */
