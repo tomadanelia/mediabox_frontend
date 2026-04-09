@@ -1,3 +1,4 @@
+// src/App.tsx  — updated with notification socket
 import { useEffect } from "react"
 import { Routes, Route } from "react-router-dom"
 import Home from "../pages/home/home"
@@ -23,45 +24,61 @@ import RadioPage from "../pages/radio/radioP"
 import api from "./lib/axios"
 import InvoicePage from "../pages/invoice/invoice"
 import NotificationsPage from "../pages/Notifications/notifications"
+
+// ── Notifications ─────────────────────────────────────────────────────────────
+import notificationService from "./services/NotificationService"
+import { NotificationToastContainer } from "./hmcomponents/NotificationToast"
+import { useNotifications } from "./hooks/useNotifications"
+
 const App: React.FC = () => {
-  const isDark = useUIStore((state: UIStore) => state.isDark);
-  const setLogos = useUIStore((state) => state.setLogos);
-  const fetchUser = useAuthStore((state) => state.fetchUser);
+  const isDark = useUIStore((state: UIStore) => state.isDark)
+  const setLogos = useUIStore((state) => state.setLogos)
+  const fetchUser = useAuthStore((state) => state.fetchUser)
+  const user = useAuthStore((state) => state.user)          // ← adjust to your store shape
+
+  // Notification toasts
+  const { toasts, dismissToast } = useNotifications()
+
+  // Logos
   useEffect(() => {
     api.get("/api/settings/logos")
       .then((res) => {
         const { logo_light, logo_dark } = res.data
         if (logo_light && logo_dark) {
-          const bust = `?v=k`
-          setLogos(logo_dark+bust,logo_light+bust);
+          setLogos(logo_dark + "?v=k", logo_light + "?v=k")
         }
       })
-      .catch(() => {
-      })
+      .catch(() => {})
   }, [])
-  useEffect(() => {
-    fetchUser();
-  }, [fetchUser]);
 
+  // Auth
+  useEffect(() => {
+    fetchUser()
+  }, [fetchUser])
+
+  // ── Connect socket once the user is authenticated ─────────────────────────
+  useEffect(() => {
+    if (!user) return undefined
+    notificationService.connect()
+    return () => {
+      notificationService.disconnect()
+    }
+  }, [user])                   // re-run if user logs in / out
+
+  // Dark mode
   useEffect(() => {
     const root = document.documentElement
-    if (isDark) {
-      root.classList.add("dark")
-    } else {
-      root.classList.remove("dark")
-    }
+    isDark ? root.classList.add("dark") : root.classList.remove("dark")
   }, [isDark])
 
   return (
     <div className="app-shell h-screen overflow-hidden flex flex-col">
-
-      <div className="shrink-0 h-16 w-full z-50 lg:relative overflow-X-hidden ">
+      <div className="shrink-0 h-16 w-full z-50 lg:relative overflow-x-hidden">
         <Navbar />
       </div>
 
-
-   <div className="page-content h-[calc(100vh-64px)] flex-1 min-h-0 overflow-y-auto relative bg-background">
-          <Routes>
+      <div className="page-content h-[calc(100vh-64px)] flex-1 min-h-0 overflow-y-auto relative bg-background">
+        <Routes>
           <Route path="/" element={<Home />} />
           <Route path="/TV" element={<Stream />} />
           <Route path="/packets" element={<Plans />} />
@@ -71,20 +88,21 @@ const App: React.FC = () => {
           <Route path="/radio" element={<RadioPage />} />
           <Route path="/support" element={<SupportPage />} />
           <Route path="/meetus" element={<MeetUsPage />} />
-          <Route path="/meetus" element={<MeetUsPage />} />
-          <Route path="/notifications" element={<NotificationsPage/>}/>
+          <Route path="/notifications" element={<NotificationsPage />} />
           <Route path="/authentication">
-            <Route path="login" element={<AuthLog/>} />
-            <Route path="register" element={<AuthReg/>} />
+            <Route path="login" element={<AuthLog />} />
+            <Route path="register" element={<AuthReg />} />
             <Route path="verify" element={<AuthVerify />} />
             <Route path="login-verify" element={<AuthLoginVerify />} />
-            <Route path="reset-password" element={<ResetPassword/>} />
-            <Route path="forgot-password" element={<ForgotPassword/>} />
+            <Route path="reset-password" element={<ResetPassword />} />
+            <Route path="forgot-password" element={<ForgotPassword />} />
           </Route>
           <Route path="/tv-register" element={<TvPair />} />
         </Routes>
       </div>
 
+      {/* ── Global toast layer ── */}
+      <NotificationToastContainer toasts={toasts} onDismiss={dismissToast} />
     </div>
   )
 }
