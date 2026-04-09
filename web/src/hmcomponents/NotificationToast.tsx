@@ -1,10 +1,11 @@
 // src/components/notifications/NotificationToast.tsx
-// Soft card style — matching reference design
+// Soft card style — clicking the toast navigates to /notifications
 // Add to index.html:
 // <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Round" rel="stylesheet">
 // <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet">
 
 import { useEffect, useRef, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import type { NotificationPayload, NotificationType } from "../services/NotificationService";
 
 // ─── Per-type config ──────────────────────────────────────────────────────────
@@ -47,7 +48,7 @@ const typeConfig: Record<
     progressColor: "#d93025",
   },
   promo: {
-    icon: "star",
+    icon: "campaign",
     sideGradient: "linear-gradient(135deg, #eedeff 0%, #fff 100%)",
     iconBg: "#f0e4ff",
     iconColor: "#9334e6",
@@ -76,10 +77,23 @@ export function NotificationToast({ notification, onDismiss, index }: ToastProps
   const [leaving, setLeaving] = useState(false);
   const [progress, setProgress] = useState(100);
   const ivRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const navigate = useNavigate();
 
   const cfg = typeConfig[notification.type] ?? typeConfig.info;
 
-  const dismiss = () => {
+  const dismiss = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setLeaving(true);
+    setTimeout(() => onDismiss(notification.id), 240);
+  };
+
+  const handleClick = () => {
+    // If the notification has a custom action URL, use that, otherwise go to /notifications
+    if (notification.action?.url) {
+      navigate(notification.action.url);
+    } else {
+      navigate("/notifications");
+    }
     setLeaving(true);
     setTimeout(() => onDismiss(notification.id), 240);
   };
@@ -98,7 +112,7 @@ export function NotificationToast({ notification, onDismiss, index }: ToastProps
         return p - step;
       });
     }, tick);
-    return () => clearInterval(ivRef.current!);
+    return () => { clearInterval(ivRef.current!); };
   }, []);
 
   const state =
@@ -110,18 +124,23 @@ export function NotificationToast({ notification, onDismiss, index }: ToastProps
 
   return (
     <div
+      onClick={handleClick}
       className={`
         transition-all duration-[220ms] ease-out ${state}
         w-[360px] max-w-[calc(100vw-2rem)]
         flex items-center
-        bg-white rounded-2xl overflow-hidden
-        border border-black/[0.06]
+        bg-white dark:bg-zinc-900
+        rounded-2xl overflow-hidden
+        border border-black/[0.06] dark:border-white/[0.08]
         shadow-[0_2px_12px_rgba(0,0,0,0.08)]
         pointer-events-auto relative
+        cursor-pointer
+        hover:shadow-[0_4px_20px_rgba(0,0,0,0.13)]
+        hover:scale-[1.01]
       `}
-      style={{ fontFamily: "'Inter', sans-serif" }}
+      style={{ fontFamily: "'Inter', sans-serif", transition: "all 220ms ease-out, box-shadow 150ms ease, transform 150ms ease" }}
     >
-      {/* Colored gradient side panel with icon */}
+      {/* Colored gradient side panel */}
       <div
         className="w-[72px] self-stretch flex-shrink-0 flex items-center justify-center"
         style={{ background: cfg.sideGradient }}
@@ -139,39 +158,31 @@ export function NotificationToast({ notification, onDismiss, index }: ToastProps
       {/* Text content */}
       <div className="flex-1 min-w-0 py-3.5 pr-1">
         <p
-          className="text-[15px] font-semibold leading-snug"
+          className="text-[15px] font-semibold leading-snug dark:text-zinc-100"
           style={{ color: "#1a1a2e" }}
         >
           {notification.title}
         </p>
-        <p className="mt-0.5 text-[13px] text-gray-500 leading-snug truncate">
+        <p className="mt-0.5 text-[13px] text-gray-500 dark:text-zinc-400 leading-snug truncate">
           {notification.message}
         </p>
-
-        {notification.action && (
-          <a
-            href={notification.action.url}
-            className="mt-1.5 inline-flex items-center gap-0.5 text-[12px] font-semibold no-underline"
-            style={{ color: cfg.iconColor }}
-          >
-            <span className="material-icons-round" style={{ fontSize: 12 }}>
-              arrow_forward
-            </span>
-            {notification.action.label}
-          </a>
-        )}
+        {/* "Tap to view" hint */}
+        <p className="mt-1 text-[11px] flex items-center gap-0.5" style={{ color: cfg.iconColor }}>
+          <span className="material-icons-round" style={{ fontSize: 11 }}>touch_app</span>
+          Tap to view
+        </p>
       </div>
 
       {/* Close button */}
       <button
         onClick={dismiss}
-        className="flex-shrink-0 px-3.5 self-start mt-3 text-gray-400 hover:text-gray-600 transition-colors bg-transparent border-none cursor-pointer p-0 leading-none"
+        className="flex-shrink-0 px-3.5 self-start mt-3 text-gray-400 hover:text-gray-600 dark:hover:text-zinc-200 transition-colors bg-transparent border-none cursor-pointer p-0 leading-none"
         aria-label="Dismiss"
       >
         <span className="material-icons-round" style={{ fontSize: 18 }}>close</span>
       </button>
 
-      {/* Progress bar at bottom */}
+      {/* Progress bar */}
       <div
         className="absolute bottom-0 left-[72px] right-0 h-[2px]"
         style={{ background: "rgba(0,0,0,0.04)" }}
