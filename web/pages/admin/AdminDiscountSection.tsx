@@ -17,7 +17,11 @@ function DiscountDatePicker({
 
   useEffect(() => {
     const h = (e: MouseEvent) => {
-      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+      setTimeout(() => {
+        if (ref.current && !ref.current.contains(e.target as Node)) {
+          setOpen(false);
+        }
+      }, 0);
     };
     document.addEventListener("mousedown", h);
     return () => document.removeEventListener("mousedown", h);
@@ -79,44 +83,55 @@ function DiscountDatePicker({
 
       {/* Popover */}
       {open && (
-        <div className="absolute left-0 top-full mt-2 z-30 bg-zinc-900 border border-zinc-700 rounded-2xl shadow-2xl overflow-hidden">
-          <Calendar
-            mode="range"
-            selected={range}
-            onSelect={handleSelect}
-            defaultMonth={range?.from}
-            numberOfMonths={2}
-            classNames={{
-              months: "flex gap-4 p-3",
-              month: "space-y-3",
-              month_caption: "flex justify-center items-center px-2 py-1",
-              caption_label: "text-xs font-semibold text-zinc-300",
-              nav: "flex items-center gap-1",
-              button_previous: "cursor-pointer w-7 h-7 flex items-center justify-center rounded-lg text-zinc-500 hover:bg-zinc-800 hover:text-zinc-300 transition-colors absolute left-3 top-3",
-              button_next: "cursor-pointer w-7 h-7 flex items-center justify-center rounded-lg text-zinc-500 hover:bg-zinc-800 hover:text-zinc-300 transition-colors absolute right-3 top-3",
-              month_grid: "w-full border-collapse",
-              weekdays: "flex",
-              weekday: "w-9 text-center text-[0.6rem] text-zinc-600 uppercase font-medium py-1",
-              weeks: "space-y-0.5",
-              week: "flex",
-              day: "relative p-0 text-center",
-              day_button: [
-                "w-9 h-9 text-xs rounded-full transition-all font-medium",
-                "text-zinc-300 hover:bg-zinc-700 hover:text-zinc-100",
-                "data-[selected=true]:text-white",
-                "data-[range-start=true]:rounded-full! data-[range-start=true]:bg-orange-600! data-[range-start=true]:text-white!",
-                "data-[range-end=true]:rounded-full! data-[range-end=true]:bg-orange-500! data-[range-end=true]:text-white!",
-                "data-[range-middle=true]:rounded-none data-[range-middle=true]:bg-orange-500/15 data-[range-middle=true]:text-orange-200",
-                "data-[disabled=true]:opacity-30 data-[disabled=true]:cursor-not-allowed",
-                "data-[today=true]:ring-1 data-[today=true]:ring-zinc-500",
-              ].join(" "),
-              range_start: "rounded-l-full bg-orange-600/15",
-              range_end: "rounded-r-full bg-orange-500/15",
-              range_middle: "bg-orange-500/10",
-              outside: "opacity-20 pointer-events-none",
-              hidden: "invisible",
-            }}
-          />
+        <div className="absolute left-0 top-full mt-2 z-30 bg-zinc-950 border border-zinc-800 rounded-2xl shadow-2xl overflow-hidden">
+          <style>{`
+            .dark-cal .rdp-day_button,
+            .dark-cal [data-slot="calendar"] button {
+              cursor: pointer !important;
+            }
+            .dark-cal .rdp-day {
+              cursor: pointer !important;
+            }
+          `}</style>
+          <div className="dark-cal">
+            <Calendar
+              mode="range"
+              selected={range}
+              onSelect={handleSelect}
+              defaultMonth={range?.from}
+              numberOfMonths={2}
+              classNames={{
+                months: "flex gap-4 p-3",
+                month: "space-y-3",
+                month_caption: "flex justify-center items-center px-2 py-1",
+                caption_label: "text-xs font-semibold text-zinc-400",
+                nav: "flex items-center gap-1",
+                button_previous: "cursor-pointer w-7 h-7 flex items-center justify-center rounded-lg text-zinc-500 hover:bg-zinc-800 hover:text-zinc-300 transition-colors absolute left-3 top-3",
+                button_next: "cursor-pointer w-7 h-7 flex items-center justify-center rounded-lg text-zinc-500 hover:bg-zinc-800 hover:text-zinc-300 transition-colors absolute right-3 top-3",
+                month_grid: "w-full border-collapse",
+                weekdays: "flex",
+                weekday: "w-9 text-center text-[0.6rem] text-zinc-600 uppercase font-medium py-1",
+                weeks: "space-y-0.5",
+                week: "flex",
+                day: "relative p-0 text-center cursor-pointer",
+                day_button: [
+                  "cursor-pointer w-9 h-9 text-xs rounded-full transition-all font-medium",
+                  "text-zinc-400 hover:bg-zinc-800 hover:text-zinc-100",
+                  "data-[selected=true]:text-white",
+                  "data-[range-start=true]:rounded-full! data-[range-start=true]:bg-orange-700! data-[range-start=true]:text-white!",
+                  "data-[range-end=true]:rounded-full! data-[range-end=true]:bg-orange-600! data-[range-end=true]:text-white!",
+                  "data-[range-middle=true]:rounded-none data-[range-middle=true]:bg-orange-900/40 data-[range-middle=true]:text-orange-300",
+                  "data-[disabled=true]:opacity-25 data-[disabled=true]:cursor-not-allowed",
+                  "data-[today=true]:ring-1 data-[today=true]:ring-zinc-600 data-[today=true]:text-zinc-200",
+                ].join(" "),
+                range_start: "rounded-l-full bg-orange-700/20",
+                range_end: "rounded-r-full bg-orange-600/20",
+                range_middle: "bg-orange-900/20",
+                outside: "opacity-15 pointer-events-none",
+                hidden: "invisible",
+              }}
+            />
+          </div>
           <div className="px-4 py-2.5 border-t border-zinc-800 flex items-center justify-between">
             <p className="text-[0.6rem] text-zinc-600">
               {range?.from && !range?.to ? "აირჩიეთ დასრულების თარიღი" : "აირჩიეთ დაწყების თარიღი"}
@@ -210,6 +225,12 @@ const IconTag = () => (
   <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
     <path d="M20.59 13.41l-7.17 7.17a2 2 0 01-2.83 0L2 12V2h10l8.59 8.59a2 2 0 010 2.82z"/>
     <circle cx="7" cy="7" r="1.5" fill="currentColor"/>
+  </svg>
+);
+const IconTv = () => (
+  <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+    <rect x="1" y="2" width="14" height="10" rx="1.5"/>
+    <path d="M5.5 14.5h5M8 12v2.5"/>
   </svg>
 );
 
@@ -324,6 +345,9 @@ function DiscountMenu({
 const inp = "w-full cursor-pointer bg-zinc-800 border border-zinc-700 p-2.5 rounded-xl text-sm focus:outline-none focus:border-zinc-500 transition-colors text-zinc-200 placeholder-zinc-600";
 const label = (text: string) => <label className="text-[0.65rem] text-zinc-500 uppercase tracking-widest block mb-1.5">{text}</label>;
 
+// Sentinel value that means "TV limit price addon" (target_id = null)
+const TV_LIMIT_SENTINEL = "__tv_limit__";
+
 /* ── Discount form (shared between Add and Edit) ── */
 function DiscountForm({
   form,
@@ -344,7 +368,29 @@ function DiscountForm({
   saving: boolean;
   isEdit?: boolean;
 }) {
-    const [open, setOpen] = useState(false);
+  const [open, setOpen] = useState(false);
+
+  // Derive the dropdown display value
+  // null target_id with is_tv_limit flag → TV sentinel; null without flag → all plans
+  const dropdownValue: string | null = form.is_tv_limit
+    ? TV_LIMIT_SENTINEL
+    : (form.target_id ?? null);
+
+  const handleDropdownSelect = (value: string | null) => {
+    if (value === TV_LIMIT_SENTINEL) {
+      setForm({ ...form, target_id: null, is_tv_limit: true });
+    } else {
+      setForm({ ...form, target_id: value, is_tv_limit: false });
+    }
+    setOpen(false);
+  };
+
+  const dropdownLabel = () => {
+    if (dropdownValue === TV_LIMIT_SENTINEL) return "📺 TV მოწყობილობის ლიმიტი";
+    if (dropdownValue === null) return "— ყველა პაკეტი —";
+    return plans.find(p => p.id === dropdownValue)?.name_en ?? "—";
+  };
+
   return (
     <div className="bg-zinc-900 border border-zinc-700 rounded-2xl p-5 space-y-4 shadow-lg">
       <p className="text-[0.65rem] font-semibold text-zinc-400 uppercase tracking-widest">
@@ -357,52 +403,73 @@ function DiscountForm({
           <input className={inp} placeholder="მაგ. ზაფხულის სეილი" value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} />
         </div>
         <div>
-          {label("ფასდაკლება ")}
+          {label("ფასდაკლება")}
           <input type="number" min="0" max="100" step="0.01" className={inp} placeholder="მაგ. 20" value={form.value} onChange={e => setForm({ ...form, value: e.target.value })} />
         </div>
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <div>
-          {label("მიზნობრივი პაკეტი (optional)")}
+          {label("მიზნობრივი (optional)")}
           <div className="relative">
-  <button
-    onClick={() => setOpen(!open)}
-    className={inp + " flex justify-between items-center"}
-  >
-    <span>
-      {form.target_id
-        ? plans.find(p => p.id === form.target_id)?.name_en
-        : "— ყველა პაკეტი —"}
-    </span>
-    <span className="text-zinc-500">▼</span>
-  </button>
+            <button
+              onClick={() => setOpen(!open)}
+              className={inp + " flex justify-between items-center"}
+            >
+              <span className="flex items-center gap-2">
+                {dropdownValue === TV_LIMIT_SENTINEL && (
+                  <span className="text-amber-400"><IconTv /></span>
+                )}
+                {dropdownLabel()}
+              </span>
+              <span className="text-zinc-500">▼</span>
+            </button>
 
-  {open && (
-    <div className="absolute z-20 mt-1 w-full bg-zinc-800 border border-zinc-700 rounded-xl shadow-xl max-h-48 overflow-auto">
-      <button
-        onClick={() => { setForm({ ...form, target_id: null }); setOpen(false); }}
-        className="cursor-pointer w-full text-left px-3 py-2 text-sm text-zinc-400 hover:bg-zinc-700"
-      >
-        — ყველა პაკეტი —
-      </button>
+            {open && (
+              <div className="absolute z-20 mt-1 w-full bg-zinc-800 border border-zinc-700 rounded-xl shadow-xl max-h-56 overflow-auto">
+                {/* All plans option */}
+                <button
+                  onClick={() => handleDropdownSelect(null)}
+                  className="cursor-pointer w-full text-left px-3 py-2 text-sm text-zinc-400 hover:bg-zinc-700 transition-colors"
+                >
+                  — ყველა პაკეტი —
+                </button>
 
-      {plans.filter(p => Boolean(p.is_active)).map(p => (
-        <button
-          key={p.id}
-          onClick={() => {
-            setForm({ ...form, target_id: p.id });
-            setOpen(false);
-          }}
-          className="w-full text-left cursor-pointer px-3 py-2 text-sm text-zinc-200 hover:bg-zinc-700"
-        >
-          {p.name_en} ({p.price} ₾)
-        </button>
-      ))}
-    </div>
-  )}
-</div>
+                {/* TV limit price addon option */}
+                <button
+                  onClick={() => handleDropdownSelect(TV_LIMIT_SENTINEL)}
+                  className="cursor-pointer w-full text-left px-3 py-2 text-sm text-amber-400 hover:bg-amber-500/10 transition-colors flex items-center gap-2"
+                >
+                  <IconTv />
+                  <span>TV მოწყობილობის ლიმიტი</span>
+                </button>
+
+                {plans.filter(p => Boolean(p.is_active)).length > 0 && (
+                  <div className="my-1 border-t border-zinc-700/60" />
+                )}
+
+                {plans.filter(p => Boolean(p.is_active)).map(p => (
+                  <button
+                    key={p.id}
+                    onClick={() => handleDropdownSelect(p.id)}
+                    className="w-full text-left cursor-pointer px-3 py-2 text-sm text-zinc-200 hover:bg-zinc-700 transition-colors"
+                  >
+                    {p.name_en} ({p.price} ₾)
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Contextual hint when TV limit is selected */}
+          {form.is_tv_limit && (
+            <p className="mt-1.5 text-[0.6rem] text-amber-500/70 flex items-center gap-1">
+              <IconTv />
+              target_id = null · backend-ი TV ფასს გამოიყენებს
+            </p>
+          )}
         </div>
+
         <div className="flex flex-col justify-end gap-2.5 pb-0.5">
           <label className="flex items-center gap-2.5 cursor-pointer select-none">
             <div
@@ -426,13 +493,13 @@ function DiscountForm({
       </div>
 
       <div>
-  {label("პერიოდი (optional)")}
-  <DiscountDatePicker
-    startsAt={form.starts_at}
-    expiresAt={form.expires_at}
-    onChange={(starts_at, expires_at) => setForm({ ...form, starts_at, expires_at })}
-  />
-</div>
+        {label("პერიოდი (optional)")}
+        <DiscountDatePicker
+          startsAt={form.starts_at}
+          expiresAt={form.expires_at}
+          onChange={(starts_at, expires_at) => setForm({ ...form, starts_at, expires_at })}
+        />
+      </div>
 
       {error && (
         <p className="text-xs text-red-400 bg-red-500/10 border border-red-500/20 rounded-xl px-3 py-2">{error}</p>
@@ -608,6 +675,9 @@ function EditDiscountModal({
   onClose: () => void;
   onSaved: () => void;
 }) {
+  // Heuristic: if target_id is null and the discount name or context suggests TV, treat as TV limit.
+  // Since we can't know for sure from existing data alone, we expose the toggle so the editor can set it.
+  // We default is_tv_limit to false on edit; user can switch the dropdown to TV if needed.
   const [form, setForm] = useState({
     name: discount.name,
     value: String(discount.value),
@@ -616,6 +686,9 @@ function EditDiscountModal({
     is_active: Boolean(discount.is_active),
     starts_at: discount.starts_at ? discount.starts_at.split("T")[0] : null,
     expires_at: discount.expires_at ? discount.expires_at.split("T")[0] : null,
+    // If target_id is null we can't reliably infer TV intent from existing records,
+    // so we start with false and let the admin re-select if needed.
+    is_tv_limit: false,
   });
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -624,8 +697,14 @@ function EditDiscountModal({
     setSaving(true); setError(null);
     try {
       await api.put(`/api/admin/discounts/${discount.id}`, {
-        ...form,
+        name: form.name,
         value: parseFloat(form.value),
+        // is_tv_limit means target_id stays null — already correct
+        target_id: form.is_tv_limit ? null : form.target_id,
+        is_global: form.is_global,
+        is_active: form.is_active,
+        starts_at: form.starts_at,
+        expires_at: form.expires_at,
       });
       onSaved();
       onClose();
@@ -675,6 +754,7 @@ export default function AdminDiscountsSection({ plans }: { plans: Plan[] }) {
     name: "", value: "", target_id: null as string | null,
     is_global: false, is_active: true,
     starts_at: null as string | null, expires_at: null as string | null,
+    is_tv_limit: false,
   });
   const [addLoading, setAddLoading] = useState(false);
   const [addError, setAddError] = useState<string | null>(null);
@@ -716,12 +796,17 @@ export default function AdminDiscountsSection({ plans }: { plans: Plan[] }) {
     setAddLoading(true); setAddError(null);
     try {
       await api.post("/api/admin/discounts", {
-        ...addForm,
+        name: addForm.name,
         value: parseFloat(addForm.value),
+        // is_tv_limit means null target_id (TV limit price addon)
+        target_id: addForm.is_tv_limit ? null : addForm.target_id,
+        is_global: addForm.is_global,
         is_active: addForm.is_active,
+        starts_at: addForm.starts_at,
+        expires_at: addForm.expires_at,
       });
       setShowAdd(false);
-      setAddForm({ name: "", value: "", target_id: null, is_global: false, is_active: true, starts_at: null, expires_at: null });
+      setAddForm({ name: "", value: "", target_id: null, is_global: false, is_active: true, starts_at: null, expires_at: null, is_tv_limit: false });
       fetchDiscounts();
     } catch (e: any) {
       setAddError(e.response?.data?.message || "შექმნა ვერ მოხერხდა");
@@ -882,8 +967,10 @@ export default function AdminDiscountsSection({ plans }: { plans: Plan[] }) {
                 <div className="grid grid-cols-2 gap-2">
                   <div className="bg-zinc-800/40 rounded-lg px-2.5 py-2">
                     <p className="text-[0.55rem] text-zinc-600 uppercase tracking-wider mb-0.5">პაკეტი</p>
-                    <p className="text-[0.65rem] text-zinc-300 font-medium truncate">
-                      {d.target_id ? (targetPlanName(d.target_id) ?? "—") : "ყველა"}
+                    <p className="text-[0.65rem] text-zinc-300 font-medium truncate flex items-center gap-1">
+                      {d.target_id === null
+                        ? <span className="flex items-center gap-1 text-amber-400/80"><IconTv />TV ლიმიტი / ყველა</span>
+                        : (targetPlanName(d.target_id) ?? "—")}
                     </p>
                   </div>
                   <div className="bg-zinc-800/40 rounded-lg px-2.5 py-2">
