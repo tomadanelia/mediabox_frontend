@@ -39,6 +39,8 @@ const TvDeviceAddon = ({
   const [deviceInfo, setDeviceInfo] = useState<TvDeviceInfo | null>(null)
   const [loadingInfo, setLoadingInfo] = useState(false)
   const [pricePerDevice, setPricePerDevice] = useState<number>(TV_DEVICE_PRICE)
+  const [discountedPrice, setDiscountedPrice] = useState<number>(TV_DEVICE_PRICE)
+  const [hasDiscount, setHasDiscount] = useState<boolean>(false)
 
   const [showPopup, setShowPopup] = useState(false)
 
@@ -68,12 +70,21 @@ const TvDeviceAddon = ({
   // ── fetch price ────────────────────────────────────────────────────────────
   const fetchPrice = async () => {
     try {
-      const res = await api.get('/api/settings/tv-price')
-      const price = parseFloat(res.data.extra_tv_price)
-      if (!isNaN(price)) {
-        setPricePerDevice(price)
-        onPriceLoaded?.(price)
+      const res = await api.get('/api/plans/tv-limit-price')
+      const basePrice = parseFloat(res.data.extra_tv_price)
+      const discounted = parseFloat(res.data.discounted_price)
+      const discount = res.data.has_discount === true
+
+      if (!isNaN(basePrice)) {
+        setPricePerDevice(basePrice)
       }
+      if (!isNaN(discounted)) {
+        setDiscountedPrice(discounted)
+        onPriceLoaded?.(discounted)
+      } else if (!isNaN(basePrice)) {
+        onPriceLoaded?.(basePrice)
+      }
+      setHasDiscount(discount)
     } catch {
       // keep default
     }
@@ -126,7 +137,9 @@ const TvDeviceAddon = ({
   // ── derived ────────────────────────────────────────────────────────────────
   const currentDefaultLimit = DEFAULT_TV_DEVICES
   const newLimit = currentDefaultLimit + extraDevices
-  const totalFee = extraDevices * pricePerDevice
+  // Fee is always calculated from the effective price the user pays
+  const effectivePrice = hasDiscount ? discountedPrice : pricePerDevice
+  const totalFee = extraDevices * effectivePrice
 
   const activeCount = deviceInfo?.active_count ?? 0
   const tvLimit = deviceInfo?.tv_limit ?? currentDefaultLimit
@@ -211,8 +224,13 @@ const TvDeviceAddon = ({
             <div className="flex flex-col sm:flex-row lg:flex-col xl:flex-row items-start sm:items-center lg:items-end xl:items-center gap-4 lg:gap-3 shrink-0">
 
               {/* Price badge */}
-              <div className="flex items-baseline gap-1">
-                <span className="text-2xl font-bold text-amber-400 tabular-nums">{pricePerDevice}</span>
+              <div className="flex items-baseline gap-1.5">
+                {hasDiscount && (
+                  <span className="text-sm font-medium text-muted-foreground line-through tabular-nums">
+                    {pricePerDevice}₾
+                  </span>
+                )}
+                <span className="text-2xl font-bold text-amber-400 tabular-nums">{effectivePrice}</span>
                 <span className="text-sm text-amber-400">₾</span>
                 <span className="text-xs text-muted-foreground ml-0.5">/ {tx.tvAddonPricePerDevice}</span>
               </div>

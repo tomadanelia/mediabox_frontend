@@ -1,7 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react'
 import { ShieldCheckIcon } from 'lucide-react'
 import { Input } from '../../src/components/ui/input'
-import { API_BASE_URL } from '../../src/config'
 import api from '@/lib/axios'
 import { useNavigate } from 'react-router-dom'
 import useAuthStore from '../../src/store/AuthStore'
