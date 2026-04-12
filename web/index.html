@@ -3,6 +3,15 @@
   <head>
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/Logo1.svg" style="fill: orange;" />
+    <link rel="preload" href="/assets/material-symbols-outlined-Bgl3Icaq.woff2" as="font" type="font/woff2" crossorigin>
+        <script>
+      (function() {
+        try {
+          const store = JSON.parse(localStorage.getItem('ui-storage') || '{}')
+          if (store?.state?.isDark !== false) document.documentElement.classList.add('dark')
+        } catch(e) {}
+      })()
+    </script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>web</title>
   </head>
