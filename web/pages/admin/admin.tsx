@@ -43,6 +43,7 @@ interface Plan {
   price: number;
   duration_days: number;
   is_active: boolean | number;
+  is_public: boolean;
 }
 
 /* ── tiny icon components ── */
@@ -258,7 +259,7 @@ export default function AdminDashboard() {
   const [showAddPlan, setShowAddPlan] = useState(false);
   const [newPlan, setNewPlan] = useState({
     name_en: "", name_ka: "", description_en: "", description_ka: "",
-    price: "", duration_days: "", is_active: true,
+    price: "", duration_days: "", is_active: true,is_public: true
   });
 
   /* Plan manage modal */
@@ -272,7 +273,7 @@ export default function AdminDashboard() {
   const [editPlan, setEditPlan] = useState<Plan | null>(null);
   const [editPlanForm, setEditPlanForm] = useState({
     name_en: "", name_ka: "", description_en: "", description_ka: "",
-    price: "", duration_days: "", is_active: true,
+    price: "", duration_days: "", is_active: true,is_public: true
   });
   const [editPlanSaving, setEditPlanSaving] = useState(false);
 
@@ -509,7 +510,7 @@ const handleRevokePlan = async () => {
         duration_days: parseInt(newPlan.duration_days),
       });
         setShowAddPlan(false);
-        setNewPlan({ name_en: "", name_ka: "", description_en: "", description_ka: "", price: "", duration_days: "", is_active: true });
+        setNewPlan({ name_en: "", name_ka: "", description_en: "", description_ka: "", price: "", duration_days: "", is_active: true,is_public:true });
         fetchPlans();
     } catch (e) { console.error(e); }
   };
@@ -586,6 +587,7 @@ const handleDeletePlan = async () => {
       price: String(plan.price),
       duration_days: String(plan.duration_days),
       is_active: Boolean(plan.is_active),
+      is_public: Boolean(plan.is_public)
     });
     setPlanEditModal(true);
   };
@@ -1132,10 +1134,25 @@ useEffect(() => {
                     <input type="number" placeholder="ფასი" min="0" step="0.01" className="bg-zinc-800 border border-zinc-700 p-2.5 rounded-xl text-sm focus:outline-none focus:border-zinc-500 transition-colors" value={newPlan.price} onChange={e => setNewPlan({ ...newPlan, price: e.target.value })} />
                     <input type="number" placeholder="ხანგრძლივობა (დღეებში)" min="1" className="bg-zinc-800 border border-zinc-700 p-2.5 rounded-xl text-sm focus:outline-none focus:border-zinc-500 transition-colors" value={newPlan.duration_days} onChange={e => setNewPlan({ ...newPlan, duration_days: e.target.value })} />
                   </div>
-                  <label className="flex items-center gap-2 text-xs text-zinc-400 cursor-pointer select-none">
-                    <input type="checkbox" className="accent-emerald-500" checked={newPlan.is_active} onChange={e => setNewPlan({ ...newPlan, is_active: e.target.checked })} />
-                    აქტიური
-                  </label>
+                  
+                     <label className="flex items-center gap-2.5 cursor-pointer select-none">
+            <div
+              onClick={() => setNewPlan({ ...newPlan, is_active: !newPlan.is_active })}
+              className={`relative w-9 h-5 rounded-full transition-colors cursor-pointer ${newPlan.is_active ? "bg-emerald-500" : "bg-zinc-700"}`}
+            >
+              <span className={`absolute top-0.5 w-4 h-4 rounded-full bg-white shadow transition-transform ${newPlan.is_active ? "translate-x-4" : "translate-x-0.5"}`} />
+            </div>
+            <span className="text-xs text-zinc-400">აქტიური</span>
+          </label>
+                   <label className="flex items-center gap-2.5 cursor-pointer select-none">
+            <div
+              onClick={() => setNewPlan({ ...newPlan, is_public: !newPlan.is_public })}
+              className={`relative w-9 h-5 rounded-full transition-colors cursor-pointer ${newPlan.is_public ? "bg-emerald-500" : "bg-zinc-700"}`}
+            >
+              <span className={`absolute top-0.5 w-4 h-4 rounded-full bg-white shadow transition-transform ${newPlan.is_public ? "translate-x-4" : "translate-x-0.5"}`} />
+            </div>
+            <span className="text-xs text-zinc-400">გლობალური (გამოჩნდება ყველა მომხმარებლისთვის)</span>
+          </label>
                   <div className="flex gap-2 pt-1">
                     <button onClick={handleAddPlan} className="cursor-pointer bg-emerald-600 hover:bg-emerald-500 px-5 py-2 rounded-xl text-xs font-medium transition-colors">შენახვა</button>
                     <button onClick={() => setShowAddPlan(false)} className="cursor-pointer bg-zinc-800 hover:bg-zinc-700 px-4 py-2 rounded-xl text-xs transition-colors">გაუქმება</button>
@@ -2017,10 +2034,24 @@ const isActive =
                   <input type="number" min="1" className="w-full bg-zinc-800 border border-zinc-700 p-2.5 rounded-xl text-sm focus:outline-none focus:border-zinc-500 transition-colors" value={editPlanForm.duration_days} onChange={e => setEditPlanForm({ ...editPlanForm, duration_days: e.target.value })} />
                 </div>
               </div>
-              <label className="flex items-center gap-2 text-xs text-zinc-400 cursor-pointer select-none">
-                <input type="checkbox" className="accent-emerald-500" checked={editPlanForm.is_active} onChange={e => setEditPlanForm({ ...editPlanForm, is_active: e.target.checked })} />
-                Active
-              </label>
+           <label className="flex items-center gap-2.5 cursor-pointer select-none">
+  <div
+    onClick={() => setEditPlanForm({ ...editPlanForm, is_active: !editPlanForm.is_active })}
+    className={`relative w-9 h-5 rounded-full transition-colors cursor-pointer ${editPlanForm.is_active ? "bg-emerald-500" : "bg-zinc-700"}`}
+  >
+    <span className={`absolute top-0.5 w-4 h-4 rounded-full bg-white shadow transition-transform ${editPlanForm.is_active ? "translate-x-4" : "translate-x-0.5"}`} />
+  </div>
+  <span className="text-xs text-zinc-400">აქტიური</span>
+</label>
+<label className="flex items-center gap-2.5 cursor-pointer select-none">
+  <div
+    onClick={() => setEditPlanForm({ ...editPlanForm, is_public: !editPlanForm.is_public })}
+    className={`relative w-9 h-5 rounded-full transition-colors cursor-pointer ${editPlanForm.is_public ? "bg-emerald-500" : "bg-zinc-700"}`}
+  >
+    <span className={`absolute top-0.5 w-4 h-4 rounded-full bg-white shadow transition-transform ${editPlanForm.is_public ? "translate-x-4" : "translate-x-0.5"}`} />
+  </div>
+  <span className="text-xs text-zinc-400">გლობალური (გამოჩნდება ყველა მომხმარებლისთვის)</span>
+</label>
             </div>
             <div className="px-5 pb-5 flex gap-2 justify-end">
               <button onClick={() => setPlanEditModal(false)} className="cursor-pointer px-4 py-2 rounded-xl text-xs bg-zinc-800 hover:bg-zinc-700 text-zinc-300 transition-colors">Cancel</button>
