@@ -30,7 +30,150 @@ const IconEdit = () => (
     <path d="M11.5 2.5l2 2-9 9H2.5v-2l9-9z"/>
   </svg>
 );
+/* ── Channel URL Panel ── */
+function ChannelUrlPanel({ channel }: { channel: Channel }) {
+  const [data, setData]     = useState<{ live_urls: any[]; archive_urls: any[] } | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [liveInput, setLiveInput]     = useState("");
+  const [archiveInput, setArchiveInput] = useState("");
+  const [archiveHours, setArchiveHours] = useState("168");
+  const [busy, setBusy] = useState<string | null>(null);
 
+  const load = async () => {
+    setLoading(true);
+    try {
+      const res = await api.get(`/api/admin/channels/${channel.id}/urls`);
+      setData(res.data);
+    } finally { setLoading(false); }
+  };
+
+  useEffect(() => { load(); }, [channel.id]);
+
+  const addLive = async () => {
+    if (!liveInput.trim()) return;
+    setBusy("live");
+    try {
+      await api.post(`/api/admin/channels/${channel.id}/urls`, { channel_url: liveInput.trim() });
+      setLiveInput(""); load();
+    } finally { setBusy(null); }
+  };
+
+  const addArchive = async () => {
+    if (!archiveInput.trim()) return;
+    setBusy("archive");
+    try {
+      await api.post(`/api/admin/channels/${channel.id}/archive-urls`, {
+        channel_url: archiveInput.trim(),
+        archive_length: parseInt(archiveHours) || 168,
+      });
+      setArchiveInput(""); load();
+    } finally { setBusy(null); }
+  };
+
+  const delLive = async (id: number) => {
+    await api.delete(`/api/admin/channels/${channel.id}/urls/${id}`);
+    load();
+  };
+
+  const delArchive = async (id: number) => {
+    await api.delete(`/api/admin/channels/${channel.id}/archive-urls/${id}`);
+    load();
+  };
+
+  if (loading) return (
+    <div className="flex items-center gap-2 py-4 px-2 text-zinc-500 text-xs">
+      <Spinner /> Loading URLs…
+    </div>
+  );
+
+  return (
+    <div className="grid grid-cols-2 gap-0 divide-x divide-zinc-800">
+      {/* Live URLs */}
+      <div className="p-4 space-y-2">
+        <p className="text-[0.6rem] uppercase tracking-widest text-zinc-500 flex justify-between">
+          <span>ლაივის ლინკები</span>
+          <span className="normal-case tracking-normal">{data?.live_urls.length ?? 0} ცალი</span>
+        </p>
+        {data?.live_urls.length === 0 && (
+          <p className="text-[0.65rem] text-zinc-700 py-2">ჯერ არ არის დამატებული ლინკები</p>
+        )}
+        {data?.live_urls.map((u) => (
+          <div key={u.id} className="flex items-center gap-2 bg-zinc-800/60 border border-zinc-700/50 rounded-lg px-3 py-2">
+            <span className="font-mono text-[0.6rem] text-zinc-400 flex-1 truncate">{u.channel_url}</span>
+            {u.priority > 0 && (
+              <span className="text-[0.6rem] bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 px-1.5 py-0.5 rounded">p{u.priority}</span>
+            )}
+            <button
+              onClick={() => delLive(u.id)}
+              className="cursor-pointer w-5 h-5 flex items-center justify-center rounded text-zinc-600 hover:text-red-400 hover:bg-red-500/10 transition-colors text-xs"
+            >✕</button>
+          </div>
+        ))}
+        <div className="flex gap-2 pt-1">
+          <input
+            value={liveInput}
+            onChange={e => setLiveInput(e.target.value)}
+            onKeyDown={e => e.key === "Enter" && addLive()}
+            placeholder="ლაივ-სტრიმ url…"
+            className="flex-1 min-w-0 bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-1.5 text-xs font-mono focus:outline-none focus:border-zinc-500 transition-colors"
+          />
+          <button
+            onClick={addLive}
+            disabled={busy === "live" || !liveInput.trim()}
+            className="cursor-pointer flex items-center gap-1.5 bg-violet-600/20 border border-violet-500/30 hover:bg-violet-600/30 disabled:opacity-40 disabled:cursor-not-allowed text-violet-300 text-xs px-3 py-1.5 rounded-lg transition-colors"
+          >
+            {busy === "live" ? <Spinner /> : "+ დამატება"}
+          </button>
+        </div>
+      </div>
+
+      {/* Archive URLs */}
+      <div className="p-4 space-y-2">
+        <p className="text-[0.6rem] uppercase tracking-widest text-zinc-500 flex justify-between">
+          <span>არქივის ლინკები</span>
+          <span className="normal-case tracking-normal">{data?.archive_urls.length ?? 0} ცალი</span>
+        </p>
+        {data?.archive_urls.length === 0 && (
+          <p className="text-[0.65rem] text-zinc-700 py-2">ჯერ არ არის დამატებული ლინკები</p>
+        )}
+        {data?.archive_urls.map((u) => (
+          <div key={u.id} className="flex items-center gap-2 bg-zinc-800/60 border border-zinc-700/50 rounded-lg px-3 py-2">
+            <span className="font-mono text-[0.6rem] text-zinc-400 flex-1 truncate">{u.channel_url}</span>
+            {u.archive_length && (
+              <span className="text-[0.6rem] bg-blue-500/10 text-blue-400 border border-blue-500/20 px-1.5 py-0.5 rounded">{u.archive_length}h</span>
+            )}
+            <button
+              onClick={() => delArchive(u.id)}
+              className="cursor-pointer w-5 h-5 flex items-center justify-center rounded text-zinc-600 hover:text-red-400 hover:bg-red-500/10 transition-colors text-xs"
+            >✕</button>
+          </div>
+        ))}
+        <div className="flex gap-2 pt-1">
+          <input
+            value={archiveInput}
+            onChange={e => setArchiveInput(e.target.value)}
+            onKeyDown={e => e.key === "Enter" && addArchive()}
+            placeholder="არქივის URL…"
+            className="flex-1 min-w-0 bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-1.5 text-xs font-mono focus:outline-none focus:border-zinc-500 transition-colors"
+          />
+          <input
+            value={archiveHours}
+            onChange={e => setArchiveHours(e.target.value)}
+            placeholder="168h"
+            className="w-14 bg-zinc-800 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-center focus:outline-none focus:border-zinc-500 transition-colors"
+          />
+          <button
+            onClick={addArchive}
+            disabled={busy === "archive" || !archiveInput.trim()}
+            className="cursor-pointer flex items-center gap-1.5 bg-blue-600/20 border border-blue-500/30 hover:bg-blue-600/30 disabled:opacity-40 disabled:cursor-not-allowed text-blue-300 text-xs px-3 py-1.5 rounded-lg transition-colors"
+          >
+            {busy === "archive" ? <Spinner /> : "+ დამატება"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
 /* ── Edit Modal ── */
 function EditChannelModal({
   channel,
@@ -268,6 +411,7 @@ const doSync = async () => {
   {filtered.map((c, idx) => {
     const isSelected = selected?.uuid === c.uuid;
     return (
+      <>
       <tr
         key={c.id}
         onClick={() => setSelected(isSelected ? null : c)}
@@ -301,18 +445,25 @@ const doSync = async () => {
             <span className="text-[0.65rem] text-zinc-700">—</span>
           )}
         </td>
-        <td className="p-4">
-          {isSelected && (
-            <button
-              onClick={e => { e.stopPropagation(); setEditTarget(c); setSelected(null); }}
-              className="cursor-pointer flex items-center gap-1.5 text-[0.65rem] font-medium text-violet-300 bg-violet-500/10 border border-violet-500/20 hover:bg-violet-500/20 px-2.5 py-1 rounded-lg transition-colors"
-            >
-              <IconEdit />
-              რედაქტირება
-            </button>
-          )}
+         <td className="p-4">
+          <button
+            onClick={e => { e.stopPropagation(); setEditTarget(c); }}
+            className="cursor-pointer flex items-center justify-center w-7 h-7 rounded-lg text-zinc-600 hover:text-violet-300 hover:bg-violet-500/10 transition-colors"
+            title="Edit channel"
+          >
+            <IconEdit />
+          </button>
         </td>
       </tr>
+      {isSelected && (
+        <tr key={`${c.id}-urls`} className="border-t border-zinc-800 bg-zinc-900/60">
+          <td colSpan={5} className="px-4 pb-3">
+            <ChannelUrlPanel channel={c} />
+          </td>
+        </tr>
+      )}
+    </>
+      
     );
   })}
 </tbody>
