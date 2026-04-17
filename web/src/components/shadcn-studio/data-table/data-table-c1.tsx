@@ -1,10 +1,10 @@
 'use client'
 
-import { useMemo } from 'react'
-import { Badge } from '@/components/ui/badge'
+import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react'
 import { cn } from '@/lib/utils'
 import { Equalizer } from '@/hmcomponents/AnimatedComponents/Equalizer'
-import ButtonIconDemo from '../button/button-05'
+import api from '@/lib/axios'
+
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 type ProgramItem = {
@@ -18,6 +18,9 @@ type ProgramItem = {
 }
 
 type Props = {
+  // channelId is needed to fetch all programs — pass it from Stream
+  channelId?: string
+  // Legacy props kept so Stream.tsx doesn't need changes
   timeProgramm?: ProgramItem[] | null
   mode?: 'live' | 'archive'
   archiveTimestamp?: number | null
@@ -37,41 +40,80 @@ function formatUnix(unixSec: number): string {
   return timeFormatter.format(new Date(unixSec * 1000))
 }
 
-const GENRE_COLORS: Record<string, string> = {
-  Drama:       'bg-purple-600/10 text-purple-600 dark:bg-purple-400/10 dark:text-purple-400',
-  Comedy:      'bg-yellow-600/10 text-yellow-600 dark:bg-yellow-400/10 dark:text-yellow-400',
-  News:        'bg-red-600/10 text-red-600 dark:bg-red-400/10 dark:text-red-400',
-  Sports:      'bg-green-600/10 text-green-600 dark:bg-green-400/10 dark:text-green-400',
-  Kids:        'bg-pink-600/10 text-pink-600 dark:bg-pink-400/10 dark:text-pink-400',
-  Documentary: 'bg-blue-600/10 text-blue-600 dark:bg-blue-400/10 dark:text-blue-400',
+function startOfDayKey(unixSec: number): string {
+  const d = new Date(unixSec * 1000)
+  return `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`
 }
 
-function getGenreColor(genre: string): string {
-  return GENRE_COLORS[genre] ?? 'bg-gray-600/10 text-gray-600 dark:bg-gray-400/10 dark:text-gray-400'
+function dayLabel(unixSec: number): string {
+  const d = new Date(unixSec * 1000)
+  const now = new Date()
+  const yesterday = new Date(); yesterday.setDate(now.getDate() - 1)
+
+  if (d.toDateString() === now.toDateString()) return 'დღეს'
+  if (d.toDateString() === yesterday.toDateString()) return 'გუშინ'
+
+  return d.toLocaleDateString('ka-GE', { weekday: 'short', month: 'short', day: 'numeric' })
+}
+
+function localeDateShort(unixSec: number): string {
+  return new Date(unixSec * 1000).toLocaleDateString('ka-GE', {
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+  })
 }
 
 // ─── Component ────────────────────────────────────────────────────────────────
 
 const ChannelScheduleCL = ({
+  channelId,
   timeProgramm,
   mode = 'live',
   archiveTimestamp = null,
   onProgramSelect,
   iconOnly = false,
 }: Props) => {
+
+  const [allPrograms, setAllPrograms] = useState<ProgramItem[]>([])
+  const [loading, setLoading] = useState(false)
+
+  const listRef = useRef<HTMLDivElement>(null)
+  // Maps dayKey → div ref for auto-scroll
+  const dividerRefs = useRef<Record<string, HTMLDivElement | null>>({})
+
+  // ── Fetch all programs when channelId changes ──────────────────────────────
+  useEffect(() => {
+    if (!channelId) return
+    let dead = false
+    setLoading(true)
+    setAllPrograms([])
+
+    api.get(`/api/channels/${channelId}/programs/all`)
+      .then(res => {
+        if (dead) return
+        setAllPrograms(res.data ?? [])
+      })
+      .catch(() => {})
+      .finally(() => { if (!dead) setLoading(false) })
+
+    return () => { dead = true }
+  }, [channelId])
+
+  // ── Sorted + deduped ───────────────────────────────────────────────────────
   const sorted = useMemo(() => {
-    if (!Array.isArray(timeProgramm)) return []
-    return [...timeProgramm].sort((a, b) => a.START_TIME - b.START_TIME)
-  }, [timeProgramm])
+    const source = allPrograms.length > 0 ? allPrograms : (Array.isArray(timeProgramm) ? timeProgramm : [])
+    const seen = new Set<number>()
+    return [...source]
+      .filter(p => { if (seen.has(p.UID)) return false; seen.add(p.UID); return true })
+      .sort((a, b) => a.START_TIME - b.START_TIME)
+  }, [allPrograms, timeProgramm])
 
   const nowSec = Math.floor(Date.now() / 1000)
 
   const activeSec =
     mode === 'archive' && archiveTimestamp !== null ? archiveTimestamp : nowSec
 
-  // Find which program contains activeSec.
-  // If activeSec is before all programs (e.g. midnight from calendar pick),
-  // fall back to the first program so the animation always shows.
   const activeUID = useMemo(() => {
     if (!sorted.length) return null
     const match = sorted.find(p => activeSec >= p.START_TIME && activeSec < p.END_TIME)
@@ -80,76 +122,188 @@ const ChannelScheduleCL = ({
     return null
   }, [sorted, activeSec])
 
+  // ── Find the divider key for a given unix timestamp ──────────────────────
+  // Looks for the first program whose day is >= the target date.
+  // This handles the case where archiveTimestamp is midnight 00:00:00 but
+  // the first program of that day starts at e.g. 06:00 — keys would differ
+  // if we used the timestamp directly.
+  const dividerKeyForTimestamp = useCallback((targetSec: number): string | null => {
+    if (!sorted.length) return null
+
+    // Build target date at midnight for comparison
+    const target = new Date(targetSec * 1000)
+    target.setHours(0, 0, 0, 0)
+    const targetMidnight = target.getTime()
+
+    // Find the first program whose calendar day >= target date
+    const match = sorted.find(p => {
+      const d = new Date(p.START_TIME * 1000)
+      d.setHours(0, 0, 0, 0)
+      return d.getTime() >= targetMidnight
+    })
+
+    return match ? startOfDayKey(match.START_TIME) : null
+  }, [sorted])
+
+  // ── Auto-scroll: when archiveTimestamp changes, scroll to that day's divider ──
+  useEffect(() => {
+    if (!listRef.current || !sorted.length) return
+    const targetSec = mode === 'archive' && archiveTimestamp !== null ? archiveTimestamp : nowSec
+    const key = dividerKeyForTimestamp(targetSec)
+    if (!key) return
+    const divider = dividerRefs.current[key]
+
+    if (divider) {
+      const container = listRef.current
+      const offset = divider.offsetTop - 60
+      container.scrollTo({ top: Math.max(0, offset), behavior: 'smooth' })
+    }
+  }, [archiveTimestamp, mode, sorted])
+
+  // ── Auto-scroll to live program on initial load ────────────────────────────
+  const didInitialScroll = useRef(false)
+  useEffect(() => {
+    if (loading || didInitialScroll.current || !sorted.length || !listRef.current) return
+    const key = dividerKeyForTimestamp(activeSec)
+    if (!key) return
+    const divider = dividerRefs.current[key]
+    if (divider) {
+      const container = listRef.current
+      const offset = divider.offsetTop - 60
+      container.scrollTo({ top: Math.max(0, offset), behavior: 'smooth' })
+      didInitialScroll.current = true
+    }
+  }, [sorted, loading])
+
+  // ─── Render ────────────────────────────────────────────────────────────────
+
   const isCurrentProgram = (p: ProgramItem) => p.UID === activeUID
-
   const isPastProgram = (p: ProgramItem) => nowSec >= p.END_TIME
-
   const isClickable = (p: ProgramItem) => p.START_TIME <= nowSec
-
   const handleClick = (p: ProgramItem) => {
     if (!isClickable(p)) return
     onProgramSelect?.(p.START_TIME)
   }
 
+  const renderContent = () => {
+    if (loading) {
+      return (
+        <div className="flex items-center justify-center py-10">
+          <div
+            className="w-5 h-5 border-2 border-black/10 dark:border-white/10 rounded-full animate-spin"
+            style={{ borderTopColor: '#d52b1e' }}
+          />
+        </div>
+      )
+    }
+
+    if (!sorted.length) {
+      return (
+        <div className='px-4 py-3 text-sm text-black/35 dark:text-white/30'>
+          No programs for this date.
+        </div>
+      )
+    }
+
+    const items: React.ReactNode[] = []
+    let lastDayKey = ''
+
+    sorted.forEach((p) => {
+      const dayKey = startOfDayKey(p.START_TIME)
+
+      // ── Day divider ────────────────────────────────────────────────────────
+      if (dayKey !== lastDayKey) {
+        lastDayKey = dayKey
+        items.push(
+          <div
+            key={`divider-${dayKey}`}
+            ref={el => { dividerRefs.current[dayKey] = el }}
+            className="flex items-center justify-center py-2 px-3 gap-2"
+          >
+            <div className='h-px flex-1 bg-black/8 dark:bg-white/8' />
+            <div
+              className={cn(
+                'flex items-center gap-1.5 px-2.5 py-1 rounded-[10px] border',
+                'bg-red-500/80 dark:bg-red-500/20 border-red-500 dark:border-red-400/70',
+              )}
+            >
+              <span className="text-[10px] font-bold text-white uppercase tracking-wider">
+                {dayLabel(p.START_TIME)}
+              </span>
+              {!iconOnly && (
+                <span className="text-[10px] text-white/70">
+                  {localeDateShort(p.START_TIME)}
+                </span>
+              )}
+            </div>
+            <div className='h-px flex-1 bg-black/8 dark:bg-white/8' />
+          </div>
+        )
+      }
+
+      // ── Program row ────────────────────────────────────────────────────────
+      const isCurrent = isCurrentProgram(p)
+      const isPast    = isPastProgram(p)
+      const clickable = isClickable(p)
+      const isFuture  = !clickable
+
+      items.push(
+        <div
+          key={p.UID}
+          onClick={() => handleClick(p)}
+          title={isFuture ? 'Not yet available' : undefined}
+          className={cn(
+            'flex items-center gap-3 px-4 py-2.5 transition-all duration-150 border-l-2',
+            clickable ? 'cursor-pointer' : 'cursor-default',
+            isCurrent
+              ? 'bg-gradient-to-r from-orange-50 to-yellow-50/60 dark:from-[#d52b1e1a] dark:to-black/5 border-l-[#d52b1e]'
+              : isPast
+              ? 'border-l-transparent opacity-50 hover:opacity-80 hover:bg-black/3 dark:hover:bg-white/4'
+              : 'border-l-transparent opacity-40',
+          )}
+        >
+          <span className={cn(
+            'text-sm font-medium w-10 shrink-0 tabular-nums',
+            isCurrent ? 'text-[#d52b1e]' : 'text-black/30 dark:text-white/25'
+          )}>
+            {formatUnix(p.START_TIME)}
+          </span>
+
+          {!iconOnly && (
+            <span className='flex-1 text-sm truncate text-black/80 dark:text-white/75'>
+              {p.TITLE}
+            </span>
+          )}
+
+          {!iconOnly && isCurrent && (
+            <span className='w-2 h-2 rounded-full bg-[#d52b1e] shrink-0 animate-pulse' />
+          )}
+
+          {!iconOnly && isFuture && (
+            <span
+              className='material-symbols-outlined text-black/25 dark:text-white/20 shrink-0 select-none'
+              style={{ fontSize: '14px', fontVariationSettings: "'FILL' 0, 'wght' 300, 'GRAD' 0, 'opsz' 20" }}
+            >
+              lock
+            </span>
+          )}
+
+          {isCurrent && <Equalizer />}
+        </div>
+      )
+    })
+
+    return items
+  }
+
   return (
     <div className='w-full h-full flex'>
-      <div className='rounded-xl border border-black/8 dark:border-white/8 w-full overflow-auto bg-white/50 dark:bg-white/3 backdrop-blur-md'>
-        <div className='divide-y divide-black/5 dark:divide-white/5'>
-          {sorted.length === 0 ? (
-            <div className='px-4 py-3 text-sm text-black/35 dark:text-white/30'>
-              No programs for this date.
-            </div>
-          ) : (
-            sorted.map((p) => {
-              const genre     = (p.GANRE && p.GANRE.trim()) ? p.GANRE.trim() : 'Other'
-              const isCurrent = isCurrentProgram(p)
-              const isPast    = isPastProgram(p)
-              const clickable = isClickable(p)
-              const isFuture  = !clickable
-
-              return (
-                <div
-                  key={p.UID}
-                  onClick={() => handleClick(p)}
-                  title={isFuture ? 'Not yet available' : undefined}
-                  className={cn(
-                    'flex items-center gap-3 px-4 py-2.5 transition-all duration-150 border-l-2',
-                    clickable ? 'cursor-pointer' : 'cursor-default',
-                    isCurrent
-                      ? 'bg-gradient-to-r from-orange-50 to-yellow-50/60 dark:from-[#d52b1e1a] dark:to-black/5 border-l-[#d52b1e]'
-                      : isPast
-                      ? 'border-l-transparent opacity-50 hover:opacity-80 hover:bg-black/3 dark:hover:bg-white/4'
-                      : 'border-l-transparent opacity-40',
-                  )}
-                >
-                  <span className={cn(
-                    'text-sm font-medium w-10 shrink-0 tabular-nums',
-                    isCurrent ? 'text-[#d52b1e]' : 'text-black/30 dark:text-white/25'
-                  )}>
-                    {formatUnix(p.START_TIME)}
-                  </span>
-
-                  {!iconOnly && (
-                    <span className='flex-1 text-sm truncate text-black/80 dark:text-white/75'>
-                      {p.TITLE}
-                    </span>
-                  )}
-
-                  {!iconOnly && isCurrent && (
-                    <span className='w-2 h-2 rounded-full bg-[#d52b1e] shrink-0 animate-pulse' />
-                  )}
-
-                  {!iconOnly && isFuture && (
-                    <span className='text-xs text-black/25 dark:text-white/20 shrink-0 select-none'>
-                      🔒
-                    </span>
-                  )}
-
-                  {isCurrent && (<Equalizer />)}
-                </div>
-              )
-            })
-          )}
+      <div className='rounded-xl border border-black/8 dark:border-white/8 w-full overflow-hidden bg-white/50 dark:bg-white/3 backdrop-blur-md flex flex-col'>
+        <div
+          ref={listRef}
+          className='flex-1 overflow-y-auto divide-y-0'
+        >
+          {renderContent()}
         </div>
       </div>
     </div>
