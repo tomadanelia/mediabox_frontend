@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState, useEffect, useCallback, useMemo ,useRef} from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { API_BASE_URL } from '@/config';
 import VideoPlayer from '@/hmcomponents/videoplayer';
 import DataTableDemo from '@/components/shadcn-studio/data-table/data-table-11';
@@ -514,57 +514,57 @@ export const Stream: React.FC = () => {
       }
     })();
   }, []);
-const leftPanelRef = useRef<HTMLDivElement>(null);
+  const leftPanelRef = useRef<HTMLDivElement>(null);
 
-// 2. Auto-collapse after timeout when expanded
-useEffect(() => {
-  if (!leftExpanded) return;
-  
-  const timer = setTimeout(() => {
-    setLeftExpanded(false);
-  }, 3000); // 3 seconds — adjust as needed
-  
-  return () => clearTimeout(timer);
-}, [leftExpanded]);
-const rightPanelRef = useRef<HTMLDivElement>(null);
+  // 2. Auto-collapse after timeout when expanded
+  useEffect(() => {
+    if (!leftExpanded) return;
 
-// Auto-collapse after timeout
-useEffect(() => {
-  if (!rightExpanded) return;
-  
-  const timer = setTimeout(() => {
-    setRightExpanded(false);
-  }, 3000);
-  
-  return () => clearTimeout(timer);
-}, [rightExpanded]);
-
-// Collapse on outside click
-useEffect(() => {
-  if (!rightExpanded) return;
-
-  const handleClickOutside = (e: MouseEvent) => {
-    if (rightPanelRef.current && !rightPanelRef.current.contains(e.target as Node)) {
-      setRightExpanded(false);
-    }
-  };
-
-  document.addEventListener('mousedown', handleClickOutside);
-  return () => document.removeEventListener('mousedown', handleClickOutside);
-}, [rightExpanded]);
-// 3. Collapse when clicking outside
-useEffect(() => {
-  if (!leftExpanded) return;
-
-  const handleClickOutside = (e: MouseEvent) => {
-    if (leftPanelRef.current && !leftPanelRef.current.contains(e.target as Node)) {
+    const timer = setTimeout(() => {
       setLeftExpanded(false);
-    }
-  };
+    }, 3000); // 3 seconds — adjust as needed
 
-  document.addEventListener('mousedown', handleClickOutside);
-  return () => document.removeEventListener('mousedown', handleClickOutside);
-}, [leftExpanded]);
+    return () => clearTimeout(timer);
+  }, [leftExpanded]);
+  const rightPanelRef = useRef<HTMLDivElement>(null);
+
+  // Auto-collapse after timeout
+  useEffect(() => {
+    if (!rightExpanded) return;
+
+    const timer = setTimeout(() => {
+      setRightExpanded(false);
+    }, 3000);
+
+    return () => clearTimeout(timer);
+  }, [rightExpanded]);
+
+  // Collapse on outside click
+  useEffect(() => {
+    if (!rightExpanded) return;
+
+    const handleClickOutside = (e: MouseEvent) => {
+      if (rightPanelRef.current && !rightPanelRef.current.contains(e.target as Node)) {
+        setRightExpanded(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [rightExpanded]);
+  // 3. Collapse when clicking outside
+  useEffect(() => {
+    if (!leftExpanded) return;
+
+    const handleClickOutside = (e: MouseEvent) => {
+      if (leftPanelRef.current && !leftPanelRef.current.contains(e.target as Node)) {
+        setLeftExpanded(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [leftExpanded]);
   useEffect(() => {
     if (!selectedChannel) return;
     const today = toApiDate();
@@ -646,6 +646,23 @@ useEffect(() => {
 
   const programDateAsDate = new Date(programDate.replace(/\//g, '-'));
 
+  // ─── Single shared calendar overlay ──────────────────────────────────────
+  const CalendarOverlay = isCalendarVisible ? (
+    <div
+      className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center px-4"
+      onClick={() => setIsCalendarVisible(false)}
+    >
+      <div onClick={e => e.stopPropagation()}>
+        <MobileCalendar
+          archiveDays={rewindableDays}
+          initialDate={programDateAsDate}
+          onSelect={handleCalendarDateSelect}
+          onClose={() => setIsCalendarVisible(false)}
+        />
+      </div>
+    </div>
+  ) : null;
+
   // ════════════════════════════════════════════════════════════
   // MOBILE PORTRAIT LAYOUT
   // ════════════════════════════════════════════════════════════
@@ -653,6 +670,8 @@ useEffect(() => {
   if (isMobilePortrait) {
     return (
       <div className="flex flex-col w-full h-full overflow-hidden">
+
+        {CalendarOverlay}
 
         {pendingChannel && (
           <div className="absolute inset-0 bg-black/50 z-30">
@@ -722,17 +741,6 @@ useEffect(() => {
           )}
         </div>
 
-        {/* Calendar overlay */}
-        {isCalendarVisible && (
-          <div className="absolute inset-0 z-20">
-            <MobileCalendar
-              archiveDays={rewindableDays}
-              initialDate={programDateAsDate}
-              onSelect={handleCalendarDateSelect}
-            />
-          </div>
-        )}
-
         {/* Tab bar */}
         <div className="shrink-0 flex bg-white/70 dark:bg-zinc-900/80 backdrop-blur-md border-b border-black/8 dark:border-white/8">
           {(['channels', 'programs'] as PortraitTab[]).map(tab => (
@@ -789,6 +797,9 @@ useEffect(() => {
 
   return (
     <div className="flex flex-col justify-between w-full h-full  relative">
+
+      {CalendarOverlay}
+
       {pendingChannel && (
         <div className='absolute w-full h-full bg-black/50 z-30'>
           <PlansModal
@@ -803,9 +814,9 @@ useEffect(() => {
         <div className='w-[65px] flex lg:hidden' />
 
         {/* LEFT */}
-      <div
-  ref={leftPanelRef}
-  className={`
+        <div
+          ref={leftPanelRef}
+          className={`
     lg:relative lg:w-1/5
     absolute z-20 flex flex-col h-full lg:h-full overflow bg-yel
     transition-all duration-300 ease-in-out
@@ -864,15 +875,6 @@ useEffect(() => {
             />
           </div>
 
-          {isCalendarVisible && (
-            <div className="lg:hidden z-20 w-full h-full absolute flex top-0">
-              <MobileCalendar
-                archiveDays={rewindableDays}
-                initialDate={programDateAsDate}
-                onSelect={handleCalendarDateSelect}
-              />
-            </div>
-          )}
           {!isMobile && (
             <div className='w-full h-full flex justify-center items-center'>
               <div className="shrink-0 w-full flex items-center gap-3 px-1 py-2 overflow-x-auto justify-center">
@@ -945,8 +947,8 @@ useEffect(() => {
 
         {/* RIGHT */}
         <div
-  ref={rightPanelRef} 
-  className={`
+          ref={rightPanelRef}
+          className={`
     lg:relative lg:w-1/5
     absolute right-0 z-10 flex flex-col h-full bg-yel
     transition-all duration-300 ease-in-out
@@ -1003,36 +1005,18 @@ useEffect(() => {
 
           <div className="flex-1 overflow-y-auto relative">
             <DataTableDemoCL
+              channelId={selectedChannel?.id}
               timeProgramm={programs}
               mode={mode}
               archiveTimestamp={archiveTimestamp}
               onProgramSelect={handleProgramSelect}
               iconOnly={isMobile && !rightExpanded}
             />
-            
           </div>
         </div>
 
       </div>
-{isCalendarVisible && (!isMobile || rightExpanded) && (
-              <div className='absolute top-30 right-0 w-full ml-4 mt-0 z-50'>
-                {/* <div className="hidden lg:block">
-                  <ChannelCalendar
-                    archiveDays={rewindableDays}
-                    channelName={selectedChannel?.name || 'Channel'}
-                    onSelect={handleCalendarDateSelect}
-                    initialDate={programDateAsDate}
-                  />
-                </div> */}
-                <div className="block">
-                  <MobileCalendar
-                    archiveDays={rewindableDays}
-                    initialDate={programDateAsDate}
-                    onSelect={handleCalendarDateSelect}
-                  />
-                </div>
-              </div>
-            )}
+
       {/* BOTTOM */}
       {!isMobile && (
         <div>
@@ -1041,15 +1025,15 @@ useEffect(() => {
 
             </div>
             <div className='w-full ml-5'>
-               <Timeline
-              timeProgramm={programs}
-              nextDayPrograms={nextDayPrograms}
-              liveUnixSec={liveUnixSec}
-              currentUnixSec={archiveTimestamp}
-              onSelectTime={handleRewind}
-            />
+              <Timeline
+                timeProgramm={programs}
+                nextDayPrograms={nextDayPrograms}
+                liveUnixSec={liveUnixSec}
+                currentUnixSec={archiveTimestamp}
+                onSelectTime={handleRewind}
+              />
             </div>
-           
+
           </div>
         </div>
       )}

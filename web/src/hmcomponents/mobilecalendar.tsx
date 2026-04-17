@@ -6,6 +6,7 @@ interface MobileCalendarProps {
   archiveDays: number;
   onSelect?: (date: Date) => void;
   initialDate?: Date | null;
+  onClose?: () => void;
 }
 
 function startOfDay(d: Date): Date {
@@ -122,6 +123,7 @@ export default function MobileCalendar({
   archiveDays,
   onSelect,
   initialDate,
+  onClose,
 }: MobileCalendarProps) {
   const TODAY    = useMemo(() => startOfDay(new Date()), []);
   const MIN_DATE = useMemo(() => startOfDay(addDays(TODAY, -archiveDays)), [TODAY, archiveDays]);
@@ -250,18 +252,30 @@ export default function MobileCalendar({
             {isValid && <span className="text-[0.6rem] text-gray-500">{label}</span>}
           </div>
 
-          <button
-            onClick={handleConfirm}
-            disabled={!isValid}
-            className={`px-4 py-2 rounded-xl text-sm font-semibold transition-all duration-150 ${
-              isValid
-                ? "bg-red-600 hover:bg-red-500 text-white shadow-lg shadow-red-600/20"
-                : "bg-white/5 text-white/20 cursor-not-allowed"
-            }`}
-          >
-            Go
-          </button>
+          <div className="flex items-center gap-2">
+            {onClose && (
+              <button
+                onClick={onClose}
+                className="w-9 h-9 flex items-center justify-center rounded-xl text-gray-500 hover:text-white hover:bg-white/10 transition-all duration-150"
+              >
+                <span className="material-symbols-outlined" style={{ fontSize: '20px' }}>close</span>
+              </button>
+            )}
+
+            <button
+              onClick={handleConfirm}
+              disabled={!isValid}
+              className={`px-4 py-2 rounded-xl text-sm font-semibold transition-all duration-150 ${
+                isValid
+                  ? "bg-red-600 hover:bg-red-500 text-white shadow-lg shadow-red-600/20"
+                  : "bg-white/5 text-white/20 cursor-not-allowed"
+              }`}
+            >
+              Go
+            </button>
+          </div>
         </div>
+
       </div>
     </div>
   );
