@@ -1688,7 +1688,7 @@ const isActive =
             <div className="p-5 border-b border-zinc-800 flex items-center gap-4">
               <div className="w-11 h-11 rounded-xl bg-zinc-800 flex items-center justify-center shrink-0 overflow-hidden">
                 {activeCategory.icon_url
-                  ? <span className="material-symbols-outlined w-7 h-7" >activeCategory.icon_url</span>
+                  ? <span className="material-symbols-outlined w-7 h-7" >{activeCategory.icon_url}</span>
                   : <span className="text-xl">📁</span>
                 }
               </div>
@@ -1860,7 +1860,7 @@ const isActive =
                 <label key={cat.id} className={`flex items-center gap-3 p-3 rounded-xl border cursor-pointer transition-all ${selectedCategoryId === cat.id ? "border-violet-500 bg-violet-500/10" : "border-zinc-800 bg-zinc-800/30 hover:border-zinc-700 hover:bg-zinc-800/60"}`}>
                   <input type="radio" name="bulkCat" value={cat.id} checked={selectedCategoryId === cat.id} onChange={() => setSelectedCategoryId(cat.id)} className="accent-violet-500" />
                   <div className="w-7 h-7 rounded-lg bg-zinc-800 flex items-center justify-center shrink-0">
-                    {cat.icon_url ? <span  className="material-symbols-outlined w-7 h-7" >cat.icon_url</span> : <span className="text-sm">📁</span>}
+                    {cat.icon_url ? <span  className="material-symbols-outlined w-7 h-7" >{cat.icon_url}</span> : <span className="text-sm">📁</span>}
                   </div>
                   <div className="flex-1 min-w-0">
                     <p className="text-zinc-100 font-medium text-sm truncate">{cat.name_en}</p>

@@ -41,7 +41,6 @@ interface Channel {
 
 const translations = {
   Ge: {
-    subscriptionLabel: 'სააბონენტო',
     heading: 'პაკეტები',
     subtitle: 'აირჩიეთ თქვენთვის შესაფერისი სააბონენტო გეგმა',
     accountLabel: 'ანგარიში',
@@ -750,7 +749,6 @@ const Plans = () => {
         {/* Header + Balance */}
         <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-6 mb-3">
           <div>
-            <p className="text-xs uppercase tracking-[0.2em] text-form-highlights font-semibold mb-2">{tx.subscriptionLabel}</p>
             <h1 className={`text-3xl sm:text-3xl font-bold tracking-tight ${t.text}`}>{tx.heading}</h1>
             <p className={`mt-3 ${t.textMuted} text-base`}>{tx.subtitle}</p>
           </div>
