@@ -21,17 +21,12 @@ function addDays(d: Date, n: number): Date {
   return c;
 }
 
-function sameDay(a: Date, b: Date): boolean {
-  return a.getFullYear() === b.getFullYear() &&
-    a.getMonth() === b.getMonth() &&
-    a.getDate() === b.getDate();
-}
-
 function getDaysInMonth(year: number, month: number): number {
   return new Date(year, month + 1, 0).getDate();
 }
 
-const MONTHS = ["იან","თებ","მარ","აპრ","მაი","ივნ","ივლ","აგვ","სექ","ოქტ","ნოე","დეკ"];
+const MONTHS_DRUM = ["იან","თებ","მარ","აპრ","მაი","ივნ","ივლ","აგვ","სექ","ოქტ","ნოე","დეკ"];
+const MONTHS_FOOTER = ["იანვარი","თებერვალი","მარტი","აპრილი","მაისი","ივნისი","ივლისი","აგვისტო","სექტემბერი","ოქტომბერი","ნოემბერი","დეკემბერი"];
 const ITEM_H = 44;
 
 // ─── Scroll Drum ─────────────────────────────────────────────────────────────
@@ -48,9 +43,6 @@ function Drum({
   disabledIndices?: Set<number>
 }) {
   const ref = useRef<HTMLDivElement>(null);
-  const isDragging = useRef(false);
-  const startY = useRef(0);
-  const startScroll = useRef(0);
 
   useEffect(() => {
     const el = ref.current;
@@ -60,7 +52,7 @@ function Drum({
 
   const handleScroll = () => {
     const el = ref.current;
-    if (!el || isDragging.current) return;
+    if (!el) return;
     const i = Math.round(el.scrollTop / ITEM_H);
     const clamped = Math.max(0, Math.min(items.length - 1, i));
     if (clamped !== selectedIndex && !disabledIndices.has(clamped)) {
@@ -210,12 +202,16 @@ export default function MobileCalendar({
   const daysAgo = Math.round((TODAY.getTime() - selectedDate.getTime()) / 86400000);
   const label = daysAgo === 0 ? "დღეს" : daysAgo === 1 ? "გუშინ" : `${daysAgo} დღის წინ`;
 
+  const footerDateStr = isValid
+    ? `${selectedDate.getDate()} ${MONTHS_FOOTER[selectedDate.getMonth()]}, ${selectedDate.getFullYear()}`
+    : "დიაპაზონის გარეთ";
+
   return (
-    <div className="w-full lg:max-w-lg max-w-xs mx-auto">
+    <div className="w-full max-w-xl mx-auto">
       <div className="rounded-2xl bg-[#21262c] border border-white/5 overflow-hidden shadow-2xl shadow-black/40">
 
         {/* Drums */}
-        <div className="flex px-3 pt-3 gap-1" style={{ height: ITEM_H * 5 }}>
+        <div className="flex px-4 pt-3 gap-1" style={{ height: ITEM_H * 5 }}>
           {/* Day */}
           <Drum
             items={days.map(d => String(d).padStart(2, "0"))}
@@ -226,7 +222,7 @@ export default function MobileCalendar({
           <div className="flex items-center justify-center text-white/10 text-lg font-light pb-px">/</div>
           {/* Month */}
           <Drum
-            items={MONTHS}
+            items={MONTHS_DRUM}
             selectedIndex={month}
             onSelect={i => setMonth(i)}
             disabledIndices={disabledMonths}
@@ -245,9 +241,7 @@ export default function MobileCalendar({
           <div className="flex flex-col">
             <span className="text-[0.6rem] text-gray-600 uppercase tracking-widest">მონიშნული</span>
             <span className={`text-sm font-semibold ${isValid ? "text-gray-100" : "text-red-400"}`}>
-              {isValid
-                ? selectedDate.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })
-                : "Out of range"}
+              {footerDateStr}
             </span>
             {isValid && <span className="text-[0.6rem] text-gray-500">{label}</span>}
           </div>

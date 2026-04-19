@@ -285,7 +285,7 @@ const ProgramsList: React.FC<ProgramsListProps> = ({
   if (!sorted.length) {
     return (
       <div className="px-4 py-6 text-sm text-black/35 dark:text-white/30 text-center">
-        No programs for this date.
+        ამ არხს პროგრამა არ აქვს
       </div>
     );
   }
@@ -658,7 +658,7 @@ setSelectedChannel(fromUrl ?? firstAccessible ?? null);
       className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center px-4"
       onClick={() => setIsCalendarVisible(false)}
     >
-      <div onClick={e => e.stopPropagation()}>
+      <div onClick={e => e.stopPropagation()} className='w-2xl'>
         <MobileCalendar
           archiveDays={rewindableDays}
           initialDate={programDateAsDate}
@@ -683,7 +683,7 @@ setSelectedChannel(fromUrl ?? firstAccessible ?? null);
           <div className="absolute inset-0 bg-black/50 z-30">
             <PlansModal
               channel={pendingChannel}
-              lang="en"
+              lang="ka"
               onClose={() => setPendingChannel(null)}
               onSelectPlan={() => navigate('/packets')}
             />
@@ -810,7 +810,7 @@ setSelectedChannel(fromUrl ?? firstAccessible ?? null);
         <div className='absolute w-full h-full bg-black/50 z-30'>
           <PlansModal
             channel={pendingChannel}
-            lang="en"
+            lang="ka"
             onClose={() => setPendingChannel(null)}
             onSelectPlan={() => navigate('/packets')}
           />

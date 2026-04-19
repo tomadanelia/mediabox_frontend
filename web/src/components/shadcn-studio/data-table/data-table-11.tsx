@@ -71,7 +71,7 @@ const DataTableDemo = ({
             type='text'
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder='Search channels…'
+            placeholder='მოძებნე არხი ...'
             className='
               w-full h-10 pl-9 pr-9 rounded-xl text-sm
               bg-white/70 dark:bg-white/5
@@ -176,7 +176,7 @@ const DataTableDemo = ({
             <div className='p-10 text-center'>
               <Search size={22} className='mx-auto mb-2 text-black/15 dark:text-white/15' />
               <p className='text-sm text-black/35 dark:text-white/30'>
-                {query ? `No results for "${query}"` : 'No channels found.'}
+                {query ? `No results for "${query}"` : 'არხი ვერ მოიძებნა'}
               </p>
             </div>
           )}

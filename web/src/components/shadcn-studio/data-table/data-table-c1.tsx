@@ -18,9 +18,7 @@ type ProgramItem = {
 }
 
 type Props = {
-  // channelId is needed to fetch all programs — pass it from Stream
   channelId?: string
-  // Legacy props kept so Stream.tsx doesn't need changes
   timeProgramm?: ProgramItem[] | null
   mode?: 'live' | 'archive'
   archiveTimestamp?: number | null
@@ -56,12 +54,47 @@ function dayLabel(unixSec: number): string {
   return d.toLocaleDateString('ka-GE', { weekday: 'short', month: 'short', day: 'numeric' })
 }
 
+const GEO_MONTHS_SHORT = ['იან','თებ','მარ','აპრ','მაი','ივნ','ივლ','აგვ','სექ','ოქტ','ნოე','დეკ']
+
 function localeDateShort(unixSec: number): string {
-  return new Date(unixSec * 1000).toLocaleDateString('ka-GE', {
-    month: 'short',
-    day: 'numeric',
-    year: 'numeric',
-  })
+  const d = new Date(unixSec * 1000)
+  return `${d.getDate()} ${GEO_MONTHS_SHORT[d.getMonth()]}, ${d.getFullYear()}`
+}
+
+// ─── Tooltip ──────────────────────────────────────────────────────────────────
+
+type TooltipState = {
+  text: string
+  x: number
+  y: number
+} | null
+
+function Tooltip({ tooltip }: { tooltip: TooltipState }) {
+  if (!tooltip) return null
+  return (
+    <div
+      style={{
+        position: 'fixed',
+        left: tooltip.x,
+        top: tooltip.y,
+        transform: 'translateY(-100%) translateX(-50%)',
+        zIndex: 9999,
+        pointerEvents: 'none',
+        maxWidth: 260,
+        backgroundColor: 'rgba(0,0,0,0.85)',
+        color: '#fff',
+        fontSize: 12,
+        fontWeight: 500,
+        lineHeight: 1.4,
+        padding: '6px 10px',
+        borderRadius: 8,
+        wordBreak: 'break-word',
+        boxShadow: '0 4px 12px rgba(0,0,0,0.3)',
+      }}
+    >
+      {tooltip.text}
+    </div>
+  )
 }
 
 // ─── Component ────────────────────────────────────────────────────────────────
@@ -77,9 +110,9 @@ const ChannelScheduleCL = ({
 
   const [allPrograms, setAllPrograms] = useState<ProgramItem[]>([])
   const [loading, setLoading] = useState(false)
+  const [tooltip, setTooltip] = useState<TooltipState>(null)
 
   const listRef = useRef<HTMLDivElement>(null)
-  // Maps dayKey → div ref for auto-scroll
   const dividerRefs = useRef<Record<string, HTMLDivElement | null>>({})
 
   // ── Fetch all programs when channelId changes ──────────────────────────────
@@ -122,20 +155,13 @@ const ChannelScheduleCL = ({
     return null
   }, [sorted, activeSec])
 
-  // ── Find the divider key for a given unix timestamp ──────────────────────
-  // Looks for the first program whose day is >= the target date.
-  // This handles the case where archiveTimestamp is midnight 00:00:00 but
-  // the first program of that day starts at e.g. 06:00 — keys would differ
-  // if we used the timestamp directly.
   const dividerKeyForTimestamp = useCallback((targetSec: number): string | null => {
     if (!sorted.length) return null
 
-    // Build target date at midnight for comparison
     const target = new Date(targetSec * 1000)
     target.setHours(0, 0, 0, 0)
     const targetMidnight = target.getTime()
 
-    // Find the first program whose calendar day >= target date
     const match = sorted.find(p => {
       const d = new Date(p.START_TIME * 1000)
       d.setHours(0, 0, 0, 0)
@@ -175,6 +201,18 @@ const ChannelScheduleCL = ({
     }
   }, [sorted, loading])
 
+  // ─── Tooltip handlers ─────────────────────────────────────────────────────
+  const handleTitleMouseEnter = (e: React.MouseEvent<HTMLSpanElement>, title: string) => {
+    const rect = e.currentTarget.getBoundingClientRect()
+    setTooltip({
+      text: title,
+      x: rect.left + rect.width / 2,
+      y: rect.top - 6,
+    })
+  }
+
+  const handleTitleMouseLeave = () => setTooltip(null)
+
   // ─── Render ────────────────────────────────────────────────────────────────
 
   const isCurrentProgram = (p: ProgramItem) => p.UID === activeUID
@@ -200,7 +238,7 @@ const ChannelScheduleCL = ({
     if (!sorted.length) {
       return (
         <div className='px-4 py-3 text-sm text-black/35 dark:text-white/30'>
-          No programs for this date.
+          პროგრამები არ მოიძებნა
         </div>
       )
     }
@@ -211,7 +249,7 @@ const ChannelScheduleCL = ({
     sorted.forEach((p) => {
       const dayKey = startOfDayKey(p.START_TIME)
 
-      // ── Day divider ────────────────────────────────────────────────────────
+      // ── Day divider ──────────────────────────────────────────────────────
       if (dayKey !== lastDayKey) {
         lastDayKey = dayKey
         items.push(
@@ -241,7 +279,7 @@ const ChannelScheduleCL = ({
         )
       }
 
-      // ── Program row ────────────────────────────────────────────────────────
+      // ── Program row ──────────────────────────────────────────────────────
       const isCurrent = isCurrentProgram(p)
       const isPast    = isPastProgram(p)
       const clickable = isClickable(p)
@@ -270,7 +308,11 @@ const ChannelScheduleCL = ({
           </span>
 
           {!iconOnly && (
-            <span className='flex-1 text-sm truncate text-black/80 dark:text-white/75'>
+            <span
+              className='flex-1 text-sm truncate text-black/80 dark:text-white/75'
+              onMouseEnter={e => handleTitleMouseEnter(e, p.TITLE)}
+              onMouseLeave={handleTitleMouseLeave}
+            >
               {p.TITLE}
             </span>
           )}
@@ -297,16 +339,19 @@ const ChannelScheduleCL = ({
   }
 
   return (
-    <div className='w-full h-full flex'>
-      <div className='rounded-xl border border-black/8 dark:border-white/8 w-full overflow-hidden bg-white/50 dark:bg-white/3 backdrop-blur-md flex flex-col'>
-        <div
-          ref={listRef}
-          className='flex-1 overflow-y-auto divide-y-0'
-        >
-          {renderContent()}
+    <>
+      <Tooltip tooltip={tooltip} />
+      <div className='w-full h-full flex'>
+        <div className='rounded-xl border border-black/8 dark:border-white/8 w-full overflow-hidden bg-white/50 dark:bg-white/3 backdrop-blur-md flex flex-col'>
+          <div
+            ref={listRef}
+            className='flex-1 overflow-y-auto divide-y-0'
+          >
+            {renderContent()}
+          </div>
         </div>
       </div>
-    </div>
+    </>
   )
 }
 
