@@ -26,6 +26,7 @@ type Plan = {
   description_ka: string
   description_en: string
   price: string
+  discounted_price?: string | number
   duration_days: number
   is_active: boolean
   created_at: string
@@ -66,7 +67,7 @@ const getDurationLabel = (days: number, lang: 'en' | 'ka') => {
 const isPopularPlan = (index: number, total: number) =>
   index === Math.min(3, total - 1)
 
-// ── plan card — matches Plans.tsx card anatomy ────────────────────────────────
+// ── plan card ─────────────────────────────────────────────────────────────────
 
 const PlanCard = ({
   plan,
@@ -83,95 +84,139 @@ const PlanCard = ({
   isDark: boolean
   onSelect: (plan: Plan) => void
 }) => {
-  const popular = isPopularPlan(index, total)
-  const name    = lang === 'ka' ? plan.name_ka        : plan.name_en
-  const desc    = lang === 'ka' ? plan.description_ka : plan.description_en
-  const price   = parseFloat(plan.price)
-
-  // ── same token names as Plans.tsx ─────────────────────────────────────────
-  const t = {
-    cardDefault: isDark
-      ? 'border border-white/10 bg-white/[0.03] hover:border-white/20 hover:bg-white/[0.06]'
-      : 'bg-slate-100 shadow-[0_2px_12px_rgba(0,0,0,0.08)] hover:shadow-[0_8px_28px_rgba(0,0,0,0.13)] hover:-translate-y-0.5',
-    cardPopular: isDark
-      ? 'border border-emerald-500/50 bg-gradient-to-b from-emerald-950/60 to-transparent shadow-[0_0_40px_-10px_rgba(16,185,129,0.3)]'
-      : 'bg-emerald-50 shadow-[0_8px_32px_rgba(16,185,129,0.18)] ring-2 ring-emerald-400/60 hover:-translate-y-0.5',
-    text:        isDark ? 'text-white'     : 'text-slate-900',
-    textMuted:   isDark ? 'text-gray-400'  : 'text-slate-600',
-    textFaint:   isDark ? 'text-gray-500'  : 'text-slate-500',
-    priceColor:  isDark ? 'text-white'     : 'text-slate-900',
-    priceMuted:  isDark ? 'text-gray-400'  : 'text-slate-500',
-    divider:        isDark ? 'bg-white/10'        : 'bg-slate-200',
-    dividerPopular: isDark ? 'bg-emerald-500/20'  : 'bg-emerald-200',
-    featureBadge:   isDark ? 'bg-white/10 text-gray-400' : 'bg-emerald-100 text-emerald-700',
-    featureText:    isDark ? 'text-gray-300'             : 'text-slate-700',
-    btnDefault: isDark
-      ? 'bg-white/10 hover:bg-white/15 text-white border border-white/10 hover:border-white/20'
-      : 'bg-slate-800 hover:bg-slate-700 text-white',
-    btnPopular: 'bg-emerald-500 hover:bg-emerald-400 text-white shadow-[0_4px_20px_rgba(16,185,129,0.3)] hover:shadow-[0_4px_28px_rgba(16,185,129,0.45)]',
-  }
+  const popular    = isPopularPlan(index, total)
+  const name       = lang === 'ka' ? plan.name_ka        : plan.name_en
+  const desc       = lang === 'ka' ? plan.description_ka : plan.description_en
+  const price      = parseFloat(plan.price)
+  const discounted = plan.discounted_price != null ? parseFloat(String(plan.discounted_price)) : null
+  const hasDiscount = discounted !== null && discounted < price
 
   return (
     <div
       onClick={() => onSelect(plan)}
-      className={`relative rounded-2xl transition-all duration-300 cursor-pointer group ${popular ? t.cardPopular : t.cardDefault}`}
+      style={{
+        position: 'relative',
+        borderRadius: 16,
+        padding: '20px',
+        cursor: 'pointer',
+        transition: 'all 0.2s',
+        background: popular ? 'rgba(220,38,38,0.08)' : 'rgba(255,255,255,0.03)',
+        border: popular ? '1px solid rgba(220,38,38,0.35)' : '1px solid rgba(255,255,255,0.07)',
+        boxShadow: popular ? '0 0 32px rgba(220,38,38,0.08)' : 'none',
+      }}
     >
-      {/* popular badge — identical to Plans.tsx */}
+      {/* popular badge */}
       {popular && (
-        <div className="absolute -top-3 left-1/2 -translate-x-1/2 z-10">
-          <span className="bg-emerald-500 text-white text-xs font-bold px-3 py-1 rounded-full uppercase tracking-wide shadow-lg flex items-center gap-1">
+        <div style={{ position: 'absolute', top: -12, left: '50%', transform: 'translateX(-50%)', zIndex: 10 }}>
+          <span style={{
+            background: '#dc2626',
+            color: '#fff',
+            fontSize: 10,
+            fontWeight: 700,
+            padding: '3px 10px',
+            borderRadius: 99,
+            textTransform: 'uppercase',
+            letterSpacing: '0.08em',
+            display: 'flex',
+            alignItems: 'center',
+            gap: 4,
+            boxShadow: '0 2px 12px rgba(220,38,38,0.4)',
+          }}>
             <Sparkles size={9} />
             {lang === 'ka' ? 'პოპულარული' : 'Popular'}
           </span>
         </div>
       )}
 
-      <div className="p-5">
-        {/* name + price */}
-        <div className="mb-5">
-          <h3 className={`text-base font-semibold ${t.text} mb-1`}>{name}</h3>
-          <div className="flex items-baseline gap-1">
-            <span className={`text-3xl font-bold ${popular ? 'text-emerald-500' : t.priceColor}`}>
-              {price.toFixed(2)}
+      {/* name + price */}
+      <div style={{ marginBottom: 16 }}>
+        <h3 style={{ fontSize: 14, fontWeight: 600, color: '#f3f4f6', margin: '0 0 8px' }}>{name}</h3>
+
+        {/* price row */}
+        <div style={{ display: 'flex', alignItems: 'flex-start', gap: 5 }}>
+          {/* discounted (main) price */}
+          <div style={{ display: 'flex', alignItems: 'baseline', gap: 3 }}>
+            <span style={{ fontSize: 28, fontWeight: 700, color: popular ? '#ef4444' : '#fff', lineHeight: 1 }}>
+              {hasDiscount ? discounted!.toFixed(2) : price.toFixed(2)}
             </span>
-            <span className={`${t.priceMuted} text-sm`}>₾</span>
+            <span style={{ fontSize: 13, color: '#6b7280' }}>₾</span>
           </div>
-          <p className={`text-xs ${t.textFaint} mt-1`}>
-            {plan.duration_days} {lang === 'ka' ? 'დღე' : 'days'}
-          </p>
+
+          {/* original price crossed out — sits upper-right */}
+          {hasDiscount && (
+            <span style={{
+              fontSize: 11,
+              color: '#6b7280',
+              textDecoration: 'line-through',
+              textDecorationColor: 'rgba(239,68,68,0.5)',
+              marginTop: 2,
+              alignSelf: 'flex-start',
+              lineHeight: 1,
+            }}>
+              {price.toFixed(2)}₾
+            </span>
+          )}
         </div>
 
-        {/* divider */}
-        <div className={`h-px mb-5 ${popular ? t.dividerPopular : t.divider}`} />
-
-        {/* description */}
-        <p className={`text-xs ${t.textMuted} mb-5 leading-relaxed min-h-[2.5rem]`}>{desc}</p>
-
-        {/* feature chips */}
-        <ul className="space-y-1.5 mb-6">
-          <li className={`flex items-center gap-2 text-xs ${t.featureText}`}>
-            <span className={`w-4 h-4 rounded-full flex items-center justify-center flex-shrink-0 text-[10px] ${popular ? 'bg-emerald-500/20 text-emerald-500' : t.featureBadge}`}>✓</span>
-            {lang === 'ka' ? `ხანგრძლივობა ${plan.duration_days} დღე` : `Duration ${plan.duration_days} days`}
-          </li>
-          <li className={`flex items-center gap-2 text-xs ${t.featureText}`}>
-            <span className={`w-4 h-4 rounded-full flex items-center justify-center flex-shrink-0 text-[10px] ${popular ? 'bg-emerald-500/20 text-emerald-500' : t.featureBadge}`}>✓</span>
-            {lang === 'ka' ? 'სრული წვდომა' : 'Full Access'}
-          </li>
-          <li className={`flex items-center gap-2 text-xs ${t.featureText}`}>
-            <Clock size={10} className={popular ? 'text-emerald-500' : isDark ? 'text-gray-400' : 'text-emerald-600'} />
-            <span>{getDurationLabel(plan.duration_days, lang)}</span>
-          </li>
-        </ul>
-
-        {/* CTA — identical structure to Plans.tsx renderButton 'ready' case */}
-        <button
-          onClick={e => { e.stopPropagation(); onSelect(plan) }}
-          className={`w-full cursor-pointer py-3 rounded-xl text-sm font-semibold transition-all duration-200 flex items-center justify-center gap-2 active:scale-[0.98] ${popular ? t.btnPopular : t.btnDefault}`}
-        >
-          {lang === 'ka' ? 'ყიდვა' : 'Get Started'}
-          <ArrowRight size={13} />
-        </button>
+        <p style={{ fontSize: 11, color: '#6b7280', margin: '4px 0 0' }}>
+          {plan.duration_days} {lang === 'ka' ? 'დღე' : 'days'}
+        </p>
       </div>
+
+      {/* divider */}
+      <div style={{ height: 1, background: popular ? 'rgba(220,38,38,0.2)' : 'rgba(255,255,255,0.07)', marginBottom: 16 }} />
+
+      {/* description */}
+      <p style={{ fontSize: 12, color: '#9ca3af', marginBottom: 16, lineHeight: 1.6, minHeight: 40 }}>{desc}</p>
+
+      {/* features */}
+      <ul style={{ listStyle: 'none', padding: 0, margin: '0 0 20px', display: 'flex', flexDirection: 'column', gap: 8 }}>
+        <li style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12, color: '#d1d5db' }}>
+          <span style={{
+            width: 16, height: 16, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 10, flexShrink: 0,
+            background: popular ? 'rgba(220,38,38,0.2)' : 'rgba(255,255,255,0.08)',
+            color: popular ? '#ef4444' : '#9ca3af',
+          }}>✓</span>
+          {lang === 'ka' ? `ხანგრძლივობა ${plan.duration_days} დღე` : `Duration ${plan.duration_days} days`}
+        </li>
+        <li style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12, color: '#d1d5db' }}>
+          <span style={{
+            width: 16, height: 16, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 10, flexShrink: 0,
+            background: popular ? 'rgba(220,38,38,0.2)' : 'rgba(255,255,255,0.08)',
+            color: popular ? '#ef4444' : '#9ca3af',
+          }}>✓</span>
+          {lang === 'ka' ? 'სრული წვდომა' : 'Full Access'}
+        </li>
+        <li style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12, color: '#d1d5db' }}>
+          <Clock size={10} style={{ color: popular ? '#ef4444' : '#6b7280', flexShrink: 0 }} />
+          {getDurationLabel(plan.duration_days, lang)}
+        </li>
+      </ul>
+
+      {/* CTA */}
+      <button
+        onClick={e => { e.stopPropagation(); onSelect(plan) }}
+        style={{
+          width: '100%',
+          padding: '10px 0',
+          borderRadius: 10,
+          fontSize: 13,
+          fontWeight: 600,
+          border: 'none',
+          cursor: 'pointer',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          gap: 6,
+          transition: 'all 0.15s',
+          background: popular ? '#dc2626' : 'rgba(255,255,255,0.07)',
+          color: '#fff',
+          boxShadow: popular ? '0 4px 16px rgba(220,38,38,0.3)' : 'none',
+        }}
+      >
+        {lang === 'ka' ? 'ყიდვა' : 'Get Started'}
+        <ArrowRight size={13} />
+      </button>
     </div>
   )
 }
@@ -189,32 +234,6 @@ const PlansModal = ({
   const [loading, setLoading] = useState(false)
   const [error, setError]     = useState<string | null>(null)
   const [visible, setVisible] = useState(false)
-
-  // ── theme tokens — mirrors Plans.tsx ──────────────────────────────────────
-  const t = {
-    bg: isDark
-      ? 'bg-[#0a0a0f]'
-      : 'bg-white',
-    border: isDark
-      ? 'border border-white/10'
-      : 'border border-slate-200 shadow-[0_20px_60px_rgba(0,0,0,0.12)]',
-    headerBorder: isDark ? 'border-white/[0.06]' : 'border-slate-100',
-    text:      isDark ? 'text-white'    : 'text-slate-900',
-    textMuted: isDark ? 'text-gray-400' : 'text-slate-500',
-    closeBtn: isDark
-      ? 'bg-white/5 border border-white/10 text-white/40 hover:bg-white/10'
-      : 'bg-slate-100 border border-slate-200 text-slate-400 hover:bg-slate-200',
-    logoBg: isDark
-      ? 'bg-white/[0.06] border border-white/10'
-      : 'bg-slate-100 border border-slate-200',
-    errorBg:    isDark ? 'bg-red-500/8 border-red-500/20'     : 'bg-red-50 border-red-200',
-    errorText:  isDark ? 'text-red-400' : 'text-red-600',
-    emptyIconBg: isDark ? 'bg-emerald-500/10 border-emerald-500/15' : 'bg-emerald-50 border-emerald-200',
-    backdrop:   isDark ? 'rgba(0,0,0,0.70)' : 'rgba(0,0,0,0.30)',
-    shadow: isDark
-      ? '0 0 0 1px rgba(16,185,129,0.12), 0 40px 120px rgba(0,0,0,0.7), 0 0 80px rgba(16,185,129,0.05)'
-      : '0 20px 80px rgba(0,0,0,0.15)',
-  }
 
   // animate in
   useEffect(() => {
@@ -263,10 +282,10 @@ const PlansModal = ({
   if (!channel) return null
 
   const gridClass = (count: number) => {
-    if (count === 1) return 'grid grid-cols-1 max-w-xs mx-auto gap-5'
-    if (count === 2) return 'grid grid-cols-2 gap-5 max-w-lg mx-auto'
-    if (count === 3) return 'grid grid-cols-3 gap-5'
-    return 'grid grid-cols-2 xl:grid-cols-4 gap-5'
+    if (count === 1) return 'grid grid-cols-1 max-w-xs mx-auto gap-4'
+    if (count === 2) return 'grid grid-cols-2 gap-4 max-w-lg mx-auto'
+    if (count === 3) return 'grid grid-cols-3 gap-4'
+    return 'grid grid-cols-2 xl:grid-cols-4 gap-4'
   }
 
   return (
@@ -276,49 +295,70 @@ const PlansModal = ({
         onClick={handleClose}
         className="fixed inset-0 z-40 transition-all duration-300"
         style={{
-          background: visible ? t.backdrop : 'rgba(0,0,0,0)',
-          backdropFilter:       visible ? 'blur(8px)' : 'blur(0px)',
-          WebkitBackdropFilter: visible ? 'blur(8px)' : 'blur(0px)',
+          background: visible ? 'rgba(0,0,0,0.75)' : 'rgba(0,0,0,0)',
+          backdropFilter:       visible ? 'blur(6px)' : 'blur(0px)',
+          WebkitBackdropFilter: visible ? 'blur(6px)' : 'blur(0px)',
         }}
       />
 
       {/* modal wrapper */}
-      <div className="fixed inset-0 z-50 flex items-center justify-center p-6 pointer-events-none" style={{ fontFamily: "'DM Sans', 'Segoe UI', sans-serif" }}>
+      <div
+        className="fixed inset-0 z-50 flex items-center justify-center p-6 pointer-events-none"
+        style={{ fontFamily: "'DM Sans', 'Segoe UI', sans-serif" }}
+      >
         <div
-          className={`pointer-events-auto flex flex-col rounded-3xl overflow-hidden transition-all duration-300 ${t.bg} ${t.border}`}
+          className="pointer-events-auto flex flex-col overflow-hidden transition-all duration-300"
           style={{
-            width: '860px',
+            width: 860,
             maxWidth: '95vw',
             maxHeight: '88vh',
-            boxShadow: t.shadow,
+            borderRadius: 20,
+            background: '#21262c',
+            border: '1px solid rgba(255,255,255,0.06)',
+            boxShadow: '0 40px 120px rgba(0,0,0,0.6), 0 0 0 1px rgba(220,38,38,0.08)',
             opacity:   visible ? 1 : 0,
             transform: visible ? 'translateY(0) scale(1)' : 'translateY(24px) scale(0.96)',
           }}
         >
           {/* ── header ── */}
-          <div className={`flex items-center gap-4 px-7 py-5 border-b ${t.headerBorder}`}>
+          <div style={{
+            display: 'flex', alignItems: 'center', gap: 16,
+            padding: '20px 28px',
+            borderBottom: '1px solid rgba(255,255,255,0.06)',
+          }}>
             {/* channel logo + lock badge */}
-            <div className="relative shrink-0">
-              <div className={`w-12 h-12 rounded-2xl flex items-center justify-center overflow-hidden ${t.logoBg}`}>
+            <div style={{ position: 'relative', flexShrink: 0 }}>
+              <div style={{
+                width: 48, height: 48, borderRadius: 14,
+                display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden',
+                background: 'rgba(255,255,255,0.05)',
+                border: '1px solid rgba(255,255,255,0.08)',
+              }}>
                 <img
                   src={channel.logo}
                   alt={channel.name}
-                  className="w-9/12 h-9/12 object-contain"
+                  style={{ width: '75%', height: '75%', objectFit: 'contain' }}
                   onError={e => { e.currentTarget.src = '/placeholder.png' }}
                 />
               </div>
-              <div className="absolute -bottom-1 -right-1 w-5 h-5 rounded-full flex items-center justify-center bg-emerald-500 text-white">
+              <div style={{
+                position: 'absolute', bottom: -4, right: -4,
+                width: 20, height: 20, borderRadius: '50%',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                background: '#dc2626', color: '#fff',
+              }}>
                 <Lock size={10} strokeWidth={2.5} />
               </div>
             </div>
 
-            <div className="flex-1 min-w-0">
-              {/* label above — same pattern as tx.subscriptionLabel in Plans.tsx */}
-              <p className="text-[10px] uppercase tracking-[0.2em] text-emerald-500 font-semibold mb-0.5">
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <p style={{ fontSize: 10, textTransform: 'uppercase', letterSpacing: '0.18em', color: '#ef4444', fontWeight: 700, margin: '0 0 2px' }}>
                 {lang === 'ka' ? 'სააბონენტო' : 'Subscription'}
               </p>
-              <p className={`text-base font-bold truncate ${t.text}`}>{channel.name}</p>
-              <p className={`text-xs ${t.textMuted} mt-0.5`}>
+              <p style={{ fontSize: 15, fontWeight: 700, color: '#f3f4f6', margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                {channel.name}
+              </p>
+              <p style={{ fontSize: 12, color: '#6b7280', margin: '2px 0 0' }}>
                 {loading
                   ? (lang === 'ka' ? 'იტვირთება...' : 'Loading plans…')
                   : plans.length > 0
@@ -331,27 +371,38 @@ const PlansModal = ({
 
             <button
               onClick={handleClose}
-              className={`w-9 h-9 rounded-xl flex items-center justify-center transition-all duration-150 cursor-pointer shrink-0 ${t.closeBtn}`}
+              style={{
+                width: 36, height: 36, borderRadius: 10, flexShrink: 0,
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                background: 'rgba(255,255,255,0.05)',
+                border: '1px solid rgba(255,255,255,0.08)',
+                color: '#6b7280', cursor: 'pointer', transition: 'all 0.15s',
+              }}
             >
               <X size={15} />
             </button>
           </div>
 
           {/* ── body ── */}
-          <div className="overflow-y-auto px-7 py-7 flex-1">
+          <div style={{ overflowY: 'auto', padding: '28px', flex: 1 }}>
 
-            {/* loading skeletons — same skeleton style as Plans.tsx */}
+            {/* loading skeletons */}
             {loading && (
-              <div className="grid grid-cols-2 xl:grid-cols-4 gap-5">
+              <div className="grid grid-cols-2 xl:grid-cols-4 gap-4">
                 {[1, 2, 3, 4].map(i => (
-                  <div key={i} className={`rounded-2xl p-5 animate-pulse ${isDark ? 'border border-white/10 bg-white/5' : 'bg-slate-100'}`}>
-                    <div className={`h-4 w-1/2 rounded mb-3 ${isDark ? 'bg-white/10' : 'bg-slate-200'}`} />
-                    <div className={`h-8 w-1/3 rounded mb-5 ${isDark ? 'bg-white/10' : 'bg-slate-200'}`} />
-                    <div className="space-y-2 mb-6">
-                      <div className={`h-3 rounded w-full ${isDark ? 'bg-white/10' : 'bg-slate-200'}`} />
-                      <div className={`h-3 rounded w-4/5 ${isDark ? 'bg-white/10' : 'bg-slate-200'}`} />
+                  <div key={i} style={{
+                    borderRadius: 16, padding: 20,
+                    border: '1px solid rgba(255,255,255,0.07)',
+                    background: 'rgba(255,255,255,0.03)',
+                    animation: 'pulse 1.5s infinite',
+                  }}>
+                    <div style={{ height: 14, width: '50%', borderRadius: 6, background: 'rgba(255,255,255,0.08)', marginBottom: 12 }} />
+                    <div style={{ height: 28, width: '35%', borderRadius: 6, background: 'rgba(255,255,255,0.08)', marginBottom: 20 }} />
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 24 }}>
+                      <div style={{ height: 10, borderRadius: 4, background: 'rgba(255,255,255,0.08)' }} />
+                      <div style={{ height: 10, width: '80%', borderRadius: 4, background: 'rgba(255,255,255,0.08)' }} />
                     </div>
-                    <div className={`h-10 rounded-xl ${isDark ? 'bg-white/10' : 'bg-slate-200'}`} />
+                    <div style={{ height: 38, borderRadius: 10, background: 'rgba(255,255,255,0.08)' }} />
                   </div>
                 ))}
               </div>
@@ -359,22 +410,31 @@ const PlansModal = ({
 
             {/* error */}
             {!loading && error && (
-              <div className={`flex items-center gap-3 px-5 py-4 rounded-2xl border ${t.errorBg}`}>
-                <AlertCircle size={17} className={`${t.errorText} shrink-0`} />
-                <p className={`text-sm ${t.errorText}`}>{error}</p>
+              <div style={{
+                display: 'flex', alignItems: 'center', gap: 12,
+                padding: '14px 18px', borderRadius: 12,
+                background: 'rgba(220,38,38,0.08)',
+                border: '1px solid rgba(220,38,38,0.2)',
+              }}>
+                <AlertCircle size={17} style={{ color: '#f87171', flexShrink: 0 }} />
+                <p style={{ fontSize: 13, color: '#f87171', margin: 0 }}>{error}</p>
               </div>
             )}
 
             {/* empty */}
             {!loading && !error && plans.length === 0 && (
-              <div className="flex flex-col items-center justify-center py-16 gap-3 text-center">
-                <div className={`w-12 h-12 rounded-2xl flex items-center justify-center mb-1 border ${t.emptyIconBg}`}>
-                  <CalendarDays size={20} className="text-emerald-500" />
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '64px 0', gap: 12, textAlign: 'center' }}>
+                <div style={{
+                  width: 48, height: 48, borderRadius: 14, marginBottom: 4,
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  background: 'rgba(220,38,38,0.08)', border: '1px solid rgba(220,38,38,0.2)',
+                }}>
+                  <CalendarDays size={20} style={{ color: '#ef4444' }} />
                 </div>
-                <p className={`text-sm font-semibold ${t.textMuted}`}>
+                <p style={{ fontSize: 13, fontWeight: 600, color: '#9ca3af', margin: 0 }}>
                   {lang === 'ka' ? 'პაკეტები არ არის' : 'No plans available'}
                 </p>
-                <p className={`text-xs ${isDark ? 'text-gray-600' : 'text-slate-400'}`}>
+                <p style={{ fontSize: 12, color: '#4b5563', margin: 0 }}>
                   {lang === 'ka' ? 'ამ არხს პაკეტები ჯერ არ აქვს.' : 'This channel has no assigned plans yet.'}
                 </p>
               </div>
