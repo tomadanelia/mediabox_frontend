@@ -298,8 +298,6 @@ const Home: React.FC = () => {
       {uncategorised.length > 0 && <ChannelScroller channels={uncategorised} />}
 
       <style>{`
-        /* Hide the built-in header inside each ChannelScroller we've wrapped,
-           since we render our own styled header above each one */
         .cat-scroller-no-header > section > div:first-child {
           display: none;
         }

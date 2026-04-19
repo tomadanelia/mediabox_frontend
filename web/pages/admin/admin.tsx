@@ -7,6 +7,7 @@ import useAuthStore from "../../src/store/AuthStore";
 import AdminRadioSection from "./AdminRadioSection";
 import AdminDiscountsSection from "./AdminDiscountSection";
 import AdminNotificationsSection from "./AdminNotificationSection";
+import { useNavigate } from "react-router-dom";
 type AdminSection = "Overview" | "Users" | "Category-Channels" | "Categories" | "Plans" | "Plan-Channels" |"Channels"|"Radios"|"Discounts"|"Notifications"| "Support" | "Settings";
 const adminSectionLabels: Record<AdminSection, string> = {
   "Overview": "მთავარი",
@@ -214,8 +215,7 @@ function PlanMenu({
 ════════════════════════════════════════════════ */
 export default function AdminDashboard() {
   const { user, isLoading, isAuthenticated } = useAuthStore();
-
-
+  const navigate = useNavigate();
   const [section, setSection] = useState<AdminSection>("Overview");
 
   /* ── Channel state ── */
@@ -705,7 +705,12 @@ useEffect(() => {
     }
     return pages;
   })();
-  
+  useEffect(() => {
+    if (!isLoading && (!isAuthenticated || !user || user.role !== "admin")) {
+      navigate("/", { replace: true });
+    }
+  }, [isLoading, isAuthenticated, user, navigate]);
+
   if (isLoading) {
     return (
       <div className="flex h-screen items-center justify-center bg-zinc-950">
@@ -718,7 +723,6 @@ useEffect(() => {
   }
 
   if (!isAuthenticated || !user || user.role !== "admin") {
-    window.location.href = "/";
     return null;
   }
 
@@ -1324,7 +1328,7 @@ useEffect(() => {
                     <thead className="bg-zinc-800/50 text-[0.6rem] uppercase tracking-widest text-zinc-500">
                       <tr>
                         <th className="p-4">მომხმარებელი</th>
-                        <th className="p-4">ელ-ფოსტა</th>
+                        <th className="p-4">ელ-ფოსტა / ტელეფონი</th>
                         <th className="p-4">როლი</th>
                         <th className="p-4">პაკეტი</th>
                         <th className="p-4">სტატუსი</th>
@@ -1366,7 +1370,18 @@ const isActive =
                             </td>
 
                             {/* Email */}
-                            <td className="p-4 text-zinc-400 text-xs truncate max-w-45">{u.email}</td>
+                            <td className="p-4 text-zinc-400 text-xs truncate max-w-45">
+  {u.email ? (
+    <span>{u.email}</span>
+  ) : u.phone ? (
+    <div className="flex flex-col gap-0.5">
+      <span className="text-[0.55rem] text-zinc-600 uppercase tracking-widest">ტელეფონი</span>
+      <span>{u.phone}</span>
+    </div>
+  ) : (
+    <span className="text-zinc-700">—</span>
+  )}
+</td>
 
                             {/* Role */}
                             <td className="p-4">

@@ -191,7 +191,7 @@ export const ChannelCard: React.FC<{ channel: Channel; index: number }> = ({ cha
       onClick={() => {
         if (!isLocked) setSelectedChannelId(channel.id);
       }}
-      to={isLocked ? "/packets" : `/TV`}
+      to={isLocked ? "/packets" : `/TV/${channel.id}`}
       className={`group relative w-80 shrink-0 overflow-hidden rounded-xl border shadow-lg  ease-in-out transition-all duration-500
   ${isLocked
     ? "border-white/10 cursor-pointer"
