@@ -80,7 +80,7 @@ const App: React.FC = () => {
       <div className="page-content h-[calc(100vh-64px)] flex-1 min-h-0 overflow-y-auto relative bg-background">
         <Routes>
           <Route path="/" element={<Home />} />
-          <Route path="/TV" element={<Stream />} />
+          <Route path="/TV/:channelId?" element={<Stream />} />
           <Route path="/packets" element={<Plans />} />
           <Route path="/profile" element={<UserProfile />} />
           <Route path="/admin" element={<AdminDashboard />} />

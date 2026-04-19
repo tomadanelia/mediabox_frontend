@@ -1,6 +1,7 @@
 'use client'
 
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
+
 import { API_BASE_URL } from '@/config';
 import VideoPlayer from '@/hmcomponents/videoplayer';
 import DataTableDemo from '@/components/shadcn-studio/data-table/data-table-11';
@@ -30,7 +31,7 @@ import {
   subscribeFavourites,
 } from '../../src/services/favouritesService';
 import { useIsMobile } from '@/hooks/useIsMobile';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 
 export type Channel = {
   id: string;
@@ -382,8 +383,8 @@ export const Stream: React.FC = () => {
 
   const [portraitTab, setPortraitTab] = useState<PortraitTab>('channels');
 
-  const navigate = useNavigate();
-
+const navigate = useNavigate();
+const { channelId } = useParams<{ channelId?: string }>();
   type Category = {
     id: string
     name_ka: string
@@ -396,11 +397,12 @@ export const Stream: React.FC = () => {
   }
 
   const handleChannelSelect = async (channel: Channel) => {
-    const hasAccess = accessibleIds.includes(channel.id);
-    if (hasAccess) {
-      setSelectedChannel(channel);
-      return;
-    }
+  const hasAccess = accessibleIds.includes(channel.id);
+  if (hasAccess) {
+    setSelectedChannel(channel);
+    navigate(`/TV/${channel.id}`, { replace: true });
+    return;
+  }
     try {
       const res = await api.get(`/api/channels/${channel.id}/plans`);
       const data = res.data;
@@ -504,11 +506,15 @@ export const Stream: React.FC = () => {
         setChannels(normalized);
         setAccessibleIds(data.accessible_external_ids || []);
 
-        const firstAccessible = normalized.find((ch: Channel) =>
-          data.accessible_external_ids.includes(ch.id)
-        ) ?? normalized[0];
+        const fromUrl = channelId
+  ? normalized.find(ch => ch.id === channelId) ?? null
+  : null;
 
-        if (firstAccessible) setSelectedChannel(firstAccessible);
+const firstAccessible = normalized.find((ch: Channel) =>
+  data.accessible_external_ids.includes(ch.id)
+) ?? normalized[0];
+
+setSelectedChannel(fromUrl ?? firstAccessible ?? null);
       } catch (e) {
         console.error('[fetchChannels]', e);
       }
