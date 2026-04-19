@@ -256,10 +256,10 @@ const ChannelScheduleCL = ({
             'flex items-center gap-3 px-4 py-2.5 transition-all duration-150 border-l-2',
             clickable ? 'cursor-pointer' : 'cursor-default',
             isCurrent
-              ? 'bg-gradient-to-r from-orange-50 to-yellow-50/60 dark:from-[#d52b1e1a] dark:to-black/5 border-l-[#d52b1e]'
+              ? 'bg-linear-to-r from-orange-50 to-yellow-50/60 dark:from-[#d52b1e1a] dark:to-black/5 border-l-[#d52b1e]'
               : isPast
-              ? 'border-l-transparent opacity-50 hover:opacity-80 hover:bg-black/3 dark:hover:bg-white/4'
-              : 'border-l-transparent opacity-40',
+              ? 'border-l-transparent hover:bg-black/3 dark:hover:bg-white/4'
+              : 'border-l-transparent opacity-30',
           )}
         >
           <span className={cn(
