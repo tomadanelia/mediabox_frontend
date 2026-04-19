@@ -111,12 +111,13 @@ const handleSubmit = async (e: React.FormEvent) => {
   setLoading(true);
   try {
     await api.get('/sanctum/csrf-cookie');
-    const res = await api.post('/api/auth/login', form);
+    const res = await api.post('/api/auth/login', {
+        ...form,
+        remember: remember,
+    });
     
     localStorage.setItem('pending_login', form.login);
-    setTimeout(() => {
       window.location.href = '/authentication/login-verify';
-    }, 1000);
   } catch (err: any) {
 if (err.response?.status === 403 && err.response?.data?.message === 'Account not verified.') {
       localStorage.setItem('pending_login', form.login);

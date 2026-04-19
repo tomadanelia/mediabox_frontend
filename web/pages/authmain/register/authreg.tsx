@@ -80,7 +80,6 @@ const translations = {
     email:"ელ-ფოსტა",
     phone: "მობილური",
     forgot: "დაგავიწყდა პაროლი?",
-    remember: "დამიმახსოვრე",
     already_account:"უკვე გაქვთ ანგარიში?",
     register: "რეგისტრაცია",
     username: "მომხმარებლის სახელი",
@@ -98,9 +97,8 @@ const AuthReg: React.FC = () => {
     password_confirmation: '',
   })
   const [loading, setLoading] = useState(false)
-  const setRemember = useAuthStore(state => state.setRemember);
-  const remember = useAuthStore(state => state.remember);
   const language = useUIStore((state) => state.language);
+  const [termsAccepted, setTermsAccepted] = useState(false);
   const tx= translations[language];
   const handleChange = (name: string, value: string) =>
     setForm(prev => ({ ...prev, [name]: value }))
@@ -220,8 +218,20 @@ if (data.code) {
 
           {/* Terms */}
           <div className="flex items-center gap-2 pt-1">
-            <input className="mt-1 cursor-pointer" type='checkbox' checked={remember} onChange={e => setRemember(e.target.checked)} />
-            <span className="text-sm text-muted-foreground">{tx.remember}</span>
+            {/* Terms */}
+<div className="flex items-center gap-2 pt-1">
+  <input 
+    className="mt-1 cursor-pointer" 
+    type='checkbox' 
+    checked={termsAccepted} 
+    onChange={e => setTermsAccepted(e.target.checked)} 
+  />
+  <span className="text-sm text-muted-foreground">
+    <a href="#" className="text-sm text-form-highlights hover:text-button-hover transition-colors whitespace-nowrap">
+      გაეცანი წესებსა და პირობებს
+    </a>
+  </span>
+</div>
             <span className="text-muted-foreground">
              <a href="#" className="text-sm text-form-highlights hover:text-button-hover transition-colors whitespace-nowrap">
       გაეცანი წესებსა და პირობებს
