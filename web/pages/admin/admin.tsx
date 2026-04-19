@@ -3,6 +3,7 @@ import AdminUsersExtended from "./AdminUsersExtended";
 import AdminChannelsSection from "./AdminChannelsSection";
 import TvPriceSettings from "./TvPriceSettings";
 import api from "../../src/lib/axios";
+import type { Channel } from "../../src/types/channel";
 import useAuthStore from "../../src/store/AuthStore"; 
 import AdminRadioSection from "./AdminRadioSection";
 import AdminDiscountsSection from "./AdminDiscountSection";
@@ -25,10 +26,7 @@ const adminSectionLabels: Record<AdminSection, string> = {
 };
 
 
-type Channel = {
-  id: string; uuid: string; name: string;
-  logo: string; number: number; url: string; category: any[];
-};
+
 
 interface Category {
   id: string; name_en: string; name_ka: string;
@@ -798,7 +796,7 @@ useEffect(() => {
           {section === "Overview" && (() => {
             const activePlans   = plans.filter(p => Boolean(p.is_active));
             const inactivePlans = plans.filter(p => !Boolean(p.is_active));
-            const uncategorized = channels.filter(c => !c.category || (Array.isArray(c.category) ? c.category.length === 0 : !c.category));
+            const uncategorized = channels.filter(c => !c.category_id );
             const isLoading     = channelsLoading || catsLoading || plansLoading || usersLoading;
 
             const stats = [
@@ -1042,7 +1040,7 @@ useEffect(() => {
       </td>
       <td className="p-4 font-mono text-[0.65rem] text-zinc-500">{c.uuid}</td>
       <td className="p-4">
-        <span className="inline-block bg-violet-600/20 text-violet-300 px-2 py-1 rounded-md text-xs font-medium">{c.category}</span>
+        <span className="inline-block bg-violet-600/20 text-violet-300 px-2 py-1 rounded-md text-xs font-medium">{c.category_ka}</span>
       </td>
     </tr>
   ))}
@@ -1264,7 +1262,7 @@ useEffect(() => {
       </td>
       <td className="p-4 font-mono text-[0.65rem] text-zinc-500">{c.uuid}</td>
       <td className="p-4">
-        <span className="inline-block bg-violet-600/20 text-violet-300 px-2 py-1 rounded-md text-xs font-medium">{c.category}</span>
+        <span className="inline-block bg-violet-600/20 text-violet-300 px-2 py-1 rounded-md text-xs font-medium">{c.category_ka}</span>
       </td>
     </tr>
   ))}

@@ -7,5 +7,6 @@ export type Channel = {
   category_en?: string,
   category_ka?: string,
   category_id?: string,
-  is_free: string,
+  is_free: boolean,
+  is_active?: boolean,
 }

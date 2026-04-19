@@ -1,16 +1,7 @@
 
 import { useState, useRef, useEffect } from "react";
 import api from "../../src/lib/axios";
-
-type Channel = {
-  id: string;
-  uuid: string;
-  name: string;
-  logo: string;
-  number: number;
-  url: string;
-  category: any[];
-};
+import type { Channel } from "../../src/types/channel";
 
 const Spinner = () => (
   <svg className="animate-spin shrink-0" width="13" height="13" viewBox="0 0 14 14" fill="none">
@@ -37,6 +28,8 @@ function ChannelUrlPanel({ channel }: { channel: Channel }) {
   const [liveInput, setLiveInput]     = useState("");
   const [archiveInput, setArchiveInput] = useState("");
   const [archiveHours, setArchiveHours] = useState("168");
+  const [liveUrlType, setLiveUrlType] = useState("1");
+  const [archiveUrlType, setArchiveUrlType] = useState("1");
   const [busy, setBusy] = useState<string | null>(null);
 
   const load = async () => {
@@ -49,26 +42,31 @@ function ChannelUrlPanel({ channel }: { channel: Channel }) {
 
   useEffect(() => { load(); }, [channel.id]);
 
+
   const addLive = async () => {
-    if (!liveInput.trim()) return;
-    setBusy("live");
-    try {
-      await api.post(`/api/admin/channels/${channel.id}/urls`, { channel_url: liveInput.trim() });
-      setLiveInput(""); load();
-    } finally { setBusy(null); }
-  };
+  if (!liveInput.trim()) return;
+  setBusy("live");
+  try {
+    await api.post(`/api/admin/channels/${channel.id}/urls`, {
+      channel_url: liveInput.trim(),
+      url_type: parseInt(liveUrlType) || 1,
+    });
+    setLiveInput(""); load();
+  } finally { setBusy(null); }
+};
 
   const addArchive = async () => {
-    if (!archiveInput.trim()) return;
-    setBusy("archive");
-    try {
-      await api.post(`/api/admin/channels/${channel.id}/archive-urls`, {
-        channel_url: archiveInput.trim(),
-        archive_length: parseInt(archiveHours) || 168,
-      });
-      setArchiveInput(""); load();
-    } finally { setBusy(null); }
-  };
+  if (!archiveInput.trim()) return;
+  setBusy("archive");
+  try {
+    await api.post(`/api/admin/channels/${channel.id}/archive-urls`, {
+      channel_url: archiveInput.trim(),
+      archive_length: parseInt(archiveHours) || 168,
+      url_type: parseInt(archiveUrlType) || 1,
+    });
+    setArchiveInput(""); load();
+  } finally { setBusy(null); }
+};
 
   const delLive = async (id: number) => {
     await api.delete(`/api/admin/channels/${channel.id}/urls/${id}`);
@@ -110,21 +108,29 @@ function ChannelUrlPanel({ channel }: { channel: Channel }) {
           </div>
         ))}
         <div className="flex gap-2 pt-1">
-          <input
-            value={liveInput}
-            onChange={e => setLiveInput(e.target.value)}
-            onKeyDown={e => e.key === "Enter" && addLive()}
-            placeholder="ლაივ-სტრიმ url…"
-            className="flex-1 min-w-0 bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-1.5 text-xs font-mono focus:outline-none focus:border-zinc-500 transition-colors"
-          />
-          <button
-            onClick={addLive}
-            disabled={busy === "live" || !liveInput.trim()}
-            className="cursor-pointer flex items-center gap-1.5 bg-violet-600/20 border border-violet-500/30 hover:bg-violet-600/30 disabled:opacity-40 disabled:cursor-not-allowed text-violet-300 text-xs px-3 py-1.5 rounded-lg transition-colors"
-          >
-            {busy === "live" ? <Spinner /> : "+ დამატება"}
-          </button>
-        </div>
+  <input
+    value={liveInput}
+    onChange={e => setLiveInput(e.target.value)}
+    onKeyDown={e => e.key === "Enter" && addLive()}
+    placeholder="ლაივ-სტრიმ url…"
+    className="flex-1 min-w-0 bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-1.5 text-xs font-mono focus:outline-none focus:border-zinc-500 transition-colors"
+  />
+  <input
+    type="number"
+    value={liveUrlType}
+    onChange={e => setLiveUrlType(e.target.value)}
+    placeholder="type"
+    min="1"
+    className="w-14 bg-zinc-800 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-center focus:outline-none focus:border-zinc-500 transition-colors"
+  />
+  <button
+    onClick={addLive}
+    disabled={busy === "live" || !liveInput.trim()}
+    className="cursor-pointer flex items-center gap-1.5 bg-violet-600/20 border border-violet-500/30 hover:bg-violet-600/30 disabled:opacity-40 disabled:cursor-not-allowed text-violet-300 text-xs px-3 py-1.5 rounded-lg transition-colors"
+  >
+    {busy === "live" ? <Spinner /> : "+ დამატება"}
+  </button>
+</div>
       </div>
 
       {/* Archive URLs */}
@@ -162,6 +168,14 @@ function ChannelUrlPanel({ channel }: { channel: Channel }) {
             placeholder="168h"
             className="w-14 bg-zinc-800 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-center focus:outline-none focus:border-zinc-500 transition-colors"
           />
+          <input
+            type="number"
+            value={archiveUrlType}
+            onChange={e => setArchiveUrlType(e.target.value)}
+            placeholder="type"
+            min="1"
+            className="w-14 bg-zinc-800 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-center focus:outline-none focus:border-zinc-500 transition-colors"
+          />
           <button
             onClick={addArchive}
             disabled={busy === "archive" || !archiveInput.trim()}
@@ -185,20 +199,21 @@ function EditChannelModal({
   onSaved: () => void;
 }) {
   const [form, setForm] = useState({
-    name_en: channel.name ?? "",
-    name_ka: "",
+    name: channel.name ?? "",
     icon_url: channel.logo ?? "",
   });
+  const [isActive, setIsActive] = useState(channel.is_active ?? true);
   const [saving, setSaving] = useState(false);
   const [err, setErr] = useState<string | null>(null);
   const [ok, setOk] = useState(false);
+
+  
 
   const handle = async () => {
     setSaving(true); setErr(null); setOk(false);
     try {
       const payload: Record<string, string> = {};
-      if (form.name_en.trim())  payload.name_en  = form.name_en.trim();
-      if (form.name_ka.trim())  payload.name_ka  = form.name_ka.trim();
+      if (form.name.trim())     payload.name     = form.name.trim();
       if (form.icon_url.trim()) payload.icon_url = form.icon_url.trim();
 
       await api.put(`/api/admin/channels/${channel.uuid}`, payload);
@@ -209,7 +224,6 @@ function EditChannelModal({
     } finally { setSaving(false); }
   };
 
-  // close on backdrop click
   const backdropRef = useRef<HTMLDivElement>(null);
 
   return (
@@ -241,24 +255,13 @@ function EditChannelModal({
         <div className="p-5 space-y-3">
           <div>
             <label className="text-[0.65rem] text-zinc-500 uppercase tracking-widest block mb-1.5">
-              სახელი (EN)
+              სახელი
             </label>
             <input
               className="w-full bg-zinc-800 border border-zinc-700 p-2.5 rounded-xl text-sm focus:outline-none focus:border-zinc-500 transition-colors"
-              value={form.name_en}
-              onChange={e => setForm({ ...form, name_en: e.target.value })}
-              placeholder="Channel name in English"
-            />
-          </div>
-          <div>
-            <label className="text-[0.65rem] text-zinc-500 uppercase tracking-widest block mb-1.5">
-              სახელი (KA)
-            </label>
-            <input
-              className="w-full bg-zinc-800 border border-zinc-700 p-2.5 rounded-xl text-sm focus:outline-none focus:border-zinc-500 transition-colors"
-              value={form.name_ka}
-              onChange={e => setForm({ ...form, name_ka: e.target.value })}
-              placeholder="არხის სახელი ქართულად"
+              value={form.name}
+              onChange={e => setForm({ ...form, name: e.target.value })}
+              placeholder="Channel name"
             />
           </div>
           <div>
@@ -280,7 +283,6 @@ function EditChannelModal({
               </div>
             </div>
           </div>
-
           {err && <p className="text-xs text-red-400">{err}</p>}
         </div>
 
@@ -294,7 +296,7 @@ function EditChannelModal({
           </button>
           <button
             onClick={handle}
-            disabled={saving || (!form.name_en.trim() && !form.name_ka.trim() && !form.icon_url.trim())}
+            disabled={saving || (!form.name.trim() && !form.icon_url.trim())}
             className="cursor-pointer px-5 py-2 rounded-xl text-xs bg-violet-600 hover:bg-violet-500 disabled:opacity-40 disabled:cursor-not-allowed text-white font-medium transition-colors flex items-center gap-2"
           >
             {saving ? <><Spinner />შენახვა…</> : ok ? <><IconCheck />შენახულია!</> : <><IconCheck />შენახვა</>}
@@ -404,6 +406,7 @@ const doSync = async () => {
                 <th className="p-4">არხი</th>
                 <th className="p-4">UUID</th>
                 <th className="p-4">კატეგორია</th>
+                <th className="p-4">სტატუსი</th>
                 <th className="p-4 w-16"></th>
               </tr>
             </thead>
@@ -436,15 +439,21 @@ const doSync = async () => {
           </div>
         </td>
         <td className="p-4 font-mono text-[0.65rem] text-zinc-500">{c.uuid}</td>
-        <td className="p-4">
-          {c.category && (Array.isArray(c.category) ? c.category.length > 0 : c.category) ? (
-            <span className="inline-block bg-violet-600/20 text-violet-300 px-2 py-1 rounded-md text-xs font-medium">
-              {Array.isArray(c.category) ? c.category.join(", ") : c.category}
-            </span>
-          ) : (
-            <span className="text-[0.65rem] text-zinc-700">—</span>
-          )}
-        </td>
+<td className="p-4" onClick={e => e.stopPropagation()}>
+  <div
+    onClick={async () => {
+      try {
+        await api.patch(`/api/admin/channels/${c.uuid}/toggle-active`);
+        fetchChannels();
+      } catch (e: any) {
+        console.error(e);
+      }
+    }}
+    className={`relative w-9 h-5 rounded-full transition-colors cursor-pointer ${c.is_active !== false ? "bg-emerald-500" : "bg-zinc-700"}`}
+  >
+    <span className={`absolute top-0.5 w-4 h-4 rounded-full bg-white shadow transition-transform ${c.is_active !== false ? "translate-x-4" : "translate-x-0.5"}`} />
+  </div>
+</td>
          <td className="p-4">
           <button
             onClick={e => { e.stopPropagation(); setEditTarget(c); }}
