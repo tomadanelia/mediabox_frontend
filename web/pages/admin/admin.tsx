@@ -1327,7 +1327,9 @@ useEffect(() => {
                   <table className="w-full text-left">
                     <thead className="bg-zinc-800/50 text-[0.6rem] uppercase tracking-widest text-zinc-500">
                       <tr>
-                        <th className="p-4">მომხმარებელი</th>
+                        <th className="p-4">აიდი</th>
+                        <th className="p-4">სახელი და გვარი</th>
+                        <th className="p-4">იუზერნეიმი</th>
                         <th className="p-4">ელ-ფოსტა / ტელეფონი</th>
                         <th className="p-4">როლი</th>
                         <th className="p-4">პაკეტი</th>
@@ -1347,26 +1349,14 @@ const isActive =
                         return (
                           <tr key={u.id} className="border-t border-zinc-800 hover:bg-zinc-800/30 transition-colors">
                             {/* User */}
-                            <td className="p-4">
-                              <div className="flex items-center gap-3">
-                                {u.avatar_url ? (
-                                  <img
-                                    src={u.avatar_url}
-                                    className="w-8 h-8 rounded-full bg-zinc-800 object-cover shrink-0"
-                                    onError={e => (e.currentTarget.style.display = "none")}
-                                  />
-                                ) : (
-                                  <div className="w-8 h-8 rounded-full bg-zinc-700 flex items-center justify-center shrink-0 text-zinc-400 text-xs font-semibold select-none">
-                                    {(u.username ?? u.full_name ?? "?")[0].toUpperCase()}
-                                  </div>
-                                )}
-                                <div className="min-w-0">
-                                  <p className="text-zinc-200 font-medium truncate leading-tight">{u.full_name ?? u.username}</p>
-                                  {u.full_name && u.username && (
-                                    <p className="text-[0.6rem] text-zinc-600 truncate mt-0.5">{u.username}</p>
-                                  )}
-                                </div>
-                              </div>
+                            <td className="p-4 font-mono text-xs text-zinc-400">
+                            {u.numeric_id ?? "—"}
+                            </td>
+                            <td className="p-4 text-zinc-200 text-xs">
+                              {u.full_name ?? <span className="text-zinc-700">—</span>}
+                            </td>
+                            <td className="p-4 text-zinc-400 text-xs">
+                              {u.username ?? <span className="text-zinc-700">—</span>}
                             </td>
 
                             {/* Email */}
