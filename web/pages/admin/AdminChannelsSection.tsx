@@ -98,6 +98,8 @@ function ChannelUrlPanel({ channel }: { channel: Channel }) {
         {data?.live_urls.map((u) => (
           <div key={u.id} className="flex items-center gap-2 bg-zinc-800/60 border border-zinc-700/50 rounded-lg px-3 py-2">
             <span className="font-mono text-[0.6rem] text-zinc-400 flex-1 truncate">{u.channel_url}</span>
+                <span className="text-[0.6rem] bg-zinc-700/60 text-zinc-400 border border-zinc-600/30 px-1.5 py-0.5 rounded">ტიპი: {u.url_type}</span>
+
             {u.priority > 0 && (
               <span className="text-[0.6rem] bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 px-1.5 py-0.5 rounded">p{u.priority}</span>
             )}
@@ -116,11 +118,10 @@ function ChannelUrlPanel({ channel }: { channel: Channel }) {
     className="flex-1 min-w-0 bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-1.5 text-xs font-mono focus:outline-none focus:border-zinc-500 transition-colors"
   />
   <input
-    type="number"
+    type="text"
     value={liveUrlType}
     onChange={e => setLiveUrlType(e.target.value)}
-    placeholder="type"
-    min="1"
+    placeholder="ტიპი"
     className="w-14 bg-zinc-800 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-center focus:outline-none focus:border-zinc-500 transition-colors"
   />
   <button
@@ -145,6 +146,7 @@ function ChannelUrlPanel({ channel }: { channel: Channel }) {
         {data?.archive_urls.map((u) => (
           <div key={u.id} className="flex items-center gap-2 bg-zinc-800/60 border border-zinc-700/50 rounded-lg px-3 py-2">
             <span className="font-mono text-[0.6rem] text-zinc-400 flex-1 truncate">{u.channel_url}</span>
+            <span className="text-[0.6rem] bg-zinc-700/60 text-zinc-400 border border-zinc-600/30 px-1.5 py-0.5 rounded">ტიპი: {u.url_type}</span>
             {u.archive_length && (
               <span className="text-[0.6rem] bg-blue-500/10 text-blue-400 border border-blue-500/20 px-1.5 py-0.5 rounded">{u.archive_length}h</span>
             )}
@@ -169,11 +171,10 @@ function ChannelUrlPanel({ channel }: { channel: Channel }) {
             className="w-14 bg-zinc-800 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-center focus:outline-none focus:border-zinc-500 transition-colors"
           />
           <input
-            type="number"
+            type="text"
             value={archiveUrlType}
             onChange={e => setArchiveUrlType(e.target.value)}
-            placeholder="type"
-            min="1"
+            placeholder="ტიპი"
             className="w-14 bg-zinc-800 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-center focus:outline-none focus:border-zinc-500 transition-colors"
           />
           <button
