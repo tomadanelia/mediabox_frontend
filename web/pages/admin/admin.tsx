@@ -571,7 +571,9 @@ const handleDeletePlan = async () => {
     try {
       const res = await api.get(`/api/plans/${plan.id}/channels`);
       const data =res.data;
-      setPlanChannelList(Array.isArray(data) ? data : data.channels ?? data.data ?? []);
+      const list = Array.isArray(data) ? data : data.channels ?? data.data ?? [];
+      setPlanChannelList(list.sort((a: any, b: any) => (a.number ?? 0) - (b.number ?? 0)));
+
     } catch (e) { setPlanChannelList([]); }
   };
 
@@ -607,7 +609,8 @@ const handleDeletePlan = async () => {
         setSelectedPlanChannelUuids([]);
         const r2 = await api.get(`/api/plans/${activePlan.id}/channels`);
         const d2 = r2.data;
-        setPlanChannelList(Array.isArray(d2) ? d2 : d2.channels ?? d2.data ?? []);
+        const list2 = Array.isArray(d2) ? d2 : d2.channels ?? d2.data ?? [];
+        setPlanChannelList(list2.sort((a: any, b: any) => (a.number ?? 0) - (b.number ?? 0)));
     } catch (e) { console.error(e); }
     finally { setDeletingPlanChannels(false); }
   };
