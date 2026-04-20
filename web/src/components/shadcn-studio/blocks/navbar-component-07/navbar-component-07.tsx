@@ -35,7 +35,7 @@ const T: Record<Language, Translation> = {
     live: "პირდაპირი",
     navLinks: [
       { to: "/",        label: "მთავარი"   },
-      { to: "/TV",      label: "ტელევიზია" },
+      { to: "/tv",      label: "ტელევიზია" },
       { to: "/packets", label: "პაკეტები"  },
       { to: "/radio",   label: "რადიო"     },
       { to: "/remote",  label: "პულტი"     },
@@ -49,7 +49,7 @@ const T: Record<Language, Translation> = {
     live: "Go Live",
     navLinks: [
       { to: "/",        label: "Home"   },
-      { to: "/TV",      label: "TV"     },
+      { to: "/tv",      label: "TV"     },
       { to: "/packets", label: "Plans"  },
       { to: "/radio",   label: "Radio"  },
       { to: "/remote",  label: "Remote" },
@@ -553,7 +553,7 @@ const Navbar = () => {
             {/* go live — desktop only */}
 
            <Link
-          to="/TV"
+          to="/tv"
           className="hidden xl:inline-flex items-center justify-center gap-1.5 rounded-full bg-[#d52b1e] hover:bg-[#b03830] px-3 py-1.5 text-sm font-semibold text-white shadow-md shadow-[#d52b1e40] transition-colors whitespace-nowrap w-[140px] shrink-0">
           <Icon name="play_circle" size={17} fill={1} className="text-white shrink-0" />
           <span className="truncate">{tx.live}</span>

@@ -400,7 +400,7 @@ const { channelId } = useParams<{ channelId?: string }>();
   const hasAccess = accessibleIds.includes(channel.id);
   if (hasAccess) {
     setSelectedChannel(channel);
-    navigate(`/TV/${channel.id}`, { replace: true });
+    navigate(`/tv/${channel.id}`, { replace: true });
     return;
   }
     try {
