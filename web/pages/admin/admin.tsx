@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import AdminUsersExtended from "./AdminUsersExtended";
+import ReactDOM from "react-dom";
 import AdminChannelsSection from "./AdminChannelsSection";
 import TvPriceSettings from "./TvPriceSettings";
 import api from "../../src/lib/axios";
@@ -94,7 +95,112 @@ const IconChevronRight = () => (
     <path d="M5 3l4 4-4 4"/>
   </svg>
 );
+function RoleCell({ user, onRoleChange }: { user: any; onRoleChange: (userId: any, role: string) => void }) {
+  const [editing, setEditing] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [popupStyle, setPopupStyle] = useState<React.CSSProperties>({});
+  const buttonRef = useRef<HTMLButtonElement>(null);
+  const popupRef = useRef<HTMLDivElement>(null);
 
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (
+        popupRef.current && !popupRef.current.contains(e.target as Node) &&
+        buttonRef.current && !buttonRef.current.contains(e.target as Node)
+      ) {
+        setEditing(false);
+      }
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, []);
+
+  const handleOpen = () => {
+    if (!buttonRef.current) return;
+    const rect = buttonRef.current.getBoundingClientRect();
+    const spaceBelow = window.innerHeight - rect.bottom;
+    const popupHeight = 80;
+    // flip upward if not enough space below
+    if (spaceBelow < popupHeight) {
+      setPopupStyle({
+        position: "fixed",
+        bottom: window.innerHeight - rect.top + 4,
+        left: rect.left,
+        zIndex: 9999,
+      });
+    } else {
+      setPopupStyle({
+        position: "fixed",
+        top: rect.bottom + 4,
+        left: rect.left,
+        zIndex: 9999,
+      });
+    }
+    setEditing(o => !o);
+  };
+
+  const handleSet = async (role: string) => {
+    setSaving(true);
+    try {
+      await api.patch(`/api/admin/users/${user.id}/role`, { role });
+      onRoleChange(user.id, role);
+      setEditing(false);
+    } catch (e: any) {
+      alert(e.response?.data?.message || "Failed to update role");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const popup = editing ? ReactDOM.createPortal(
+    <div
+      ref={popupRef}
+      style={popupStyle}
+      className="bg-zinc-800 border border-zinc-700 rounded-xl shadow-2xl overflow-hidden py-1 w-28"
+    >
+      {saving ? (
+        <div className="flex items-center justify-center gap-2 py-3 text-zinc-500 text-xs">
+          <IconSpinner />Saving…
+        </div>
+      ) : (
+        <>
+          <button
+            onClick={() => handleSet("user")}
+            className={`cursor-pointer w-full flex items-center gap-2 px-3 py-2 text-xs transition-colors ${user.role !== "admin" ? "text-zinc-300 bg-zinc-700/50" : "text-zinc-400 hover:bg-zinc-700"}`}
+          >
+            <span className="w-1.5 h-1.5 rounded-full bg-zinc-500 shrink-0" />
+            user
+          </button>
+          <button
+            onClick={() => handleSet("admin")}
+            className={`cursor-pointer w-full flex items-center gap-2 px-3 py-2 text-xs transition-colors ${user.role === "admin" ? "text-violet-300 bg-violet-500/15" : "text-zinc-400 hover:bg-zinc-700"}`}
+          >
+            <span className="w-1.5 h-1.5 rounded-full bg-violet-400 shrink-0" />
+            admin
+          </button>
+        </>
+      )}
+    </div>,
+    document.body
+  ) : null;
+
+  return (
+    <>
+      <button ref={buttonRef} onClick={handleOpen} className="cursor-pointer">
+        {user.role === "admin" ? (
+          <span className="inline-flex items-center text-[0.6rem] font-semibold bg-violet-500/15 text-violet-300 border border-violet-500/25 px-2 py-0.5 rounded-md hover:border-violet-400/50 transition-colors">
+            ადმინი ▾
+          </span>
+        ) : (
+          <span className="inline-flex items-center text-[0.6rem] font-medium bg-zinc-800 text-zinc-500 border border-zinc-700 px-2 py-0.5 rounded-md hover:border-zinc-500 transition-colors">
+            {user.role ?? "user"} ▾
+          </span>
+        )}
+      </button>
+      {popup}
+    </>
+  );
+}
 function CategoryMenu({
   onManage, onEdit, onDelete,
 }: { onManage: () => void; onEdit: () => void; onDelete: () => void }) {
@@ -309,7 +415,9 @@ export default function AdminDashboard() {
   const [userPlans, setUserPlans] = useState<any[]>([]);
   const [userPlansLoading, setUserPlansLoading] = useState(false);
   const [revokeTargetPlanId, setRevokeTargetPlanId] = useState<string>("");
-
+  const handleRoleChange = (userId: any, newRole: string) => {
+  setUsers(prev => prev.map(u => u.id === userId ? { ...u, role: newRole } : u));
+};
   /* ══════════════════════════════════════
      SETTINGS / LOGO state
   ══════════════════════════════════════ */
@@ -1376,17 +1484,8 @@ const isActive =
 
                             {/* Role */}
                             <td className="p-4">
-                              {u.role === "admin" ? (
-                                <span className="inline-flex items-center text-[0.6rem] font-semibold bg-violet-500/15 text-violet-300 border border-violet-500/25 px-2 py-0.5 rounded-md">
-                                  ადმინი
-                                </span>
-                              ) : (
-                                <span className="inline-flex items-center text-[0.6rem] font-medium bg-zinc-800 text-zinc-500 border border-zinc-700 px-2 py-0.5 rounded-md">
-                                  {u.role ?? "user"}
-                                </span>
-                              )}
+                               <RoleCell user={u} onRoleChange={handleRoleChange} />
                             </td>
-
                             {/* Plan */}
                             <td className="p-4">
                               {planName ? (

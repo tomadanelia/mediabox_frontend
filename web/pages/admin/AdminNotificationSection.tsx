@@ -139,7 +139,7 @@ function UserSearchPanel({
     return (
       <div className="flex items-center gap-3 bg-zinc-800/60 border border-zinc-700/50 rounded-xl p-3">
         {/* Avatar */}
-        <div className="w-10 h-10 rounded-full bg-gradient-to-br from-violet-600 to-violet-800 flex items-center justify-center shrink-0 text-white text-sm font-bold select-none">
+        <div className="w-10 h-10 rounded-full bg-linear-to-br from-violet-600 to-violet-800 flex items-center justify-center shrink-0 text-white text-sm font-bold select-none">
           {(u.full_name ?? u.username ?? u.email ?? "?")[0].toUpperCase()}
         </div>
         {/* Info */}

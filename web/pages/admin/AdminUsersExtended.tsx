@@ -165,7 +165,25 @@ function UserManagePanel({
   const [adjusting, setAdjusting] = useState(false);
   const [adjustOk, setAdjustOk] = useState<string | null>(null);
   const [adjustErr, setAdjustErr] = useState<string | null>(null);
+  const [roleChanging, setRoleChanging] = useState(false);
+  const [roleOk, setRoleOk] = useState<string | null>(null);
+  const [roleErr, setRoleErr] = useState<string | null>(null);
+  const [showRoleEditor, setShowRoleEditor] = useState(false);
 
+  const doRoleChange = async (role: string) => {
+  if (!result) return;
+  setRoleChanging(true); setRoleOk(null); setRoleErr(null);
+  try {
+    await api.patch(`/api/admin/users/${result.user.id}/role`, { role });
+    await refetch();
+    setRoleOk(`როლი შეიცვალა: ${role}`);
+    setShowRoleEditor(false);
+    setTimeout(() => setRoleOk(null), 3000);
+  } catch (e: any) {
+    setRoleErr(e.response?.data?.message || "შეცდომა");
+  } finally {
+    setRoleChanging(false); }
+};
   /* grant */
   const [grantPlanId, setGrantPlanId] = useState("");
   const [grantDays, setGrantDays] = useState("30");
@@ -180,9 +198,17 @@ function UserManagePanel({
   const [revokeOk, setRevokeOk] = useState<string | null>(null);
   const [revokeErr, setRevokeErr] = useState<string | null>(null);
   const [showRevokeConfirm, setShowRevokeConfirm] = useState(false);
-
+  useEffect(() => {
+  const handler = (e: MouseEvent) => {
+    if (roleEditorRef.current && !roleEditorRef.current.contains(e.target as Node)) {
+      setShowRoleEditor(false);
+    }
+  };
+  document.addEventListener("mousedown", handler);
+  return () => document.removeEventListener("mousedown", handler);
+}, []);
   useEffect(() => { inputRef.current?.focus(); }, []);
-
+  const roleEditorRef = useRef<HTMLDivElement>(null);
   const refetch = async () => {
     if (!query.trim()) return;
     const r = await api.get(`/api/admin/users/search?q=${encodeURIComponent(query.trim())}`);
@@ -206,7 +232,7 @@ function UserManagePanel({
       setSearchErr(e.response?.data?.message || "მომხმარებელი ვერ მოიძებნა");
     } finally { setSearching(false); }
   };
-
+  
   const doAdjust = async (sign: 1 | -1) => {
     if (!result || !amount || parseFloat(amount) <= 0) return;
     const val = sign * Math.abs(parseFloat(amount));
@@ -306,48 +332,81 @@ function UserManagePanel({
 
           {/* ── User identity card ── */}
           <div className="flex items-center gap-3 bg-zinc-800/60 border border-zinc-700/50 rounded-xl p-3">
-            <div className="w-10 h-10 rounded-full bg-zinc-700 flex items-center justify-center shrink-0 text-zinc-300 text-sm font-bold select-none">
-              {(result.user.full_name ?? result.user.username ?? result.user.email ?? "?")[0].toUpperCase()}
-            </div>
-            <div className="flex-1 min-w-0">
-              <div className="flex items-center gap-2 flex-wrap">
-                <p className="text-zinc-100 font-semibold text-sm truncate">
-                  {result.user.full_name ?? result.user.username ?? "—"}
-                </p>
-                {result.user.role === "admin" && (
-                  <span className="text-[0.55rem] bg-violet-500/15 text-violet-300 border border-violet-500/25 px-1.5 py-0.5 rounded-md font-semibold">ადმინი</span>
-                )}
-                {result.meta.is_verified
-                  ? <span className="text-[0.55rem] bg-sky-500/10 text-sky-400 border border-sky-500/20 px-1.5 py-0.5 rounded-md font-medium">✓ დადასტურებული</span>
-                  : <span className="text-[0.55rem] bg-zinc-800 text-zinc-600 border border-zinc-700 px-1.5 py-0.5 rounded-md font-medium">დაუდასტურებელი</span>
-                }
+  <div className="w-10 h-10 rounded-full bg-zinc-700 flex items-center justify-center shrink-0 text-zinc-300 text-sm font-bold select-none">
+    {(result.user.full_name ?? result.user.username ?? result.user.email ?? "?")[0].toUpperCase()}
+  </div>
+  <div className="flex-1 min-w-0">
+    <div className="flex items-center gap-2 flex-wrap">
+      <p className="text-zinc-100 font-semibold text-sm truncate">
+        {result.user.full_name ?? result.user.username ?? "—"}
+      </p>
+      {result.meta.is_verified
+        ? <span className="text-[0.55rem] bg-sky-500/10 text-sky-400 border border-sky-500/20 px-1.5 py-0.5 rounded-md font-medium">✓ დადასტურებული</span>
+        : <span className="text-[0.55rem] bg-zinc-800 text-zinc-600 border border-zinc-700 px-1.5 py-0.5 rounded-md font-medium">დაუდასტურებელი</span>
+      }
+      {/* Role editor — replaces the static ადმინი badge */}
+      <div ref={roleEditorRef} className="relative">
+        <button
+          onClick={() => setShowRoleEditor(v => !v)}
+          className="cursor-pointer text-[0.55rem] border px-1.5 py-0.5 rounded-md font-medium transition-colors bg-zinc-800/60 text-zinc-400 border-zinc-700 hover:border-zinc-500"
+        >
+          ✎ {result.user.role ?? "user"}
+        </button>
+        {showRoleEditor && (
+          <div className="absolute left-0 top-6 z-30 bg-zinc-800 border border-zinc-700 rounded-xl shadow-2xl overflow-hidden py-1 w-28">
+            {roleChanging ? (
+              <div className="flex items-center justify-center gap-1.5 py-3 text-zinc-500 text-xs">
+                <Spinner />შენახვა…
               </div>
-              <p className="text-[0.65rem] text-zinc-500 truncate mt-0.5">
-                {result.user.email}
-                {result.user.numeric_id ? ` · #${result.user.numeric_id}` : ""}
-                {result.user.phone ? ` · ${result.user.phone}` : ""}
-              </p>
-              {result.user.created_at && (
-                <p className="text-[0.58rem] text-zinc-700 mt-0.5">
-                  რეგისტრაცია: {new Date(result.user.created_at).toLocaleDateString("ka-GE")}
-                </p>
-              )}
-            </div>
-            {/* Balance */}
-            {result.account && (
-              <div className="text-right shrink-0">
-                <p className="text-lg font-bold text-emerald-400 leading-none">
-                  {parseFloat(result.account.balance).toFixed(2)} ₾
-                </p>
-                <p className="text-[0.6rem] mt-0.5">
-                  {result.account.status === "active"
-                    ? <span className="text-emerald-500">● აქტიური</span>
-                    : <span className="text-zinc-600">● {result.account.status ?? "—"}</span>
-                  }
-                </p>
-              </div>
+            ) : (
+              <>
+                <button
+                  onClick={() => doRoleChange("user")}
+                  className={`cursor-pointer w-full flex items-center gap-2 px-3 py-2 text-xs transition-colors ${result.user.role !== "admin" ? "text-zinc-300 bg-zinc-700/50" : "text-zinc-400 hover:bg-zinc-700"}`}
+                >
+                  <span className="w-1.5 h-1.5 rounded-full bg-zinc-500 shrink-0" />
+                  user
+                </button>
+                <button
+                  onClick={() => doRoleChange("admin")}
+                  className={`cursor-pointer w-full flex items-center gap-2 px-3 py-2 text-xs transition-colors ${result.user.role === "admin" ? "text-violet-300 bg-violet-500/15" : "text-zinc-400 hover:bg-zinc-700"}`}
+                >
+                  <span className="w-1.5 h-1.5 rounded-full bg-violet-400 shrink-0" />
+                  admin
+                </button>
+              </>
             )}
           </div>
+        )}
+      </div>
+    </div>
+    <p className="text-[0.65rem] text-zinc-500 truncate mt-0.5">
+      {result.user.email}
+      {result.user.numeric_id ? ` · #${result.user.numeric_id}` : ""}
+      {result.user.phone ? ` · ${result.user.phone}` : ""}
+    </p>
+    {result.user.created_at && (
+      <p className="text-[0.58rem] text-zinc-700 mt-0.5">
+        რეგისტრაცია: {new Date(result.user.created_at).toLocaleDateString("ka-GE")}
+      </p>
+    )}
+    {roleOk && <p className="text-[0.6rem] text-emerald-400 flex items-center gap-1 mt-0.5"><IconCheck />{roleOk}</p>}
+    {roleErr && <p className="text-[0.6rem] text-red-400 mt-0.5">{roleErr}</p>}
+  </div>
+  {result.account && (
+    <div className="text-right shrink-0">
+      <p className="text-lg font-bold text-emerald-400 leading-none">
+        {parseFloat(result.account.balance).toFixed(2)} ₾
+      </p>
+      <p className="text-[0.6rem] mt-0.5">
+        {result.account.status === "active"
+          ? <span className="text-emerald-500">● აქტიური</span>
+          : <span className="text-zinc-600">● {result.account.status ?? "—"}</span>
+        }
+      </p>
+    </div>
+  )}
+</div>
 
           {/* ── Two column action area ── */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">

@@ -445,7 +445,7 @@ export default function AdminRadioSection() {
                         target="_blank"
                         rel="noopener noreferrer"
                         onClick={e => e.stopPropagation()}
-                        className="text-sky-400 hover:text-sky-300 font-mono text-[0.62rem] truncate block max-w-[220px] transition-colors"
+                        className="text-sky-400 hover:text-sky-300 font-mono text-[0.62rem] truncate block max-w-55 transition-colors"
                         title={r.stream_url}
                       >
                         {r.stream_url}
