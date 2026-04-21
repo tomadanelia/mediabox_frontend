@@ -14,8 +14,8 @@ type AdminSection = "Overview" | "Users" | "Category-Channels" | "Categories" | 
 const adminSectionLabels: Record<AdminSection, string> = {
   "Overview": "მთავარი",
   "Users": "მომხმარებლები",
-  "Category-Channels": "კატეგორიების შევსება",
-  "Categories": "კატეგორიები",
+  "Category-Channels": "ჟანრების შევსება",
+  "Categories": "ჟანრები",
   "Plans": "პაკეტები",
   "Plan-Channels": "პაკეტების შევსება",
   "Radios": "რადიო არხები",
