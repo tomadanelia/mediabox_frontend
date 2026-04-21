@@ -10,6 +10,7 @@ import AdminRadioSection from "./AdminRadioSection";
 import AdminDiscountsSection from "./AdminDiscountSection";
 import AdminNotificationsSection from "./AdminNotificationSection";
 import { useNavigate } from "react-router-dom";
+import HomepageBgSettings from "./HomepageBgSettings";
 type AdminSection = "Overview" | "Users" | "Category-Channels" | "Categories" | "Plans" | "Plan-Channels" |"Channels"|"Radios"|"Discounts"|"Notifications"| "Support" | "Settings";
 const adminSectionLabels: Record<AdminSection, string> = {
   "Overview": "მთავარი",
@@ -1778,6 +1779,7 @@ const isActive =
                 </div>
               </div>
             <TvPriceSettings />
+            <HomepageBgSettings/>
             </div>
           )}
 

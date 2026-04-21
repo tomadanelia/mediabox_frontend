@@ -4,6 +4,8 @@ import type { Channel } from "../../src/types/channel";
 import useUIStore from "@/store/ui-store";
 import api from "@/lib/axios";
 import Footer from "@/hmcomponents/footer";
+// top of file, outside components
+const FALLBACK_BG = "https://www.proximus-cdn.com/dam/jcr:875dfa83-acf9-44db-b7fd-c2b792de7592/banner_Pickx_Leagues_1200x630v2_en.png";
 const HERO_TEXT = {
   En: {
     eyebrow: "Your universe of live content",
@@ -30,15 +32,16 @@ const HeroBanner: React.FC<HeroBannerProps> = ({ heroImage, language }) => {
   const lang: Lang = language === "Ge" ? "Ge" : "En";
   const t = HERO_TEXT[lang];
   const currentLogo = useUIStore((state) => state.logoLight);
-
+  const FALLBACK_BG = "https://www.proximus-cdn.com/dam/jcr:875dfa83-acf9-44db-b7fd-c2b792de7592/banner_Pickx_Leagues_1200x630v2_en.png";
   return (
     <section className="hero-banner">
-      <img
-        src="https://www.proximus-cdn.com/dam/jcr:875dfa83-acf9-44db-b7fd-c2b792de7592/banner_Pickx_Leagues_1200x630v2_en.png"
-        alt=""
-        aria-hidden="true"
-        className="hero-bg-img"
-      />
+     <img
+  src={heroImage ?? FALLBACK_BG}
+  alt=""
+  aria-hidden="true"
+  className="hero-bg-img"
+  onError={(e) => { e.currentTarget.src = FALLBACK_BG; }}
+/>
       <div className="hero-filler" aria-hidden="true" />
       <div className="hero-grain" aria-hidden="true" />
       <div className="hero-wash" aria-hidden="true" />
@@ -216,24 +219,36 @@ const Home: React.FC = () => {
   const [channels, setChannelsLocal] = useState<Channel[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const { language, setChannels } = useUIStore();
+  const [homepageBg, setHomepageBg] = useState<string>(FALLBACK_BG);
   useEffect(() => {
-    (async () => {
-      try {
-        const [chRes, catRes] = await Promise.all([
-          api.get("/api/channels"),
-          api.get("/api/channels/categories"),
-        ]);
-        const fetched = Array.isArray(chRes.data.channels)
-          ? chRes.data.channels
-          : [];
-        setChannels(fetched);
-        setChannelsLocal(fetched);
-        setCategories(Array.isArray(catRes.data) ? catRes.data : []);
-      } catch (e) {
-        console.error("[Home/fetch]", e);
+  (async () => {
+    try {
+      const [chRes, catRes] = await Promise.all([
+        api.get("/api/channels"),
+        api.get("/api/channels/categories"),
+      ]);
+      const fetched = Array.isArray(chRes.data.channels) ? chRes.data.channels : [];
+      setChannels(fetched);
+      setChannelsLocal(fetched);
+      setCategories(Array.isArray(catRes.data) ? catRes.data : []);
+    } catch (e) {
+      console.error("[Home/fetch]", e);
+    }
+  })();
+}, []);
+
+useEffect(() => {
+  (async () => {
+    try {
+      const bgRes = await api.get("/api/settings/homepage");
+      const url = bgRes.data?.homepage_bg_url;
+      if (url && typeof url === "string" && url.trim() !== "") {
+        setHomepageBg(url);
       }
-    })();
-  }, []);
+    } catch {
+    }
+  })();
+}, []);
 
   const channelsByCategory = React.useMemo(() => {
     const map = new Map<string, Channel[]>();
@@ -258,7 +273,7 @@ const Home: React.FC = () => {
     <main
       className={`overflow-y-auto bg-backround mx-auto w-full 2_5xl:w-500 max-w-screen flex flex-col gap-8 px-4 pb-12 pt-6 sm:px-6 lg:px-10 xl:px-14`}
     >
-      <HeroBanner heroImage={null} language={language} />
+      <HeroBanner heroImage={homepageBg} language={language} />
       {[...categories]
         .sort(
           (a, b) =>
