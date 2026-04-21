@@ -33,8 +33,7 @@ interface Channel {
   id: string
   external_id: string
   number: number
-  name_ka: string
-  name_en: string
+  name: string
   icon_url: string | null
   is_active: boolean
 }
@@ -200,7 +199,7 @@ const ChannelModal = ({
   const filtered = channels.filter(ch => {
     const q = search.toLowerCase()
     return (
-      ch[`name_${lang}` as const].toLowerCase().includes(q) ||
+      ch.name.toLowerCase().includes(q) ||
       String(ch.number).includes(q)
     )
   })
@@ -266,7 +265,7 @@ const ChannelModal = ({
                   {ch.icon_url ? (
                     <img
                       src={ch.icon_url}
-                      alt={ch[`name_${lang}` as const]}
+                      alt={ch.name}
                       className="w-9 h-9 rounded-lg object-contain bg-plans-skeleton-bg border border-plans-divider shrink-0"
                       onError={e => { (e.currentTarget as HTMLImageElement).style.display = 'none' }}
                     />
@@ -276,7 +275,7 @@ const ChannelModal = ({
                     </div>
                   )}
                   <div className="min-w-0 flex-1">
-                    <p className="text-sm text-foreground truncate">{ch[`name_${lang}` as const]}</p>
+                    <p className="text-sm text-foreground truncate">{ch.name}</p>
                     <p className="text-xs text-muted-foreground">
                       {tx.channel} {ch.number}
                       {!ch.is_active && <span className="ml-2 text-red-400">●</span>}
@@ -315,8 +314,6 @@ const Plans = () => {
   const [tvDevicePrice, setTvDevicePrice] = useState(5)
   const [purchasingTvLimit, setPurchasingTvLimit] = useState(false)
   const [confirmTvLimit, setConfirmTvLimit] = useState(false)
-  const [limitInvoice,setLimitInvoice]=useState<DeviceLimitInvoiceData|null>(null)
-  const [planInvoice,setPlanInvoice]=useState<PlanPurchaseInvoiceData|null>(null)
   const [successInvoice, setSuccessInvoice] = useState<{ data: InvoiceData; type: 'plan' | 'tv' } | null>(null)
   const balance = user?.account?.balance != null ? parseFloat(user.account.balance) : null
   const isLowBalance = balance !== null && balance < 1.00

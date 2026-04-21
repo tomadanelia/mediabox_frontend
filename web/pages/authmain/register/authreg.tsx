@@ -232,11 +232,6 @@ if (data.code) {
     </a>
   </span>
 </div>
-            <span className="text-muted-foreground">
-             <a href="#" className="text-sm text-form-highlights hover:text-button-hover transition-colors whitespace-nowrap">
-      გაეცანი წესებსა და პირობებს
-    </a>
-            </span>
           </div>
 
           {/* Submit */}
