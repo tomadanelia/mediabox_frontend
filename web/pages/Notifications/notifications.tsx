@@ -20,40 +20,39 @@ interface PaginationMeta {
   last_page: number;
 }
 
-const TYPE_ICON: Record<NotificationType, string> = {
+const TYPE_ICON: Record<string, string> = {
   info: "info",
   warning: "warning",
   success: "check_circle",
   error: "error",
   system: "settings",
+  global_announcement: "campaign",
+  "account.notification": "person",
 };
 
-const TYPE_COLOR: Record<NotificationType, string> = {
+const TYPE_COLOR: Record<string, string> = {
   info: "text-blue-500 bg-blue-50",
   warning: "text-amber-500 bg-amber-50",
   success: "text-emerald-500 bg-emerald-50",
   error: "text-red-500 bg-red-50",
   system: "text-slate-500 bg-slate-100",
+  global_announcement: "text-violet-500 bg-violet-50",
+  "account.notification": "text-sky-500 bg-sky-50",
 };
 
-const FILTER_TYPES: { label: string; value: string }[] = [
-  { label: "All", value: "" },
-  { label: "Info", value: "info" },
-  { label: "Warning", value: "warning" },
-  { label: "Success", value: "success" },
-  { label: "Error", value: "error" },
-  { label: "System", value: "system" },
+const FILTER_TYPES: { label: string; value: string; icon: string }[] = [
+  { label: "გლობალური", value: "global_announcement", icon: "campaign" },
+  { label: "პირადი", value: "account.notification", icon: "person" },
 ];
 
 function timeAgo(dateStr: string): string {
   const diff = Math.floor((Date.now() - new Date(dateStr).getTime()) / 1000);
-  if (diff < 60) return `${diff}s ago`;
-  if (diff < 3600) return `${Math.floor(diff / 60)}m ago`;
-  if (diff < 86400) return `${Math.floor(diff / 3600)}h ago`;
-  return `${Math.floor(diff / 86400)}d ago`;
+  if (diff < 60) return `${diff} წამის წინ`;
+  if (diff < 3600) return `${Math.floor(diff / 60)} წუთის წინ`;
+  if (diff < 86400) return `${Math.floor(diff / 3600)} საათის წინ`;
+  return `${Math.floor(diff / 86400)} დღის წინ`;
 }
 
-// ─── Skeleton ────────────────────────────────────────────────────────────────
 function SkeletonRow() {
   return (
     <div className="flex items-start gap-4 px-5 py-4 animate-pulse">
@@ -67,7 +66,6 @@ function SkeletonRow() {
   );
 }
 
-// ─── Notification Row ─────────────────────────────────────────────────────────
 function NotificationRow({
   notif,
   onRead,
@@ -90,11 +88,8 @@ function NotificationRow({
         border-b border-slate-100 dark:border-white/5 last:border-0
       `}
     >
-      {/* Unread dot */}
       <div className="relative shrink-0 mt-0.5">
-        <div
-          className={`w-9 h-9 rounded-full flex items-center justify-center ${colorClass}`}
-        >
+        <div className={`w-9 h-9 rounded-full flex items-center justify-center ${colorClass}`}>
           <span className="material-icons text-[18px]">{icon}</span>
         </div>
         {!notif.read && (
@@ -102,7 +97,6 @@ function NotificationRow({
         )}
       </div>
 
-      {/* Content */}
       <div className="flex-1 min-w-0">
         <p className="text-sm font-medium text-slate-800 dark:text-slate-100 leading-snug truncate">
           {notif.title}
@@ -112,7 +106,6 @@ function NotificationRow({
         </p>
       </div>
 
-      {/* Right side */}
       <div className="flex flex-col items-end gap-2 shrink-0">
         <span className="text-xs text-slate-400 dark:text-slate-500 whitespace-nowrap">
           {timeAgo(notif.created_at)}
@@ -121,21 +114,20 @@ function NotificationRow({
           <button
             onClick={() => onRead(notif.id)}
             disabled={isMarking}
-            title="Mark as read"
+            title="წაკითხულად მონიშვნა"
             className={`
+              cursor-pointer
               opacity-0 group-hover:opacity-100 transition-opacity
               text-xs text-blue-500 hover:text-blue-700 font-medium
               flex items-center gap-0.5 disabled:opacity-40 disabled:cursor-not-allowed
             `}
           >
             {isMarking ? (
-              <span className="material-icons text-[14px] animate-spin">
-                refresh
-              </span>
+              <span className="material-icons text-[14px] animate-spin">refresh</span>
             ) : (
               <span className="material-icons text-[14px]">done</span>
             )}
-            Read
+            წაკითხულად მონიშვნა
           </button>
         )}
       </div>
@@ -143,7 +135,6 @@ function NotificationRow({
   );
 }
 
-// ─── Main Page ────────────────────────────────────────────────────────────────
 export default function NotificationsPage() {
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [meta, setMeta] = useState<PaginationMeta | null>(null);
@@ -153,17 +144,16 @@ export default function NotificationsPage() {
   const [error, setError] = useState<string | null>(null);
   const [markingId, setMarkingId] = useState<number | null>(null);
   const [toast, setToast] = useState<string | null>(null);
-  const decrementUnread = useUIStore((s) => s.decrementUnread)
+  const decrementUnread = useUIStore((s) => s.decrementUnread);
 
   const perPage = 20;
 
-  // ── Fetch ──
+  // ── Fetch — no type param sent ──
   const fetchNotifications = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
       const params: Record<string, string | number> = { page, per_page: perPage };
-      if (typeFilter) params.type = typeFilter;
 
       const { data } = await api.get("/api/notifications", { params });
       setNotifications(data.data ?? data);
@@ -173,7 +163,7 @@ export default function NotificationsPage() {
     } finally {
       setLoading(false);
     }
-  }, [page, typeFilter]);
+  }, [page]);
 
   useEffect(() => {
     fetchNotifications();
@@ -184,12 +174,11 @@ export default function NotificationsPage() {
     setMarkingId(id);
     try {
       await api.post(`/api/notifications/${id}/read`);
-
       setNotifications((prev) =>
         prev.map((n) => (n.id === id ? { ...n, read: true } : n))
       );
-      showToast("Marked as read");
-      decrementUnread(1) 
+      showToast("მოინიშნა წაკითხულად");
+      decrementUnread(1);
     } catch (e: unknown) {
       const status = (e as { response?: { status?: number } })?.response?.status;
       const msg =
@@ -208,7 +197,7 @@ export default function NotificationsPage() {
     for (const n of unread) {
       await handleRead(n.id);
     }
-    decrementUnread(unread.length) 
+    decrementUnread(unread.length);
   };
 
   const showToast = (msg: string, _isError = false) => {
@@ -216,60 +205,70 @@ export default function NotificationsPage() {
     setTimeout(() => setToast(null), 2500);
   };
 
+  // ── Client-side filter ──
+  const filteredNotifications = typeFilter
+    ? notifications.filter((n) => n.type === typeFilter)
+    : notifications;
+
   const unreadCount = notifications.filter((n) => !n.read).length;
   const totalPages = meta?.last_page ?? 1;
 
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-950 font-sans">
-      {/* Material Icons */}
-      <link
-        href="https://fonts.googleapis.com/icon?family=Material+Icons"
-        rel="stylesheet"
-      />
+      <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet" />
 
       <div className="max-w-2xl mx-auto px-4 py-8">
+
         {/* ── Header ── */}
         <div className="flex items-center justify-between mb-6">
-          <div className="flex items-center gap-3">
-            <span className="material-icons text-slate-700 dark:text-slate-200 text-[26px]">
-              notifications
-            </span>
-            <div>
-              <h1 className="text-xl font-semibold text-slate-900 dark:text-white leading-none">
-                Notifications
-              </h1>
-              {unreadCount > 0 && (
-                <p className="text-xs text-slate-400 dark:text-slate-500 mt-1">
-                  {unreadCount} unread
-                </p>
-              )}
-            </div>
+          <div>
+            <h1 className="text-xl font-semibold text-slate-900 dark:text-white">
+              შეტყობინებები
+            </h1>
+            {unreadCount > 0 && (
+              <p className="text-xs text-slate-400 dark:text-slate-500 mt-0.5">
+                {unreadCount} unread
+              </p>
+            )}
           </div>
 
           {unreadCount > 0 && (
             <button
               onClick={handleReadAll}
-              className="text-sm text-blue-500 hover:text-blue-700 font-medium flex items-center gap-1 transition-colors"
+              className="text-sm cursor-pointer text-blue-500 hover:text-blue-700 font-medium flex items-center gap-1 transition-colors"
             >
               <span className="material-icons text-[16px]">done_all</span>
-              Mark all read
+              ყველას წაკითხულად მონიშვნა
             </button>
           )}
         </div>
 
-        {/* ── Filter tabs ── */}
-        <div className="flex gap-1.5 overflow-x-auto pb-1 mb-4 scrollbar-hide">
+        {/* ── Filter pills ── */}
+        <div className="flex gap-2 mb-4">
+          <button
+            onClick={() => setTypeFilter("")}
+            className={`
+              cursor-pointer px-4 py-1.5 rounded-full text-sm font-medium transition-colors border
+              ${typeFilter === ""
+                ? "bg-slate-800 text-white border-slate-800 dark:bg-white dark:text-slate-900 dark:border-white"
+                : "bg-white text-slate-500 border-slate-200 hover:border-slate-300 dark:bg-white/10 dark:text-slate-300 dark:border-white/10"}
+            `}
+          >
+            ყველა
+          </button>
+
           {FILTER_TYPES.map((f) => (
             <button
               key={f.value}
-              onClick={() => { setTypeFilter(f.value); setPage(1); }}
+              onClick={() => setTypeFilter(f.value)}
               className={`
-                px-3 py-1.5 rounded-full text-xs font-medium whitespace-nowrap transition-colors
+                cursor-pointer flex items-center gap-1.5 px-4 py-1.5 rounded-full text-sm font-medium transition-colors border
                 ${typeFilter === f.value
-                  ? "bg-slate-800 text-white dark:bg-white dark:text-slate-900"
-                  : "bg-white dark:bg-white/10 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-white/10 hover:border-slate-300"}
+                  ? "bg-slate-800 text-white border-slate-800 dark:bg-white dark:text-slate-900 dark:border-white"
+                  : "bg-white text-slate-500 border-slate-200 hover:border-slate-300 dark:bg-white/10 dark:text-slate-300 dark:border-white/10"}
               `}
             >
+              <span className="material-icons text-[14px]">{f.icon}</span>
               {f.label}
             </button>
           ))}
@@ -279,9 +278,7 @@ export default function NotificationsPage() {
         <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-white/10 overflow-hidden shadow-sm">
           {loading && (
             <div className="divide-y divide-slate-100 dark:divide-white/5">
-              {Array.from({ length: 5 }).map((_, i) => (
-                <SkeletonRow key={i} />
-              ))}
+              {Array.from({ length: 5 }).map((_, i) => <SkeletonRow key={i} />)}
             </div>
           )}
 
@@ -289,38 +286,24 @@ export default function NotificationsPage() {
             <div className="flex flex-col items-center justify-center py-16 gap-3 text-center px-6">
               <span className="material-icons text-red-400 text-[40px]">error_outline</span>
               <p className="text-sm text-slate-500 dark:text-slate-400">{error}</p>
-              <button
-                onClick={fetchNotifications}
-                className="mt-1 text-sm text-blue-500 hover:underline font-medium"
-              >
-                Try again
+              <button onClick={fetchNotifications} className="cursor-pointer mt-1 text-sm text-blue-500 hover:underline font-medium">
+                კიდევ სცადე
               </button>
             </div>
           )}
 
-          {!loading && !error && notifications.length === 0 && (
+          {!loading && !error && filteredNotifications.length === 0 && (
             <div className="flex flex-col items-center justify-center py-16 gap-3 text-center px-6">
-              <span className="material-icons text-slate-300 dark:text-slate-600 text-[48px]">
-                notifications_none
-              </span>
-              <p className="text-sm font-medium text-slate-500 dark:text-slate-400">
-                No unread notifications
-              </p>
-              <p className="text-xs text-slate-400 dark:text-slate-500">
-                You're all caught up!
-              </p>
+              <span className="material-icons text-slate-300 dark:text-slate-600 text-[48px]">notifications_none</span>
+              <p className="text-sm font-medium text-slate-500 dark:text-slate-400">No notifications</p>
+              <p className="text-xs text-slate-400 dark:text-slate-500">You're all caught up!</p>
             </div>
           )}
 
-          {!loading && !error && notifications.length > 0 && (
+          {!loading && !error && filteredNotifications.length > 0 && (
             <div>
-              {notifications.map((n) => (
-                <NotificationRow
-                  key={n.id}
-                  notif={n}
-                  onRead={handleRead}
-                  markingId={markingId}
-                />
+              {filteredNotifications.map((n) => (
+                <NotificationRow key={n.id} notif={n} onRead={handleRead} markingId={markingId} />
               ))}
             </div>
           )}
@@ -335,11 +318,11 @@ export default function NotificationsPage() {
               className="flex items-center gap-1 text-sm text-slate-500 hover:text-slate-800 dark:hover:text-slate-200 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
             >
               <span className="material-icons text-[18px]">chevron_left</span>
-              Previous
+              წინა
             </button>
 
             <span className="text-xs text-slate-400 dark:text-slate-500">
-              Page {page} of {totalPages}
+              გვერდი {page}  {totalPages}-დან
             </span>
 
             <button
@@ -347,7 +330,7 @@ export default function NotificationsPage() {
               disabled={page === totalPages}
               className="flex items-center gap-1 text-sm text-slate-500 hover:text-slate-800 dark:hover:text-slate-200 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
             >
-              Next
+              შემდეგი
               <span className="material-icons text-[18px]">chevron_right</span>
             </button>
           </div>
