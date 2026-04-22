@@ -43,6 +43,8 @@ function startOfDayKey(unixSec: number): string {
   return `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`
 }
 
+const GEO_WEEKDAYS_SHORT = ['კვი', 'ორშ', 'სამ', 'ოთხ', 'ხუთ', 'პარ', 'შაბ']
+
 function dayLabel(unixSec: number): string {
   const d = new Date(unixSec * 1000)
   const now = new Date()
@@ -51,7 +53,7 @@ function dayLabel(unixSec: number): string {
   if (d.toDateString() === now.toDateString()) return 'დღეს'
   if (d.toDateString() === yesterday.toDateString()) return 'გუშინ'
 
-  return d.toLocaleDateString('ka-GE', { weekday: 'short', month: 'short', day: 'numeric' })
+  return GEO_WEEKDAYS_SHORT[d.getDay()]
 }
 
 const GEO_MONTHS_SHORT = ['იან','თებ','მარ','აპრ','მაი','ივნ','ივლ','აგვ','სექ','ოქტ','ნოე','დეკ']
@@ -97,6 +99,17 @@ function Tooltip({ tooltip }: { tooltip: TooltipState }) {
   )
 }
 
+// ─── Scroll helper ────────────────────────────────────────────────────────────
+
+/**
+ * Scrolls `container` so that `target` is vertically centered.
+ * Falls back gracefully if target is near the top/bottom edge.
+ */
+function scrollToCenter(container: HTMLElement, target: HTMLElement, behavior: ScrollBehavior = 'smooth') {
+  const offset = target.offsetTop - container.clientHeight / 2 + target.clientHeight / 2
+  container.scrollTo({ top: Math.max(0, offset), behavior })
+}
+
 // ─── Component ────────────────────────────────────────────────────────────────
 
 const ChannelScheduleCL = ({
@@ -114,6 +127,8 @@ const ChannelScheduleCL = ({
 
   const listRef = useRef<HTMLDivElement>(null)
   const dividerRefs = useRef<Record<string, HTMLDivElement | null>>({})
+  // ── NEW: one ref per program row, keyed by UID ─────────────────────────────
+  const programRefs = useRef<Record<number, HTMLDivElement | null>>({})
 
   // ── Fetch all programs when channelId changes ──────────────────────────────
   useEffect(() => {
@@ -171,32 +186,46 @@ const ChannelScheduleCL = ({
     return match ? startOfDayKey(match.START_TIME) : null
   }, [sorted])
 
-  // ── Auto-scroll: when archiveTimestamp changes, scroll to that day's divider ──
+  // ── Auto-scroll: when archiveTimestamp changes, center the active program ──
   useEffect(() => {
     if (!listRef.current || !sorted.length) return
+
+    // Try to center on the exact active program row first
+    if (activeUID !== null && programRefs.current[activeUID]) {
+      scrollToCenter(listRef.current, programRefs.current[activeUID]!)
+      return
+    }
+
+    // Fallback: scroll to the day divider if no active row ref yet
     const targetSec = mode === 'archive' && archiveTimestamp !== null ? archiveTimestamp : nowSec
     const key = dividerKeyForTimestamp(targetSec)
     if (!key) return
     const divider = dividerRefs.current[key]
-
     if (divider) {
-      const container = listRef.current
       const offset = divider.offsetTop - 60
-      container.scrollTo({ top: Math.max(0, offset), behavior: 'smooth' })
+      listRef.current.scrollTo({ top: Math.max(0, offset), behavior: 'smooth' })
     }
-  }, [archiveTimestamp, mode, sorted])
+  }, [archiveTimestamp, mode, sorted, activeUID])
 
   // ── Auto-scroll to live program on initial load ────────────────────────────
   const didInitialScroll = useRef(false)
   useEffect(() => {
     if (loading || didInitialScroll.current || !sorted.length || !listRef.current) return
+
+    // Center on the active program row
+    if (activeUID !== null && programRefs.current[activeUID]) {
+      scrollToCenter(listRef.current, programRefs.current[activeUID]!, 'smooth')
+      didInitialScroll.current = true
+      return
+    }
+
+    // Fallback: scroll to the day divider
     const key = dividerKeyForTimestamp(activeSec)
     if (!key) return
     const divider = dividerRefs.current[key]
     if (divider) {
-      const container = listRef.current
       const offset = divider.offsetTop - 60
-      container.scrollTo({ top: Math.max(0, offset), behavior: 'smooth' })
+      listRef.current.scrollTo({ top: Math.max(0, offset), behavior: 'smooth' })
       didInitialScroll.current = true
     }
   }, [sorted, loading])
@@ -288,6 +317,8 @@ const ChannelScheduleCL = ({
       items.push(
         <div
           key={p.UID}
+          // ── NEW: attach ref so we can scroll to this row ─────────────────
+          ref={el => { programRefs.current[p.UID] = el }}
           onClick={() => handleClick(p)}
           title={isFuture ? 'Not yet available' : undefined}
           className={cn(

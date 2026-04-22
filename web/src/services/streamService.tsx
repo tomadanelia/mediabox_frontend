@@ -49,6 +49,8 @@ type ArchiveEntry = {
   staleAt: number;
   /** How many hours back the server allows rewinding (from last fetch). */
   rewindableHours: number;
+  /** The timestamp that was actually requested when this entry was cached. */
+  lastRequestedTs: number;
 };
 
 // ─── Public return types ──────────────────────────────────────────────────────
@@ -60,6 +62,7 @@ export type LiveResult = {
 export type ArchiveResult = {
   url: string;
   rewindableHours: number;
+  anchorTimestamp: number;
 };
 
 // ─── Helpers (module-private) ─────────────────────────────────────────────────
@@ -156,6 +159,7 @@ export async function getArchiveUrl(
     return {
       url,
       rewindableHours: cached.rewindableHours,
+      anchorTimestamp: timestamp,
     };
   }
 
@@ -175,13 +179,14 @@ export async function getArchiveUrl(
       suffix: parsed.suffix,
       staleAt,
       rewindableHours,
+      lastRequestedTs: timestamp,
     };
     console.log(`🟡 [streamService] ARCHIVE cached     ch=${channelId}  stale-in=${ARCHIVE_CACHE_TTL_SEC}s  rewindableHours=${rewindableHours}  prefix=${parsed.prefix}`);
   } else {
     console.warn(`[streamService] ARCHIVE could not parse URL — response:`, data);
   }
 
-  return { url: data.url, rewindableHours };
+  return { url: data.url, rewindableHours, anchorTimestamp: timestamp };
 }
 
 /**
@@ -213,6 +218,7 @@ export async function probeRewindableHours(channelId: string): Promise<number> {
       suffix: parsed.suffix,
       staleAt,
       rewindableHours,
+      lastRequestedTs: probeTs, // ✅ fixed: was `timestamp` (undefined), now correctly `probeTs`
     };
     console.log(`🟡 [streamService] PROBE cached     ch=${channelId}  stale-in=${ARCHIVE_CACHE_TTL_SEC}s  rewindableHours=${rewindableHours}`);
   } else {

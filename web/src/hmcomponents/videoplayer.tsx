@@ -36,16 +36,6 @@ function formatClock(unixSec: number): string {
   });
 }
 
-function getWatchingUnix(
-  mode: 'live' | 'archive', liveNow: number,
-  archiveTimestamp: number | null, currentTime: number,
-): number {
-  if (mode === 'archive' && archiveTimestamp !== null) {
-    return archiveTimestamp + Math.floor(currentTime);
-  }
-  return liveNow;
-}
-
 // ─── Icon ─────────────────────────────────────────────────────────────────────
 
 const Icon = ({ name, size = 20, fill = false }: { name: string; size?: number; fill?: boolean }) => (
@@ -95,6 +85,53 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
   const settingsService = useRef(new PlayerSettingsService());
   const hideTimer       = useRef<ReturnType<typeof setTimeout> | null>(null);
   const volHideTimer    = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const isSeekingRef    = useRef(false);
+
+  // ── Synchronous refs — updated every render, never stale ─────────────────
+  const modeRef      = useRef(mode);
+  const archiveTsRef = useRef(archiveTimestamp);
+  const onRewindRef  = useRef(onRewind);
+  const onGoLiveRef  = useRef(onGoLive);
+  modeRef.current      = mode;
+  archiveTsRef.current = archiveTimestamp;
+  onRewindRef.current  = onRewind;
+  onGoLiveRef.current  = onGoLive;
+
+  // ── Snap-back prevention ──────────────────────────────────────────────────
+  //
+  // When a seek fires, Stream.tsx sets archiveTimestamp immediately (before the
+  // async URL fetch).  The old HLS stream keeps firing onTimeUpdate, which
+  // increments currentTime.  Without a guard every one of those renders would
+  // compute watchingUnix = newAnchor + oldElapsedTime, drifting the seekbar
+  // back toward the original position before the new stream even loads.
+  //
+  // seekPendingRef is a persistent flag:
+  //   • Raised the moment archiveTimestamp changes (seek requested).
+  //   • Cleared the moment streamUrl changes (new stream URL has arrived).
+  //
+  // While the flag is up, displayCurrentTime is forced to 0 in EVERY render,
+  // regardless of what currentTime state says.  The seekbar therefore stays
+  // pinned to the exact seek target for the entire loading window.
+  //
+  // All three refs are mutated directly in the render body (fine for refs,
+  // not state) so they are always in sync without a useEffect round-trip.
+  const prevArchiveTsRef = useRef<number | null>(archiveTimestamp);
+  const prevStreamUrlRef = useRef<string>(streamUrl);
+  const seekPendingRef   = useRef<boolean>(false);
+  const [currentTime,      setCurrentTime]      = useState(0);
+  // Compute deltas before advancing the refs.
+  const archiveTsChanged = archiveTimestamp !== prevArchiveTsRef.current;
+  const streamUrlChanged = streamUrl        !== prevStreamUrlRef.current;
+
+  if (archiveTsChanged) seekPendingRef.current = true;   // new seek requested
+  if (streamUrlChanged) seekPendingRef.current = false;  // matching URL arrived
+
+  const displayCurrentTime =
+    (seekPendingRef.current || archiveTsChanged || streamUrlChanged) ? 0 : currentTime;
+
+  // Advance refs only after the deltas have been used above.
+  prevArchiveTsRef.current = archiveTimestamp;
+  prevStreamUrlRef.current = streamUrl;
 
   const scheduleHide = () => {
     if (hideTimer.current) clearTimeout(hideTimer.current);
@@ -110,7 +147,7 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
   };
 
   const [isPlaying,        setIsPlaying]        = useState(false);
-  const [currentTime,      setCurrentTime]      = useState(0);
+
   const [volume,           setVolume]           = useState(1);
   const [isMuted,          setIsMuted]          = useState(false);
   const [showControls,     setShowControls]     = useState(true);
@@ -125,8 +162,6 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
     return () => clearInterval(id);
   }, []);
 
-  // ── Timer cleanup on unmount ──────────────────────────────────────────────────
-
   useEffect(() => {
     return () => {
       if (hideTimer.current) clearTimeout(hideTimer.current);
@@ -134,47 +169,39 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
     };
   }, []);
 
-  const watchingUnix = getWatchingUnix(mode, liveNow, archiveTimestamp, currentTime);
+  // ── watchingUnix ──────────────────────────────────────────────────────────
+  // archive: seek anchor + seconds the new stream has played since loading.
+  // live:    current wall clock.
+  const watchingUnix =
+    mode === 'archive' && archiveTimestamp !== null
+      ? archiveTimestamp + Math.floor(displayCurrentTime)
+      : liveNow;
 
-const { rangeStart, rangeEnd } = useMemo(() => {
-  if (!programs.length) {
-    // No programs — show full day 00:00 → 24:00
-    const d = new Date(watchingUnix * 1000)
-    const midnight = new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime() / 1000
-    return { rangeStart: midnight, rangeEnd: midnight + 86400 }
-  }
-
-  // Find the program currently being watched
-  const current = programs.find(
-    p => watchingUnix >= p.START_TIME && watchingUnix < p.END_TIME
-  )
-
-  if (current) {
-    return { rangeStart: current.START_TIME, rangeEnd: current.END_TIME }
-  }
-
-  // Fallback: first program start → last program end
-  const sorted = [...programs].sort((a, b) => a.START_TIME - b.START_TIME)
-  return {
-    rangeStart: sorted[0].START_TIME,
-    rangeEnd: sorted[sorted.length - 1].END_TIME,
-  }
-}, [programs, watchingUnix])
+  // ── Seekbar range: current program only ───────────────────────────────────
+  const { rangeStart, rangeEnd } = useMemo(() => {
+    const cur = programs.find(p => watchingUnix >= p.START_TIME && watchingUnix < p.END_TIME);
+    if (cur) return { rangeStart: cur.START_TIME, rangeEnd: cur.END_TIME };
+    const d        = new Date(watchingUnix * 1000);
+    const midnight = new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime() / 1000;
+    return { rangeStart: midnight, rangeEnd: midnight + 86400 };
+  }, [programs, watchingUnix]);
 
   const rangeDuration = Math.max(rangeEnd - rangeStart, 1);
   const progressPct   = Math.min(100, Math.max(0, ((watchingUnix - rangeStart) / rangeDuration) * 100));
 
-  // ── HLS ───────────────────────────────────────────────────────────────────────
+  // ── HLS ───────────────────────────────────────────────────────────────────
 
   useEffect(() => {
     const video = videoRef.current;
     if (!video || !streamUrl) return;
+
+    isSeekingRef.current = true;
+
     hlsRef.current?.destroy();
     settingsService.current.detach();
     setIsBuffering(true);
     setCurrentTime(0);
 
-    // Capture mute/volume state before reinitializing so rewinds don't mute
     const wasMuted  = video.muted;
     const wasVolume = video.volume;
 
@@ -193,12 +220,14 @@ const { rangeStart, rangeEnd } = useMemo(() => {
       hls.loadSource(streamUrl);
       hls.attachMedia(video);
       hls.on(Hls.Events.MANIFEST_PARSED, () => {
+        isSeekingRef.current = false;
         setIsBuffering(false);
         settingsService.current.attach(hls);
         tryPlay();
       });
       hls.on(Hls.Events.ERROR, (_e, data) => {
         if (data.fatal) {
+          isSeekingRef.current = false;
           if (data.type === Hls.ErrorTypes.NETWORK_ERROR) hls.startLoad();
           else if (data.type === Hls.ErrorTypes.MEDIA_ERROR) hls.recoverMediaError();
           else hls.destroy();
@@ -206,53 +235,50 @@ const { rangeStart, rangeEnd } = useMemo(() => {
       });
     } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
       video.src = streamUrl;
+      video.onloadedmetadata = () => { isSeekingRef.current = false; };
       setIsBuffering(false);
       tryPlay();
     }
+
     return () => { hlsRef.current?.destroy(); settingsService.current.detach(); };
   }, [streamUrl]);
 
-  // ── Video events ──────────────────────────────────────────────────────────────
-
-  const modeRef      = useRef(mode);
-  const archiveTsRef = useRef(archiveTimestamp);
-  const onRewindRef  = useRef(onRewind);
-  useEffect(() => { modeRef.current      = mode;             }, [mode]);
-  useEffect(() => { archiveTsRef.current = archiveTimestamp; }, [archiveTimestamp]);
-  useEffect(() => { onRewindRef.current  = onRewind;         }, [onRewind]);
+  // ── Video events ──────────────────────────────────────────────────────────
 
   useEffect(() => {
     const video = videoRef.current;
     if (!video) return;
-    const onTimeUpdate  = () => setCurrentTime(video.currentTime);
-    const onDurChange   = () => { if (isFinite(video.duration)) {} };
-    const onPlay        = () => setIsPlaying(true);
-    const onPause       = () => setIsPlaying(false);
-    const onWaiting     = () => setIsBuffering(true);
-    const onPlaying     = () => setIsBuffering(false);
+
+    const onTimeUpdate = () => setCurrentTime(video.currentTime);
+    const onPlay       = () => setIsPlaying(true);
+    const onPause      = () => setIsPlaying(false);
+    const onWaiting    = () => setIsBuffering(true);
+    const onPlaying    = () => setIsBuffering(false);
+
     const onEnded = () => {
+      if (isSeekingRef.current) return;
       if (modeRef.current === 'archive' && archiveTsRef.current !== null) {
         const resumeAt = archiveTsRef.current + Math.floor(video.currentTime);
-        if (Math.floor(Date.now() / 1000) - resumeAt >= 5) onRewindRef.current(resumeAt);
+        if (Math.floor(Date.now() / 1000) - resumeAt >= 5) {
+          onRewindRef.current(resumeAt);
+        }
       }
     };
-    video.addEventListener('timeupdate',     onTimeUpdate);
-    video.addEventListener('durationchange', onDurChange);
-    video.addEventListener('loadedmetadata', onDurChange);
-    video.addEventListener('play',           onPlay);
-    video.addEventListener('pause',          onPause);
-    video.addEventListener('waiting',        onWaiting);
-    video.addEventListener('playing',        onPlaying);
-    video.addEventListener('ended',          onEnded);
+
+    video.addEventListener('timeupdate', onTimeUpdate);
+    video.addEventListener('play',       onPlay);
+    video.addEventListener('pause',      onPause);
+    video.addEventListener('waiting',    onWaiting);
+    video.addEventListener('playing',    onPlaying);
+    video.addEventListener('ended',      onEnded);
+
     return () => {
-      video.removeEventListener('timeupdate',     onTimeUpdate);
-      video.removeEventListener('durationchange', onDurChange);
-      video.removeEventListener('loadedmetadata', onDurChange);
-      video.removeEventListener('play',           onPlay);
-      video.removeEventListener('pause',          onPause);
-      video.removeEventListener('waiting',        onWaiting);
-      video.removeEventListener('playing',        onPlaying);
-      video.removeEventListener('ended',          onEnded);
+      video.removeEventListener('timeupdate', onTimeUpdate);
+      video.removeEventListener('play',       onPlay);
+      video.removeEventListener('pause',      onPause);
+      video.removeEventListener('waiting',    onWaiting);
+      video.removeEventListener('playing',    onPlaying);
+      video.removeEventListener('ended',      onEnded);
     };
   }, []);
 
@@ -265,7 +291,7 @@ const { rangeStart, rangeEnd } = useMemo(() => {
     return () => document.removeEventListener('fullscreenchange', onChange);
   }, []);
 
-  // ── Handlers ─────────────────────────────────────────────────────────────────
+  // ── Handlers ─────────────────────────────────────────────────────────────
 
   const togglePlay = () => {
     const v = videoRef.current;
@@ -295,11 +321,19 @@ const { rangeStart, rangeEnd } = useMemo(() => {
   };
 
   const skip = (seconds: number) => {
-    const target = watchingUnix + seconds;
-    const now    = Math.floor(Date.now() / 1000);
-    if (seconds < 0) onRewind(Math.max(0, target));
-    else if (mode === 'archive') target >= now ? onGoLive() : onRewind(target);
-    // forward skip is disabled in live mode via the button's disabled prop
+    const now  = Math.floor(Date.now() / 1000);
+    const base =
+      modeRef.current === 'archive' && archiveTsRef.current !== null
+        ? archiveTsRef.current + Math.floor(videoRef.current?.currentTime ?? 0)
+        : now;
+    const target = base + seconds;
+
+    if (seconds < 0) {
+      onRewindRef.current(Math.max(0, target));
+    } else if (modeRef.current === 'archive') {
+      if (target >= now) onGoLiveRef.current();
+      else onRewindRef.current(target);
+    }
   };
 
   const toggleFullscreen = () => {
@@ -308,7 +342,42 @@ const { rangeStart, rangeEnd } = useMemo(() => {
       : document.exitFullscreen();
   };
 
-  // ─── Render ───────────────────────────────────────────────────────────────────
+  // ── Keyboard seek ─────────────────────────────────────────────────────────
+
+  const skipRef = useRef(skip);
+  useEffect(() => { skipRef.current = skip; });
+
+  useEffect(() => {
+    const onKeyDown = (e: KeyboardEvent) => {
+      const tag = (e.target as HTMLElement).tagName;
+      if (tag === 'INPUT' || tag === 'TEXTAREA') return;
+      if (e.key === 'ArrowLeft')  { e.preventDefault(); skipRef.current(-10); }
+      if (e.key === 'ArrowRight') { e.preventDefault(); skipRef.current(10);  }
+    };
+    document.addEventListener('keydown', onKeyDown);
+    return () => document.removeEventListener('keydown', onKeyDown);
+  }, []);
+
+  // ── Double-tap seek ───────────────────────────────────────────────────────
+
+  const tapTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const tapCount = useRef<{ left: number; right: number }>({ left: 0, right: 0 });
+
+  const handleTap = (e: React.TouchEvent<HTMLDivElement>) => {
+    const rect   = (e.currentTarget as HTMLDivElement).getBoundingClientRect();
+    const touchX = e.changedTouches[0].clientX;
+    const side   = touchX - rect.left < rect.width / 2 ? 'left' : 'right';
+    tapCount.current[side] += 1;
+    if (tapTimer.current) clearTimeout(tapTimer.current);
+    tapTimer.current = setTimeout(() => {
+      if (tapCount.current[side] >= 2) {
+        side === 'left' ? skipRef.current(-10) : skipRef.current(10);
+      }
+      tapCount.current = { left: 0, right: 0 };
+    }, 300);
+  };
+
+  // ─── Render ──────────────────────────────────────────────────────────────
 
   return (
     <div className="flex items-center justify-center w-full h-full p-4">
@@ -319,21 +388,19 @@ const { rangeStart, rangeEnd } = useMemo(() => {
         onMouseEnter={() => { cancelHide(); scheduleHide(); }}
         onMouseMove={() => { cancelHide(); scheduleHide(); }}
         onMouseLeave={scheduleHide}
+        onTouchEnd={handleTap}
       >
-        {/* ── Video ── */}
-        <video
-          ref={videoRef}
-          className="absolute inset-0 w-full h-full"
-        />
+        {/* Video */}
+        <video ref={videoRef} className="absolute inset-0 w-full h-full" />
 
-        {/* ── Spinner ── */}
+        {/* Spinner */}
         {(isLoading || isBuffering) && (
           <div className="absolute inset-0 z-40 flex items-center justify-center bg-black/50 pointer-events-none">
             <CometRing />
           </div>
         )}
 
-        {/* ── Fullscreen channel list ── */}
+        {/* Fullscreen channel list */}
         {isFullscreen && showChannels && (
           <FullScreenList
             onClose={() => setShowChannels(false)}
@@ -346,46 +413,33 @@ const { rangeStart, rangeEnd } = useMemo(() => {
           />
         )}
 
-        {/* ── Controls layer ── */}
+        {/* Controls */}
         <div className={`absolute inset-0 z-10 pointer-events-none transition-opacity duration-200 ${showControls ? 'opacity-100' : 'opacity-0'}`}>
 
-          {/* Fullscreen channels button */}
           {isFullscreen && (
             <button
               onClick={() => setShowChannels(v => !v)}
-              className="pointer-events-auto absolute top-4 right-4
-                text-white hover:text-[#d52b1e] cursor-pointer
-                flex items-center justify-center w-9 h-9
-                bg-black/60 backdrop-blur-sm rounded-lg border border-white/15"
+              className="pointer-events-auto absolute top-4 right-4 text-white hover:text-[#d52b1e] cursor-pointer flex items-center justify-center w-9 h-9 bg-black/60 backdrop-blur-sm rounded-lg border border-white/15"
             >
-              <span
-                className="material-symbols-outlined pointer-events-none select-none"
-                style={{ fontSize: '20px', display: 'block', lineHeight: 1 }}
-              >
-                list
-              </span>
+              <span className="material-symbols-outlined pointer-events-none select-none" style={{ fontSize: '20px', display: 'block', lineHeight: 1 }}>list</span>
             </button>
           )}
 
-          {/* Center play controls — own absolute box, doesn't overlap bottom bar */}
-          <div className="absolute left-0 right-0 flex items-center justify-center gap-6"
-            style={{ top: '50%', transform: 'translateY(-50%)', bottom: 'auto' }}>
+          {/* Center controls */}
+          <div className="absolute left-0 right-0 flex items-center justify-center gap-6" style={{ top: '50%', transform: 'translateY(-50%)' }}>
             <Btn icon="replay_10"  onClick={() => skip(-10)} title="−10s" size={28} />
             <Btn icon={isPlaying ? 'pause' : 'play_arrow'} onClick={togglePlay} size={42} fill />
             <Btn icon="forward_10" onClick={() => skip(10)}  title="+10s" size={28} disabled={mode === 'live'} />
           </div>
 
-          {/* Bottom bar — own absolute box pinned to bottom */}
-          <div className="absolute bottom-0 left-0 right-0 pb-3 px-3 pt-10
-            bg-gradient-to-t from-black/90 via-black/40 to-transparent">
+          {/* Bottom bar */}
+          <div className="absolute bottom-0 left-0 right-0 pb-3 px-3 pt-10 bg-gradient-to-t from-black/90 via-black/40 to-transparent">
 
-            {/* Go Live — sits above the bar */}
             {mode === 'archive' && (
               <div className="flex justify-end mb-2">
                 <button
                   onClick={onGoLive}
-                  className="pointer-events-auto flex items-center gap-1.5 cursor-pointer
-                    text-white text-xs font-semibold px-3 py-1.5 rounded-full"
+                  className="pointer-events-auto flex items-center gap-1.5 cursor-pointer text-white text-xs font-semibold px-3 py-1.5 rounded-full"
                   style={{ backgroundColor: '#d52b1e' }}
                 >
                   <Icon name="sensors" size={16} fill />
@@ -394,7 +448,6 @@ const { rangeStart, rangeEnd } = useMemo(() => {
               </div>
             )}
 
-            {/* Single row: volume | clock | seekbar | right buttons */}
             <div className="pointer-events-auto flex items-center gap-2">
 
               {/* Volume */}
@@ -409,7 +462,6 @@ const { rangeStart, rangeEnd } = useMemo(() => {
                 <Btn icon={isMuted ? 'volume_off' : 'volume_up'} onClick={toggleMute} size={20} fill={isMuted} />
                 {showVolumeSlider && (
                   <div className="absolute bottom-0 left-1/2 -translate-x-1/2 pb-9">
-                    {/* transparent bridge fills the gap between button and slider */}
                     <div className="h-32 w-10 flex items-start justify-center pt-1">
                       <div className="h-28 w-6 rounded bg-black/70 backdrop-blur-sm flex items-center justify-center relative">
                         <div className="absolute bottom-2 w-1.5 rounded-full left-1/2 -translate-x-1/2"
@@ -430,13 +482,11 @@ const { rangeStart, rangeEnd } = useMemo(() => {
                 {formatClock(watchingUnix)}
               </div>
 
-              {/* Seekbar — flex-1 so it fills remaining space */}
+              {/* Seekbar */}
               <div className="flex-1 h-4 flex items-center cursor-pointer" onClick={handleSeek}>
                 <div className="relative w-full h-1 bg-white/25 rounded-full">
-                  <div className="absolute inset-y-0 left-0 rounded-full"
-                    style={{ width: `${progressPct}%`, backgroundColor: '#d52b1e' }} />
-                  <div className="absolute top-1/2 -translate-y-1/2 -translate-x-1/2 w-3 h-3 rounded-full shadow"
-                    style={{ left: `${progressPct}%`, backgroundColor: '#d52b1e' }} />
+                  <div className="absolute inset-y-0 left-0 rounded-full" style={{ width: `${progressPct}%`, backgroundColor: '#d52b1e' }} />
+                  <div className="absolute top-1/2 -translate-y-1/2 -translate-x-1/2 w-3 h-3 rounded-full shadow" style={{ left: `${progressPct}%`, backgroundColor: '#d52b1e' }} />
                 </div>
               </div>
 
@@ -449,7 +499,6 @@ const { rangeStart, rangeEnd } = useMemo(() => {
             </div>
           </div>
         </div>
-
       </div>
     </div>
   );

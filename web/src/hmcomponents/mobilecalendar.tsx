@@ -143,26 +143,35 @@ export default function MobileCalendar({
 
   const prevMonthRef = useRef(month);
   const prevYearRef  = useRef(year);
-  useEffect(() => {
-    const prevDate = new Date(prevYearRef.current, prevMonthRef.current, 1);
-    const currDate = new Date(year, month, 1);
-    const goingBack = currDate < prevDate;
+const isFirstRender = useRef(true);
 
-    if (goingBack) {
-      const lastDay = new Date(year, month + 1, 0);
-      lastDay.setHours(0, 0, 0, 0);
-      const clamped = lastDay > TODAY ? TODAY : lastDay < MIN_DATE ? MIN_DATE : lastDay;
-      setDay(clamped.getDate());
-    } else {
-      const firstDay = new Date(year, month, 1);
-      firstDay.setHours(0, 0, 0, 0);
-      const clamped = firstDay < MIN_DATE ? MIN_DATE : firstDay > TODAY ? TODAY : firstDay;
-      setDay(clamped.getDate());
-    }
-
+useEffect(() => {
+  if (isFirstRender.current) {
+    isFirstRender.current = false;
     prevMonthRef.current = month;
     prevYearRef.current  = year;
-  }, [month, year]);
+    return;
+  }
+
+  const prevDate = new Date(prevYearRef.current, prevMonthRef.current, 1);
+  const currDate = new Date(year, month, 1);
+  const goingBack = currDate < prevDate;
+
+  if (goingBack) {
+    const lastDay = new Date(year, month + 1, 0);
+    lastDay.setHours(0, 0, 0, 0);
+    const clamped = lastDay > TODAY ? TODAY : lastDay < MIN_DATE ? MIN_DATE : lastDay;
+    setDay(clamped.getDate());
+  } else {
+    const firstDay = new Date(year, month, 1);
+    firstDay.setHours(0, 0, 0, 0);
+    const clamped = firstDay < MIN_DATE ? MIN_DATE : firstDay > TODAY ? TODAY : firstDay;
+    setDay(clamped.getDate());
+  }
+
+  prevMonthRef.current = month;
+  prevYearRef.current  = year;
+}, [month, year]);
 
   const selectedDate = useMemo(() => {
     const d = new Date(year, month, Math.min(day, daysInMonth));

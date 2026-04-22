@@ -149,7 +149,7 @@ export function NotificationToast({ notification, onDismiss, index }: ToastProps
           className="w-11 h-11 rounded-xl flex items-center justify-center"
           style={{ background: cfg.iconBg, color: cfg.iconColor }}
         >
-          <span className="material-icons-round" style={{ fontSize: 22 }}>
+          <span className="material-symbol-round" style={{ fontSize: 22 }}>
             {cfg.icon}
           </span>
         </div>
