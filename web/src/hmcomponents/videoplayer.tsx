@@ -6,6 +6,8 @@ import { CometRing } from './AnimatedComponents/CometBuffer';
 import FullScreenList from './FullScreenList';
 import { SettingsButton } from './settingsButton';
 import { PlayerSettingsService } from '@/services/playerSettingsService';
+import SeekPreview from './SeekPreview';
+import { getArchiveUrl } from '@/services/streamService';
 
 type Channel = {
   id: string; uuid: string; name: string; logo: string;
@@ -88,6 +90,11 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
   const isSeekingRef    = useRef(false);
   const isReloadingRef  = useRef(false);
 
+  // ── Seekbar hover state ───────────────────────────────────────────────────
+  const seekbarRef                      = useRef<HTMLDivElement | null>(null);
+  const [hoverProgress,  setHoverProgress]  = useState<number | null>(null);
+  const [hoverTimestamp, setHoverTimestamp] = useState<number>(0);
+
   // ── User-intended audio state — never corrupted by autoplay fallback ──────
   const mutedIntentRef  = useRef(false);
   const volumeIntentRef = useRef(1);
@@ -106,17 +113,15 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
   const prevStreamUrlRef = useRef<string>(streamUrl);
   const seekPendingRef   = useRef<boolean>(false);
   const [currentTime,      setCurrentTime]      = useState(0);
-  // Compute deltas before advancing the refs.
   const archiveTsChanged = archiveTimestamp !== prevArchiveTsRef.current;
   const streamUrlChanged = streamUrl        !== prevStreamUrlRef.current;
 
-  if (archiveTsChanged) seekPendingRef.current = true;   // new seek requested
-  if (streamUrlChanged) seekPendingRef.current = false;  // matching URL arrived
+  if (archiveTsChanged) seekPendingRef.current = true;
+  if (streamUrlChanged) seekPendingRef.current = false;
 
   const displayCurrentTime =
     (seekPendingRef.current || archiveTsChanged || streamUrlChanged) ? 0 : currentTime;
 
-  // Advance refs only after the deltas have been used above.
   prevArchiveTsRef.current = archiveTimestamp;
   prevStreamUrlRef.current = streamUrl;
 
@@ -134,7 +139,6 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
   };
 
   const [isPlaying,        setIsPlaying]        = useState(false);
-
   const [volume,           setVolume]           = useState(1);
   const [isMuted,          setIsMuted]          = useState(false);
   const [showControls,     setShowControls]     = useState(true);
@@ -156,15 +160,11 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
     };
   }, []);
 
-  // ── watchingUnix ──────────────────────────────────────────────────────────
-  // archive: seek anchor + seconds the new stream has played since loading.
-  // live:    current wall clock.
   const watchingUnix =
     mode === 'archive' && archiveTimestamp !== null
       ? archiveTimestamp + Math.floor(displayCurrentTime)
       : liveNow;
 
-  // ── Seekbar range: current program only ───────────────────────────────────
   const { rangeStart, rangeEnd } = useMemo(() => {
     const cur = programs.find(p => watchingUnix >= p.START_TIME && watchingUnix < p.END_TIME);
     if (cur) return { rangeStart: cur.START_TIME, rangeEnd: cur.END_TIME };
@@ -190,7 +190,6 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
     setIsBuffering(true);
     setCurrentTime(0);
 
-    // Read from intent refs — never from the DOM, which may be mid-autoplay-fallback
     const wasMuted  = mutedIntentRef.current;
     const wasVolume = volumeIntentRef.current;
 
@@ -198,7 +197,6 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
       video.muted  = wasMuted;
       video.volume = wasVolume;
       isReloadingRef.current = false;
-      // Sync React state to match the actual DOM state after reload
       setIsMuted(wasMuted);
       if (!wasMuted) setVolume(wasVolume);
       return video.play().then(() => setIsPlaying(true)).catch(() => {
@@ -230,7 +228,6 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
       video.src = streamUrl;
       video.onloadedmetadata = () => {
         isSeekingRef.current = false;
-        // Sync mute state for native HLS (Safari) too
         setIsMuted(video.muted);
         if (!video.muted) setVolume(video.volume);
       };
@@ -247,18 +244,16 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
     const video = videoRef.current;
     if (!video) return;
 
-    const onTimeUpdate = () => setCurrentTime(video.currentTime);
-    const onPlay       = () => setIsPlaying(true);
-    const onPause      = () => setIsPlaying(false);
-    const onWaiting    = () => setIsBuffering(true);
-    const onPlaying    = () => setIsBuffering(false);
-    // Keep isMuted in sync with any external/browser-level mute changes
+    const onTimeUpdate   = () => setCurrentTime(video.currentTime);
+    const onPlay         = () => setIsPlaying(true);
+    const onPause        = () => setIsPlaying(false);
+    const onWaiting      = () => setIsBuffering(true);
+    const onPlaying      = () => setIsBuffering(false);
     const onVolumeChange = () => {
       if (isReloadingRef.current) return;
       setIsMuted(video.muted || video.volume === 0);
       if (video.volume > 0) setVolume(video.volume);
     };
-
     const onEnded = () => {
       if (isSeekingRef.current) return;
       if (modeRef.current === 'archive' && archiveTsRef.current !== null) {
@@ -367,7 +362,7 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
 
   // ── Keyboard controls ─────────────────────────────────────────────────────
 
-  const skipRef      = useRef(skip);
+  const skipRef       = useRef(skip);
   const togglePlayRef = useRef(togglePlay);
   useEffect(() => { skipRef.current = skip; });
   useEffect(() => { togglePlayRef.current = togglePlay; });
@@ -402,6 +397,13 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
       tapCount.current = { left: 0, right: 0 };
     }, 300);
   };
+
+  // ── Archive resolveUrl for SeekPreview ────────────────────────────────────
+  // Memoised so SeekPreview's committedTs effect doesn't re-run on every render.
+  const previewResolveUrl = useMemo(() => {
+    if (!currentChannelId) return null;
+    return (ts: number) => getArchiveUrl(currentChannelId, ts).then(r => r.url);
+  }, [currentChannelId]);
 
   // ─── Render ──────────────────────────────────────────────────────────────
 
@@ -508,12 +510,40 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
                 {formatClock(watchingUnix)}
               </div>
 
-              {/* Seekbar */}
-              <div className="flex-1 h-4 flex items-center cursor-pointer" onClick={handleSeek}>
+              {/* ── Seekbar ── */}
+              <div
+                className="flex-1 h-4 flex items-center cursor-pointer relative"
+                ref={seekbarRef}
+                onClick={handleSeek}
+                onMouseMove={(e) => {
+                  const rect = e.currentTarget.getBoundingClientRect();
+                  const pct  = Math.min(1, Math.max(0, (e.clientX - rect.left) / rect.width));
+                  // In live mode the whole bar represents the current program up to now.
+                  // We still map to a timestamp so the preview can use archive.
+                  const ts = Math.floor(rangeStart + pct * rangeDuration);
+                  setHoverProgress(pct);
+                  setHoverTimestamp(ts);
+                }}
+                onMouseLeave={() => setHoverProgress(null)}
+              >
                 <div className="relative w-full h-1 bg-white/25 rounded-full">
                   <div className="absolute inset-y-0 left-0 rounded-full" style={{ width: `${progressPct}%`, backgroundColor: '#d52b1e' }} />
                   <div className="absolute top-1/2 -translate-y-1/2 -translate-x-1/2 w-3 h-3 rounded-full shadow" style={{ left: `${progressPct}%`, backgroundColor: '#d52b1e' }} />
                 </div>
+
+                {/* SeekPreview — shown on hover in both live and archive modes.
+                    In live mode we still use the archive stream (same CDN URL,
+                    just a few seconds behind) so the viewer can peek at the
+                    past before deciding to rewind. resolveUrl is always the
+                    archive resolver — null would give timestamp-only. */}
+                {hoverProgress !== null && (
+                  <SeekPreview
+                    timestamp={hoverTimestamp}
+                    progress={hoverProgress}
+                    containerWidth={seekbarRef.current?.clientWidth ?? 400}
+                    resolveUrl={previewResolveUrl}
+                  />
+                )}
               </div>
 
               {/* Right buttons */}
