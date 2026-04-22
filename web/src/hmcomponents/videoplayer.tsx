@@ -32,7 +32,7 @@ type VideoPlayerProps = {
 
 function formatClock(unixSec: number): string {
   return new Date(unixSec * 1000).toLocaleTimeString('en-GB', {
-    hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false,
+    hour: '2-digit', minute: '2-digit', hour12: false,
   });
 }
 
@@ -86,6 +86,11 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
   const hideTimer       = useRef<ReturnType<typeof setTimeout> | null>(null);
   const volHideTimer    = useRef<ReturnType<typeof setTimeout> | null>(null);
   const isSeekingRef    = useRef(false);
+  const isReloadingRef  = useRef(false);
+
+  // ── User-intended audio state — never corrupted by autoplay fallback ──────
+  const mutedIntentRef  = useRef(false);
+  const volumeIntentRef = useRef(1);
 
   // ── Synchronous refs — updated every render, never stale ─────────────────
   const modeRef      = useRef(mode);
@@ -97,24 +102,6 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
   onRewindRef.current  = onRewind;
   onGoLiveRef.current  = onGoLive;
 
-  // ── Snap-back prevention ──────────────────────────────────────────────────
-  //
-  // When a seek fires, Stream.tsx sets archiveTimestamp immediately (before the
-  // async URL fetch).  The old HLS stream keeps firing onTimeUpdate, which
-  // increments currentTime.  Without a guard every one of those renders would
-  // compute watchingUnix = newAnchor + oldElapsedTime, drifting the seekbar
-  // back toward the original position before the new stream even loads.
-  //
-  // seekPendingRef is a persistent flag:
-  //   • Raised the moment archiveTimestamp changes (seek requested).
-  //   • Cleared the moment streamUrl changes (new stream URL has arrived).
-  //
-  // While the flag is up, displayCurrentTime is forced to 0 in EVERY render,
-  // regardless of what currentTime state says.  The seekbar therefore stays
-  // pinned to the exact seek target for the entire loading window.
-  //
-  // All three refs are mutated directly in the render body (fine for refs,
-  // not state) so they are always in sync without a useEffect round-trip.
   const prevArchiveTsRef = useRef<number | null>(archiveTimestamp);
   const prevStreamUrlRef = useRef<string>(streamUrl);
   const seekPendingRef   = useRef<boolean>(false);
@@ -195,19 +182,25 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
     const video = videoRef.current;
     if (!video || !streamUrl) return;
 
-    isSeekingRef.current = true;
+    isSeekingRef.current   = true;
+    isReloadingRef.current = true;
 
     hlsRef.current?.destroy();
     settingsService.current.detach();
     setIsBuffering(true);
     setCurrentTime(0);
 
-    const wasMuted  = video.muted;
-    const wasVolume = video.volume;
+    // Read from intent refs — never from the DOM, which may be mid-autoplay-fallback
+    const wasMuted  = mutedIntentRef.current;
+    const wasVolume = volumeIntentRef.current;
 
     const tryPlay = () => {
       video.muted  = wasMuted;
       video.volume = wasVolume;
+      isReloadingRef.current = false;
+      // Sync React state to match the actual DOM state after reload
+      setIsMuted(wasMuted);
+      if (!wasMuted) setVolume(wasVolume);
       return video.play().then(() => setIsPlaying(true)).catch(() => {
         video.muted = true; setIsMuted(true);
         video.play().then(() => setIsPlaying(true)).catch(() => {});
@@ -235,7 +228,12 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
       });
     } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
       video.src = streamUrl;
-      video.onloadedmetadata = () => { isSeekingRef.current = false; };
+      video.onloadedmetadata = () => {
+        isSeekingRef.current = false;
+        // Sync mute state for native HLS (Safari) too
+        setIsMuted(video.muted);
+        if (!video.muted) setVolume(video.volume);
+      };
       setIsBuffering(false);
       tryPlay();
     }
@@ -254,31 +252,39 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
     const onPause      = () => setIsPlaying(false);
     const onWaiting    = () => setIsBuffering(true);
     const onPlaying    = () => setIsBuffering(false);
+    // Keep isMuted in sync with any external/browser-level mute changes
+    const onVolumeChange = () => {
+      if (isReloadingRef.current) return;
+      setIsMuted(video.muted || video.volume === 0);
+      if (video.volume > 0) setVolume(video.volume);
+    };
 
     const onEnded = () => {
       if (isSeekingRef.current) return;
       if (modeRef.current === 'archive' && archiveTsRef.current !== null) {
         const resumeAt = archiveTsRef.current + Math.floor(video.currentTime);
-        if (Math.floor(Date.now() / 1000) - resumeAt >= 5) {
+        if (Math.floor(Date.now() / 1000) - resumeAt >= 10) {
           onRewindRef.current(resumeAt);
         }
       }
     };
 
-    video.addEventListener('timeupdate', onTimeUpdate);
-    video.addEventListener('play',       onPlay);
-    video.addEventListener('pause',      onPause);
-    video.addEventListener('waiting',    onWaiting);
-    video.addEventListener('playing',    onPlaying);
-    video.addEventListener('ended',      onEnded);
+    video.addEventListener('timeupdate',   onTimeUpdate);
+    video.addEventListener('play',         onPlay);
+    video.addEventListener('pause',        onPause);
+    video.addEventListener('waiting',      onWaiting);
+    video.addEventListener('playing',      onPlaying);
+    video.addEventListener('ended',        onEnded);
+    video.addEventListener('volumechange', onVolumeChange);
 
     return () => {
-      video.removeEventListener('timeupdate', onTimeUpdate);
-      video.removeEventListener('play',       onPlay);
-      video.removeEventListener('pause',      onPause);
-      video.removeEventListener('waiting',    onWaiting);
-      video.removeEventListener('playing',    onPlaying);
-      video.removeEventListener('ended',      onEnded);
+      video.removeEventListener('timeupdate',   onTimeUpdate);
+      video.removeEventListener('play',         onPlay);
+      video.removeEventListener('pause',        onPause);
+      video.removeEventListener('waiting',      onWaiting);
+      video.removeEventListener('playing',      onPlaying);
+      video.removeEventListener('ended',        onEnded);
+      video.removeEventListener('volumechange', onVolumeChange);
     };
   }, []);
 
@@ -308,7 +314,12 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
 
   const handleVolumeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const vol = parseFloat(e.target.value);
-    if (videoRef.current) videoRef.current.volume = vol;
+    if (videoRef.current) {
+      videoRef.current.volume = vol;
+      videoRef.current.muted  = vol === 0;
+    }
+    mutedIntentRef.current  = vol === 0;
+    volumeIntentRef.current = vol > 0 ? vol : volumeIntentRef.current;
     setVolume(vol);
     setIsMuted(vol === 0);
   };
@@ -316,8 +327,20 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
   const toggleMute = () => {
     const v = videoRef.current;
     if (!v) return;
-    if (isMuted) { v.muted = false; v.volume = volume || 0.5; setIsMuted(false); }
-    else         { v.muted = true;  v.volume = 0;             setIsMuted(true);  }
+    if (isMuted) {
+      const restoreVol = volume > 0 ? volume : 0.5;
+      v.muted  = false;
+      v.volume = restoreVol;
+      mutedIntentRef.current  = false;
+      volumeIntentRef.current = restoreVol;
+      setIsMuted(false);
+      setVolume(restoreVol);
+    } else {
+      v.muted  = true;
+      v.volume = 0;
+      mutedIntentRef.current = true;
+      setIsMuted(true);
+    }
   };
 
   const skip = (seconds: number) => {
@@ -342,17 +365,20 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
       : document.exitFullscreen();
   };
 
-  // ── Keyboard seek ─────────────────────────────────────────────────────────
+  // ── Keyboard controls ─────────────────────────────────────────────────────
 
-  const skipRef = useRef(skip);
+  const skipRef      = useRef(skip);
+  const togglePlayRef = useRef(togglePlay);
   useEffect(() => { skipRef.current = skip; });
+  useEffect(() => { togglePlayRef.current = togglePlay; });
 
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
       const tag = (e.target as HTMLElement).tagName;
       if (tag === 'INPUT' || tag === 'TEXTAREA') return;
-      if (e.key === 'ArrowLeft')  { e.preventDefault(); skipRef.current(-10); }
-      if (e.key === 'ArrowRight') { e.preventDefault(); skipRef.current(10);  }
+      if (e.key === 'ArrowLeft')  { e.preventDefault(); skipRef.current(-30); }
+      if (e.key === 'ArrowRight') { e.preventDefault(); skipRef.current(30);  }
+      if (e.key === ' ')          { e.preventDefault(); togglePlayRef.current(); }
     };
     document.addEventListener('keydown', onKeyDown);
     return () => document.removeEventListener('keydown', onKeyDown);
@@ -427,9 +453,9 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
 
           {/* Center controls */}
           <div className="absolute left-0 right-0 flex items-center justify-center gap-6" style={{ top: '50%', transform: 'translateY(-50%)' }}>
-            <Btn icon="replay_10"  onClick={() => skip(-10)} title="−10s" size={28} />
+            <Btn icon="replay"  onClick={() => skip(-30)} title="−30s" size={28} />
             <Btn icon={isPlaying ? 'pause' : 'play_arrow'} onClick={togglePlay} size={42} fill />
-            <Btn icon="forward_10" onClick={() => skip(10)}  title="+10s" size={28} disabled={mode === 'live'} />
+            <Btn icon="forward_media" onClick={() => skip(30)}  title="+30s" size={28} disabled={mode === 'live'} />
           </div>
 
           {/* Bottom bar */}
