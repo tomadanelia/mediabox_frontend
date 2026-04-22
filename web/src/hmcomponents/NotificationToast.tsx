@@ -140,7 +140,7 @@ export function NotificationToast({ notification, onDismiss, index }: ToastProps
             overflow: "hidden",
           }}
         >
-          {notification.message+"changed ddd"}
+          {notification.message}
         </p>
         <p style={{ margin: "5px 0 0", fontSize: 11, color: cfg.accent, display: "flex", alignItems: "center", gap: 2 }}>
           <span className="material-symbols-outlined" style={{ fontSize: 11 }}>open_in_new</span>
