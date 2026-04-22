@@ -1,69 +1,23 @@
 // src/components/notifications/NotificationToast.tsx
-// Soft card style — clicking the toast navigates to /notifications
-// Add to index.html:
-// <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Round" rel="stylesheet">
-// <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet">
+// No auto-dismiss — toasts stay until the user closes them.
+// Requires: material-symbols-outlined font in index.html
 
 import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import type { NotificationPayload, NotificationType } from "../services/NotificationService";
 
 // ─── Per-type config ──────────────────────────────────────────────────────────
-const typeConfig: Record<
+const TYPE_CONFIG: Record<
   NotificationType,
-  {
-    icon: string;
-    sideGradient: string;
-    iconBg: string;
-    iconColor: string;
-    progressColor: string;
-  }
+  { icon: string; accent: string; bg: string; pill: string }
 > = {
-  info: {
-    icon: "info",
-    sideGradient: "linear-gradient(135deg, #dbeeff 0%, #fff 100%)",
-    iconBg: "#e8f3ff",
-    iconColor: "#1a73e8",
-    progressColor: "#1a73e8",
-  },
-  success: {
-    icon: "check_circle",
-    sideGradient: "linear-gradient(135deg, #d4f5e2 0%, #fff 100%)",
-    iconBg: "#e4f9ee",
-    iconColor: "#1e8e3e",
-    progressColor: "#1e8e3e",
-  },
-  warning: {
-    icon: "warning",
-    sideGradient: "linear-gradient(135deg, #fef3cc 0%, #fff 100%)",
-    iconBg: "#fef7df",
-    iconColor: "#e8a000",
-    progressColor: "#e8a000",
-  },
-  error: {
-    icon: "error",
-    sideGradient: "linear-gradient(135deg, #fde0de 0%, #fff 100%)",
-    iconBg: "#fde8e6",
-    iconColor: "#d93025",
-    progressColor: "#d93025",
-  },
-  promo: {
-    icon: "campaign",
-    sideGradient: "linear-gradient(135deg, #eedeff 0%, #fff 100%)",
-    iconBg: "#f0e4ff",
-    iconColor: "#9334e6",
-    progressColor: "#9334e6",
-  },
-  system: {
-    icon: "settings",
-    sideGradient: "linear-gradient(135deg, #e8eaed 0%, #fff 100%)",
-    iconBg: "#f1f3f4",
-    iconColor: "#5f6368",
-    progressColor: "#5f6368",
-  },
+  info:    { icon: "info",         accent: "#3b82f6", bg: "#eff6ff", pill: "#dbeafe" },
+  success: { icon: "check_circle", accent: "#22c55e", bg: "#f0fdf4", pill: "#dcfce7" },
+  warning: { icon: "warning",      accent: "#f59e0b", bg: "#fffbeb", pill: "#fef3c7" },
+  error:   { icon: "error",        accent: "#ef4444", bg: "#fef2f2", pill: "#fee2e2" },
+  promo:   { icon: "campaign",     accent: "#a855f7", bg: "#faf5ff", pill: "#f3e8ff" },
+  system:  { icon: "settings",     accent: "#64748b", bg: "#f8fafc", pill: "#f1f5f9" },
 };
-
-const TTL = 6000;
 
 // ─── Single Toast ─────────────────────────────────────────────────────────────
 interface ToastProps {
@@ -75,127 +29,150 @@ interface ToastProps {
 export function NotificationToast({ notification, onDismiss, index }: ToastProps) {
   const [visible, setVisible] = useState(false);
   const [leaving, setLeaving] = useState(false);
-  const [progress, setProgress] = useState(100);
-  const ivRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const navigate = useNavigate();
 
-  const cfg = typeConfig[notification.type] ?? typeConfig.info;
+  const cfg = TYPE_CONFIG[notification.type] ?? TYPE_CONFIG.info;
 
   const dismiss = (e: React.MouseEvent) => {
     e.stopPropagation();
     setLeaving(true);
-    setTimeout(() => onDismiss(notification.id), 240);
+    setTimeout(() => onDismiss(notification.id), 280);
   };
 
   const handleClick = () => {
-    // If the notification has a custom action URL, use that, otherwise go to /notifications
-    if (notification.action?.url) {
-      navigate(notification.action.url);
-    } else {
-      navigate("/notifications");
-    }
+    navigate(notification.action?.url ?? "/notifications");
     setLeaving(true);
-    setTimeout(() => onDismiss(notification.id), 240);
+    setTimeout(() => onDismiss(notification.id), 280);
   };
 
+  // Staggered entrance
   useEffect(() => {
-    const t = setTimeout(() => setVisible(true), 20 + index * 50);
+    const t = setTimeout(() => setVisible(true), 30 + index * 60);
     return () => clearTimeout(t);
   }, [index]);
 
-  useEffect(() => {
-    const tick = 50;
-    const step = (tick / TTL) * 100;
-    ivRef.current = setInterval(() => {
-      setProgress((p) => {
-        if (p <= 0) { clearInterval(ivRef.current!); return 0; }
-        return p - step;
-      });
-    }, tick);
-    return () => { clearInterval(ivRef.current!); };
-  }, []);
+  const transform = leaving
+    ? "translateX(110%) scale(0.95)"
+    : visible
+    ? "translateX(0) scale(1)"
+    : "translateX(30px) scale(0.97)";
 
-  const state =
-    visible && !leaving
-      ? "opacity-100 translate-y-0"
-      : leaving
-      ? "opacity-0 -translate-y-1 scale-[0.98]"
-      : "opacity-0 translate-y-2";
+  const opacity = leaving ? 0 : visible ? 1 : 0;
 
   return (
     <div
       onClick={handleClick}
-      className={`
-        transition-all duration-[220ms] ease-out ${state}
-        w-[360px] max-w-[calc(100vw-2rem)]
-        flex items-center
-        bg-white dark:bg-zinc-900
-        rounded-2xl overflow-hidden
-        border border-black/[0.06] dark:border-white/[0.08]
-        shadow-[0_2px_12px_rgba(0,0,0,0.08)]
-        pointer-events-auto relative
-        cursor-pointer
-        hover:shadow-[0_4px_20px_rgba(0,0,0,0.13)]
-        hover:scale-[1.01]
-      `}
-      style={{ fontFamily: "'Inter', sans-serif", transition: "all 220ms ease-out, box-shadow 150ms ease, transform 150ms ease" }}
+      style={{
+        width: 360,
+        maxWidth: "calc(100vw - 2rem)",
+        background: "#ffffff",
+        borderRadius: 16,
+        border: "1px solid rgba(0,0,0,0.07)",
+        boxShadow: "0 4px 24px rgba(0,0,0,0.09), 0 1px 4px rgba(0,0,0,0.05)",
+        display: "flex",
+        alignItems: "stretch",
+        overflow: "hidden",
+        cursor: "pointer",
+        opacity,
+        transform,
+        transition: "opacity 280ms cubic-bezier(.4,0,.2,1), transform 280ms cubic-bezier(.4,0,.2,1), box-shadow 150ms ease",
+        fontFamily: "'DM Sans', 'Segoe UI', sans-serif",
+        position: "relative",
+      }}
+      onMouseEnter={e => (e.currentTarget.style.boxShadow = "0 8px 32px rgba(0,0,0,0.13), 0 2px 8px rgba(0,0,0,0.07)")}
+      onMouseLeave={e => (e.currentTarget.style.boxShadow = "0 4px 24px rgba(0,0,0,0.09), 0 1px 4px rgba(0,0,0,0.05)")}
     >
-      {/* Colored gradient side panel */}
+      {/* Left accent bar */}
+      <div style={{ width: 4, background: cfg.accent, flexShrink: 0, borderRadius: "16px 0 0 16px" }} />
+
+      {/* Icon */}
       <div
-        className="w-[72px] self-stretch flex-shrink-0 flex items-center justify-center"
-        style={{ background: cfg.sideGradient }}
+        style={{
+          width: 52,
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          flexShrink: 0,
+          background: cfg.bg,
+        }}
       >
         <div
-          className="w-11 h-11 rounded-xl flex items-center justify-center"
-          style={{ background: cfg.iconBg, color: cfg.iconColor }}
+          style={{
+            width: 34,
+            height: 34,
+            borderRadius: 10,
+            background: cfg.pill,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            color: cfg.accent,
+          }}
         >
-          <span className="material-icons-round" style={{ fontSize: 22 }}>
-            {cfg.icon}
-          </span>
+          <span className="material-symbols-outlined" style={{ fontSize: 18 }}>{cfg.icon}</span>
         </div>
       </div>
 
-      {/* Text content */}
-      <div className="flex-1 min-w-0 py-3.5 pr-1">
+      {/* Text */}
+      <div style={{ flex: 1, minWidth: 0, padding: "12px 8px 12px 10px" }}>
         <p
-          className="text-[15px] font-semibold leading-snug dark:text-zinc-100"
-          style={{ color: "#1a1a2e" }}
+          style={{
+            margin: 0,
+            fontSize: 13.5,
+            fontWeight: 600,
+            color: "#111827",
+            lineHeight: 1.35,
+            whiteSpace: "nowrap",
+            overflow: "hidden",
+            textOverflow: "ellipsis",
+          }}
         >
           {notification.title}
         </p>
-        <p className="mt-0.5 text-[13px] text-gray-500 dark:text-zinc-400 leading-snug truncate">
-          {notification.message}
+        <p
+          style={{
+            margin: "3px 0 0",
+            fontSize: 12.5,
+            color: "#6b7280",
+            lineHeight: 1.4,
+            display: "-webkit-box",
+            WebkitLineClamp: 2,
+            WebkitBoxOrient: "vertical",
+            overflow: "hidden",
+          }}
+        >
+          {notification.message+"changed ddd"}
         </p>
-        {/* "Tap to view" hint */}
-        <p className="mt-1 text-[11px] flex items-center gap-0.5" style={{ color: cfg.iconColor }}>
-          <span className="material-icons-round" style={{ fontSize: 11 }}>touch_app</span>
-          Tap to view
+        <p style={{ margin: "5px 0 0", fontSize: 11, color: cfg.accent, display: "flex", alignItems: "center", gap: 2 }}>
+          <span className="material-symbols-outlined" style={{ fontSize: 11 }}>open_in_new</span>
+          View
         </p>
       </div>
 
       {/* Close button */}
       <button
         onClick={dismiss}
-        className="flex-shrink-0 px-3.5 self-start mt-3 text-gray-400 hover:text-gray-600 dark:hover:text-zinc-200 transition-colors bg-transparent border-none cursor-pointer p-0 leading-none"
         aria-label="Dismiss"
+        style={{
+          flexShrink: 0,
+          alignSelf: "flex-start",
+          margin: "8px 8px 0 0",
+          width: 26,
+          height: 26,
+          borderRadius: 8,
+          border: "none",
+          background: "transparent",
+          cursor: "pointer",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          color: "#9ca3af",
+          transition: "background 150ms, color 150ms",
+        }}
+        onMouseEnter={e => { e.currentTarget.style.background = "#f3f4f6"; e.currentTarget.style.color = "#374151"; }}
+        onMouseLeave={e => { e.currentTarget.style.background = "transparent"; e.currentTarget.style.color = "#9ca3af"; }}
       >
-        <span className="material-icons-round" style={{ fontSize: 18 }}>close</span>
+        <span className="material-symbols-outlined" style={{ fontSize: 15 }}>close</span>
       </button>
-
-      {/* Progress bar */}
-      <div
-        className="absolute bottom-0 left-[72px] right-0 h-[2px]"
-        style={{ background: "rgba(0,0,0,0.04)" }}
-      >
-        <div
-          className="h-full rounded-sm transition-[width] ease-linear"
-          style={{
-            width: `${progress}%`,
-            background: cfg.progressColor,
-            transitionDuration: "50ms",
-          }}
-        />
-      </div>
     </div>
   );
 }
@@ -210,12 +187,24 @@ export function NotificationToastContainer({ toasts, onDismiss }: ToastContainer
   if (toasts.length === 0) return null;
   return (
     <div
-      className="fixed top-20 right-4 z-[9999] flex flex-col gap-3 items-end pointer-events-none"
+      style={{
+        position: "fixed",
+        top: 80,
+        right: 16,
+        zIndex: 9999,
+        display: "flex",
+        flexDirection: "column",
+        gap: 10,
+        alignItems: "flex-end",
+        pointerEvents: "none",
+      }}
       aria-live="polite"
       aria-label="Notifications"
     >
       {toasts.map((t, i) => (
-        <NotificationToast key={t.id} notification={t} onDismiss={onDismiss} index={i} />
+        <div key={t.id} style={{ pointerEvents: "auto" }}>
+          <NotificationToast notification={t} onDismiss={onDismiss} index={i} />
+        </div>
       ))}
     </div>
   );

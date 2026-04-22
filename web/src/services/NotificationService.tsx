@@ -1,11 +1,6 @@
-// src/services/NotificationService.ts
-// Socket.IO client — connects to https://tv-api.telecomm1.com
-// Listens to: admin_annoucment | notification_received
-// Token fetched from /api/profile/socket-token  (field: socket_token)
-
 import { io, Socket } from "socket.io-client";
 import api from "../lib/axios";
-
+import {API_BASE_URL} from "../config";
 export type NotificationType =
   | "info"
   | "success"
@@ -29,7 +24,7 @@ export interface NotificationPayload {
 
 type NotificationHandler = (notification: NotificationPayload) => void;
 
-const SERVER_URL = "https://tv-api.telecomm1.com";
+const SERVER_URL = API_BASE_URL
 
 // ── Normalise whatever the server sends into NotificationPayload ─────────────
 function normalise(raw: unknown, fallbackType: NotificationType): NotificationPayload {
@@ -101,7 +96,7 @@ class NotificationService {
     });
 
     // ── Event: admin_annoucment ───────────────────────────────────────────
-    this.socket.on("admin_annoucment", (data: unknown) => {
+    this.socket.on("admin_announcement", (data: unknown) => {
       const payload = normalise(data, "promo");
       // Always treat admin announcements as promo/info so they stand out
       if (!((data as Record<string, unknown>)?.type)) payload.type = "promo";
