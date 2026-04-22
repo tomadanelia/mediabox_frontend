@@ -35,7 +35,9 @@ const App: React.FC = () => {
   const setLogos = useUIStore((state) => state.setLogos)
   const fetchUser = useAuthStore((state) => state.fetchUser)
   const user = useAuthStore((state) => state.user)          // ← adjust to your store shape
-
+  const setUnreadCount  = useUIStore((s) => s.setUnreadCount)
+  const incrementUnread = useUIStore((s) => s.incrementUnread)
+ 
   // Notification toasts
   const { toasts, dismissToast } = useNotifications()
 
@@ -56,15 +58,32 @@ const App: React.FC = () => {
     fetchUser()
   }, [fetchUser])
 
-  // ── Connect socket once the user is authenticated ─────────────────────────
   useEffect(() => {
-    if (!user) return undefined
-    notificationService.connect()
-    return () => {
-      notificationService.disconnect()
-    }
-  }, [user])                   // re-run if user logs in / out
-
+  if (!user) return
+ 
+  notificationService.connect()
+   const unsub = notificationService.subscribe(() => {
+    incrementUnread()
+  })
+ 
+  return () => {
+    unsub()
+    notificationService.disconnect()
+  }
+}, [user])
+   
+  useEffect(() => {
+  if (!user) {
+    setUnreadCount(0)
+    return
+  }
+  api.get("/api/notifications", { params: { per_page: 1, read: false } })
+    .then(({ data }) => {
+      const unread = (data.data ?? []).filter((n: { read: boolean }) => !n.read).length
+      setUnreadCount(unread)
+    })
+    .catch(() => {})
+}, [user])
   // Dark mode
   useEffect(() => {
     const root = document.documentElement

@@ -4,7 +4,6 @@ import useUIStore from "@/store/ui-store"
 import api from "@/lib/axios"
 import useAuthStore from "@/store/AuthStore"
 type Language = "En" | "Ge"
-
 interface User {
   avatar_url?: string | null
   full_name?: string | null
@@ -104,58 +103,9 @@ const Avatar = ({ src, name }: AvatarProps) => (
   </div>
 )
 
-// ── Search Panel (dropdown) ────────────────────────────────────
-interface SearchPanelProps {
-  open: boolean
-  onClose: () => void
-  placeholder: string
-}
 
-const SearchPanel = ({ open, onClose, placeholder }: SearchPanelProps) => {
-  const inputRef = useRef<HTMLInputElement>(null)
 
-  useEffect(() => {
-    if (open) setTimeout(() => inputRef.current?.focus(), 50)
-  }, [open])
 
-  useEffect(() => {
-    const handler = (e: KeyboardEvent) => { if (e.key === "Escape") onClose() }
-    document.addEventListener("keydown", handler)
-    return () => document.removeEventListener("keydown", handler)
-  }, [onClose])
-
-  return (
-    <>
-      <div
-        onClick={onClose}
-        className={[
-          "fixed inset-0 z-40 bg-black/20 backdrop-blur-[2px] transition-opacity duration-200",
-          open ? "opacity-100" : "opacity-0 pointer-events-none",
-        ].join(" ")}
-      />
-      <div className={[
-        "fixed top-16 left-0 right-0 z-50",
-        "flex justify-center px-4 pt-3",
-        "transition-all duration-200",
-        open ? "opacity-100 translate-y-0" : "opacity-0 -translate-y-2 pointer-events-none",
-      ].join(" ")}>
-        <div className="w-full max-w-lg bg-white dark:bg-zinc-900 rounded-2xl shadow-2xl shadow-black/20 dark:shadow-black/50 border border-black/8 dark:border-white/10 overflow-hidden">
-          <div className="relative flex items-center px-4 py-3">
-            {/* <Icon name="search" size={20} className="text-zinc-400 shrink-0 mr-3" /> */}
-            <input
-              ref={inputRef}
-              placeholder={placeholder}
-              className="flex-1 bg-transparent text-sm text-zinc-900 dark:text-white placeholder:text-zinc-400 focus:outline-none"
-            />
-            <button onClick={onClose} className="ml-3 shrink-0 rounded-full p-1 hover:bg-zinc-100 dark:hover:bg-white/10 transition-colors">
-              <Icon name="close" size={18} className="text-zinc-400" />
-            </button>
-          </div>
-        </div>
-      </div>
-    </>
-  )
-}
 
 // ── ProfileDropdown ────────────────────────────────────────────
 interface ProfileDropdownProps {
@@ -462,6 +412,7 @@ const Navbar = () => {
   const handleLogout = useAuthStore((s) => s.logout)
 
   
+const unreadCount = useUIStore((s) => s.unreadCount)
 
   return (
     <>
@@ -520,14 +471,24 @@ const Navbar = () => {
           {/* RIGHT */}
           <div className="flex items-center gap-1 shrink-0">
 
-            <button
-              onClick={() => setSearchOpen(true)}
-              className="rounded-full p-2 hover:bg-zinc-100 dark:hover:bg-white/8 transition-colors"
-            >
-              {/* <Icon name="search" size={20} className="text-zinc-600 dark:text-zinc-400" /> */}
-            </button>
-
-            <button
+<Link
+  to="/notifications"
+  title="Notifications"
+  className="relative rounded-full p-2 hover:bg-zinc-100 dark:hover:bg-white/8 transition-colors flex items-center justify-center"
+>
+  <Icon
+    name="notifications"
+    size={22}
+    className="text-zinc-600 dark:text-zinc-400"
+  />
+  {unreadCount > 0 && (
+    <span
+      className="absolute top-1 right-1 min-w-[16px] h-4 px-0.5 rounded-full bg-[#d52b1e] text-white text-[10px] font-bold flex items-center justify-center leading-none ring-2 ring-white dark:ring-zinc-950"
+    >
+      {unreadCount > 99 ? "99+" : unreadCount}
+    </span>
+  )}
+</Link>            <button
               onClick={toggleDarkMode}
               title="Toggle dark mode"
               className="hidden cursor-pointer lg:flex rounded-full p-2 hover:bg-zinc-100 dark:hover:bg-white/8 transition-colors"
@@ -564,11 +525,6 @@ const Navbar = () => {
         </div>
       </header>
 
-      <SearchPanel
-        open={searchOpen}
-        onClose={() => setSearchOpen(false)}
-        placeholder={tx.search}
-      />
 
       <MobileSidebar
         open={sidebarOpen}

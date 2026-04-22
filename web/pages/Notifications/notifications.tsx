@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import api from "../../src/lib/axios";
+import useUIStore from "@/store/ui-store";
 
 type NotificationType = "info" | "warning" | "success" | "error" | "system";
 
@@ -152,6 +153,7 @@ export default function NotificationsPage() {
   const [error, setError] = useState<string | null>(null);
   const [markingId, setMarkingId] = useState<number | null>(null);
   const [toast, setToast] = useState<string | null>(null);
+  const decrementUnread = useUIStore((s) => s.decrementUnread)
 
   const perPage = 20;
 
@@ -187,6 +189,7 @@ export default function NotificationsPage() {
         prev.map((n) => (n.id === id ? { ...n, read: true } : n))
       );
       showToast("Marked as read");
+      decrementUnread(1) 
     } catch (e: unknown) {
       const status = (e as { response?: { status?: number } })?.response?.status;
       const msg =
@@ -205,6 +208,7 @@ export default function NotificationsPage() {
     for (const n of unread) {
       await handleRead(n.id);
     }
+    decrementUnread(unread.length) 
   };
 
   const showToast = (msg: string, _isError = false) => {
