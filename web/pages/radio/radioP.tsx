@@ -141,10 +141,10 @@ function NowPlayingCard({ channel, status, volume, onVolumeChange, isMuted, onTo
 
       <div className="text-center">
         <h2 className="text-xl font-bold text-black/85 dark:text-white/90 mb-1">
-          {channel?.name ?? 'Select a station'}
+          {channel?.name ?? 'აირჩიეთ სადგური'}
         </h2>
-        {isLoading && <p className="text-xs animate-pulse" style={{ color: '#d52b1e' }}>Connecting…</p>}
-        {status === 'error' && <p className="text-xs text-red-400">Stream unavailable</p>}
+        {isLoading && <p className="text-xs animate-pulse" style={{ color: '#d52b1e' }}>დაკავშირება…</p>}
+        {status === 'error' && <p className="text-xs text-red-400">სტრიმი მიუწვდომელია</p>}
       </div>
 
       <div className="flex flex-col items-center gap-3">
@@ -155,7 +155,7 @@ function NowPlayingCard({ channel, status, volume, onVolumeChange, isMuted, onTo
         {isPlaying && channel && (
           <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-red-500/10">
             <span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse" />
-            <span className="text-[10px] font-bold text-red-500 uppercase tracking-widest">Live</span>
+            <span className="text-[10px] font-bold text-red-500 uppercase tracking-widest">პირდაპირი</span>
           </div>
         )}
       </div>
@@ -189,7 +189,7 @@ function ChannelRow({ ch, isSelected, isPlaying, iconOnly, onClick }: {
   return (
     <div
       onClick={hasAccess ? onClick : undefined}
-      title={!hasAccess ? (isFree ? 'Login required' : 'Subscription required') : undefined}
+      title={!hasAccess ? (isFree ? 'საჭიროა ავტორიზაცია' : 'საჭიროა გამოწერა') : undefined}
       className={[
         'flex items-center gap-3 px-4 py-2.5 transition-all duration-150 border-l-2',
         hasAccess ? 'cursor-pointer' : 'cursor-default opacity-40',
@@ -214,7 +214,7 @@ function ChannelRow({ ch, isSelected, isPlaying, iconOnly, onClick }: {
             <span className={`text-[10px] px-1.5 py-0.5 rounded-full w-fit mt-0.5 inline-block ${isFree ? 'bg-green-500/10 text-green-600 dark:text-green-400' : ''}`}
               style={!isFree ? { backgroundColor: 'rgba(213,43,30,0.1)', color: '#d52b1e' } : {}}
             >
-              {isFree ? 'Free' : 'Premium'}
+              {isFree ? 'უფასო' : 'პრემიუმი'}
             </span>
           </div>
           {isSelected && isPlaying  && <AudioBarsAnimated isPlaying barCount={8} small />}
@@ -246,7 +246,7 @@ function ChannelList({ channels, selectedId, isPlaying, iconOnly, onSelect }: {
           <Search size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 transition-colors"
             style={{ color: 'rgba(213,43,30,0.7)' }}
           />
-          <input type="text" value={query} onChange={e => setQuery(e.target.value)} placeholder="Search radio…"
+          <input type="text" value={query} onChange={e => setQuery(e.target.value)} placeholder="სადგურის ძიება…"
             className="w-full h-10 pl-9 pr-9 rounded-xl text-sm bg-white/70 dark:bg-white/5 border border-black/8 dark:border-white/10 backdrop-blur-md placeholder:text-black/30 dark:placeholder:text-white/25 text-black/80 dark:text-white/80 outline-none transition-all focus:bg-white dark:focus:bg-white/10"
             style={{ ['--tw-ring-color' as string]: 'rgba(213,43,30,0.3)' }}
           />
@@ -260,7 +260,7 @@ function ChannelList({ channels, selectedId, isPlaying, iconOnly, onSelect }: {
           )) : (
             <div className="p-10 text-center">
               <Search size={22} className="mx-auto mb-2 text-black/15 dark:text-white/15" />
-              <p className="text-sm text-black/35 dark:text-white/30">No results for "{query}"</p>
+              <p className="text-sm text-black/35 dark:text-white/30">„{query}" — შედეგი არ მოიძებნა</p>
             </div>
           )}
         </div>
@@ -279,7 +279,7 @@ function MobileChannelGrid({ channels, selectedId, isPlaying, onSelect }: {
 
   return (
     <div className="flex flex-col gap-3 p-3">
-      <input type="text" value={search} onChange={e => setSearch(e.target.value)} placeholder="Search…"
+      <input type="text" value={search} onChange={e => setSearch(e.target.value)} placeholder="ძიება…"
         className="w-full h-9 px-3 rounded-xl text-sm bg-white/70 dark:bg-white/5 border border-black/10 dark:border-white/10 text-black/80 dark:text-white/80 placeholder:text-black/30 dark:placeholder:text-white/30 outline-none"
         style={{ ['--tw-ring-color' as string]: 'rgba(213,43,30,0.4)' }}
       />
@@ -314,7 +314,7 @@ function MobileChannelGrid({ channels, selectedId, isPlaying, onSelect }: {
               >{ch.name}</span>
               <span className={`text-[8px] px-1.5 py-0.5 rounded-full ${isFree ? 'bg-green-500/10 text-green-500' : ''}`}
                 style={!isFree ? { backgroundColor: 'rgba(213,43,30,0.1)', color: '#d52b1e' } : {}}
-              >{isFree ? 'Free' : 'Premium'}</span>
+              >{isFree ? 'უფასო' : 'პრემიუმი'}</span>
             </div>
           )
         })}
@@ -331,7 +331,7 @@ function Spinner() {
       <div className="w-8 h-8 rounded-full border-2 border-t-transparent animate-spin"
         style={{ borderColor: 'rgba(213,43,30,0.2)', borderTopColor: '#d52b1e' }}
       />
-      <span className="text-sm text-black/35 dark:text-white/30">Loading stations…</span>
+      <span className="text-sm text-black/35 dark:text-white/30">სადგურები იტვირთება…</span>
     </div>
   )
 }
@@ -343,7 +343,7 @@ function PlayButton({ status, onClick, disabled }: { status: PlayerStatus; onCli
   const isLoading = status === 'loading'
   return (
     <button onClick={onClick} disabled={disabled || isLoading}
-      className={['mt-2 w-16 h-16 rounded-2xl flex items-center justify-center transition-all duration-200', !isPlaying ? 'bg-white/80 dark:bg-white/8 border border-black/8 dark:border-white/10 text-black/50 dark:text-white/40 hover:scale-105 hover:shadow-lg' : '', 'disabled:opacity-30 disabled:scale-100 disabled:shadow-none'].join(' ')}
+      className={['mt-2 -translate-y-30 w-16 h-16 rounded-2xl flex items-center justify-center transition-all duration-200', !isPlaying ? 'bg-white/80 dark:bg-white/8 border border-black/8 dark:border-white/10 text-black/50 dark:text-white/40 hover:scale-105 hover:shadow-lg' : '', 'disabled:opacity-30 disabled:scale-100 disabled:shadow-none'].join(' ')}
       style={isPlaying ? { background: '#d52b1e', color: 'white', transform: 'scale(1.05)', boxShadow: '0 20px 40px -12px rgba(213,43,30,0.4)' } : {}}
     >
       {isLoading ? <div className="w-6 h-6 rounded-full border-2 border-current border-t-transparent animate-spin" />
@@ -395,7 +395,7 @@ export default function RadioPage() {
     setLoading(true)
     api.get<RadioChannel[]>('/api/radio')
       .then(res => setChannels(res.data))
-      .catch(() => setFetchError('Failed to load stations. Please refresh.'))
+      .catch(() => setFetchError('სადგურების ჩატვირთვა ვერ მოხერხდა. გთხოვთ განაახლოთ გვერდი.'))
       .finally(() => setLoading(false))
   }, [])
 
@@ -468,9 +468,9 @@ export default function RadioPage() {
               <PulsingRing active={isPlaying} />
             </div>
             <div className="flex-1 min-w-0">
-              <p className="text-[13px] font-semibold text-black/80 dark:text-white/80 truncate">{selected?.name ?? 'Select a station'}</p>
-              {isLoading && <p className="text-[10px] animate-pulse" style={{ color: '#d52b1e' }}>Connecting…</p>}
-              {playerStatus === 'error' && <p className="text-[10px] text-red-400">Stream error</p>}
+              <p className="text-[13px] font-semibold text-black/80 dark:text-white/80 truncate">{selected?.name ?? 'აირჩიეთ სადგური'}</p>
+              {isLoading && <p className="text-[10px] animate-pulse" style={{ color: '#d52b1e' }}>დაკავშირება…</p>}
+              {playerStatus === 'error' && <p className="text-[10px] text-red-400">სტრიმის შეცდომა</p>}
             </div>
             {selected && <AudioBarsAnimated isPlaying={isPlaying} barCount={10} small />}
             <button onClick={togglePlay} disabled={!selected || isLoading}
@@ -488,7 +488,7 @@ export default function RadioPage() {
             {isPlaying && (
               <div className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-red-500/10 shrink-0">
                 <span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse" />
-                <span className="text-[9px] font-bold text-red-500 uppercase tracking-wide">Live</span>
+                <span className="text-[9px] font-bold text-red-500 uppercase tracking-wide">პირდაპირი</span>
               </div>
             )}
           </div>
@@ -569,21 +569,21 @@ export default function RadioPage() {
           <div className="flex items-center gap-2">
             {isPlaying ? <Wifi size={14} className="text-green-500" /> : <WifiOff size={14} className="text-black/25 dark:text-white/25" />}
             <span className="text-xs font-medium text-black/50 dark:text-white/40">
-              {playerStatus === 'loading' ? 'Connecting…' : isPlaying ? 'Streaming' : playerStatus === 'error' ? 'Error' : 'Offline'}
+              {playerStatus === 'loading' ? 'დაკავშირება…' : isPlaying ? 'მიმდინარეობს სტრიმი' : playerStatus === 'error' ? 'შეცდომა' : 'გათიშულია'}
             </span>
           </div>
           {selected && (
             <>
               <div className="flex flex-col gap-1">
-                <span className="text-[10px] text-black/30 dark:text-white/25 uppercase tracking-widest">Station</span>
+                <span className="text-[10px] text-black/30 dark:text-white/25 uppercase tracking-widest">სადგური</span>
                 <span className="text-sm font-semibold text-black/80 dark:text-white/80">{selected.name}</span>
               </div>
               <div className="flex flex-col gap-1">
-                <span className="text-[10px] text-black/30 dark:text-white/25 uppercase tracking-widest">Access</span>
+                <span className="text-[10px] text-black/30 dark:text-white/25 uppercase tracking-widest">წვდომა</span>
                 <span className={`text-xs font-medium px-2 py-0.5 rounded-full w-fit ${bool(selected.is_free) ? 'bg-green-500/10 text-green-600 dark:text-green-400' : ''}`}
                   style={!bool(selected.is_free) ? { backgroundColor: 'rgba(213,43,30,0.1)', color: '#d52b1e' } : {}}
                 >
-                  {bool(selected.is_free) ? 'Free' : 'Premium'}
+                  {bool(selected.is_free) ? 'უფასო' : 'პრემიუმი'}
                 </span>
               </div>
             </>
@@ -593,19 +593,19 @@ export default function RadioPage() {
         <div className="rounded-xl border border-black/8 dark:border-white/8 bg-white/50 dark:bg-white/3 backdrop-blur-md p-4">
           <div className="flex items-center gap-2 mb-3">
             <Radio size={13} style={{ color: '#d52b1e' }} />
-            <span className="text-xs font-semibold text-black/50 dark:text-white/40 uppercase tracking-widest">Stations</span>
+            <span className="text-xs font-semibold text-black/50 dark:text-white/40 uppercase tracking-widest">სადგურები</span>
           </div>
           <div className="space-y-2">
             {[
-              { label: 'Total',      value: channels.length,                                color: 'text-black/60 dark:text-white/50' },
-              { label: 'Free',       value: channels.filter(c => bool(c.is_free)).length,    color: 'text-green-600 dark:text-green-400' },
-              { label: 'Premium',    value: channels.filter(c => !bool(c.is_free)).length,   color: '' },
-              { label: 'Accessible', value: channels.filter(c => bool(c.has_access)).length, color: 'text-black/60 dark:text-white/50' },
+              { label: 'სულ',         value: channels.length,                                color: 'text-black/60 dark:text-white/50' },
+              { label: 'უფასო',       value: channels.filter(c => bool(c.is_free)).length,    color: 'text-green-600 dark:text-green-400' },
+              { label: 'პრემიუმი',    value: channels.filter(c => !bool(c.is_free)).length,   color: '' },
+              { label: 'ხელმისაწვდომი', value: channels.filter(c => bool(c.has_access)).length, color: 'text-black/60 dark:text-white/50' },
             ].map(({ label, value, color }) => (
               <div key={label} className="flex items-center justify-between">
                 <span className="text-xs text-black/50 dark:text-white/40">{label}</span>
                 <span className={`text-xs font-semibold tabular-nums ${color}`}
-                  style={label === 'Premium' ? { color: '#d52b1e' } : {}}
+                  style={label === 'პრემიუმი' ? { color: '#d52b1e' } : {}}
                 >{value}</span>
               </div>
             ))}

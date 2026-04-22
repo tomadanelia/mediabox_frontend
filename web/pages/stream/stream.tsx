@@ -131,7 +131,6 @@ const ChannelGrid: React.FC<ChannelGridProps> = ({
 
   return (
     <div className="w-full flex flex-col gap-3">
-      {/* Search */}
       <input
         type="text"
         value={search}
@@ -145,9 +144,7 @@ const ChannelGrid: React.FC<ChannelGridProps> = ({
           outline-none focus:ring-2 focus:ring-red-400/40"
       />
 
-      {/* Category pills */}
       <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-none">
-        {/* All pill */}
         <button
           onClick={() => onToggleCategory('')}
           className={`shrink-0 h-7 px-3 rounded-full text-xs font-medium transition-all
@@ -159,7 +156,6 @@ const ChannelGrid: React.FC<ChannelGridProps> = ({
           ყველა
         </button>
 
-        {/* Favourites pill */}
         <button
           onClick={onToggleFavourites}
           className={`shrink-0 h-7 px-3 rounded-full text-xs font-medium transition-all flex items-center gap-1
@@ -202,7 +198,6 @@ const ChannelGrid: React.FC<ChannelGridProps> = ({
         ))}
       </div>
 
-      {/* Grid */}
       <div className="grid grid-cols-4 gap-2">
         {filtered.map(ch => {
           const isSelected = selectedChannel?.id === ch.id;
@@ -271,7 +266,7 @@ const ProgramsList: React.FC<ProgramsListProps> = ({
     [programs]
   );
 
-  const nowSec = liveUnixSec;
+  const nowSec   = liveUnixSec;
   const activeSec = mode === 'archive' && archiveTimestamp !== null ? archiveTimestamp : nowSec;
 
   const activeUID = useMemo(() => {
@@ -293,10 +288,10 @@ const ProgramsList: React.FC<ProgramsListProps> = ({
   return (
     <div className="divide-y divide-black/5 dark:divide-white/5">
       {sorted.map(p => {
-        const isCurrent = p.UID === activeUID;
-        const isPast = nowSec >= p.END_TIME;
+        const isCurrent  = p.UID === activeUID;
+        const isPast     = nowSec >= p.END_TIME;
         const isClickable = p.START_TIME <= nowSec;
-        const isFuture = !isClickable;
+        const isFuture   = !isClickable;
 
         return (
           <div
@@ -319,11 +314,9 @@ const ProgramsList: React.FC<ProgramsListProps> = ({
             ].join(' ')}>
               {formatUnix(p.START_TIME)}
             </span>
-
             <span className="flex-1 text-sm truncate text-black/80 dark:text-white/75">
               {p.TITLE}
             </span>
-
             {isCurrent && (
               <span className="w-2 h-2 rounded-full bg-red-400 shrink-0 animate-pulse" />
             )}
@@ -343,39 +336,41 @@ type PortraitTab = 'channels' | 'programs';
 
 export const Stream: React.FC = () => {
   const [isCalendarVisible, setIsCalendarVisible] = useState(false);
-  const [selectedCategory, setselectedCategory] = useState<string>("");
+  const [selectedCategory, setselectedCategory]   = useState<string>('');
 
-  const [channels, setChannels] = useState<Channel[]>([]);
+  const [channels, setChannels]         = useState<Channel[]>([]);
   const [accessibleIds, setAccessibleIds] = useState<string[]>([]);
   const [selectedChannel, setSelectedChannel] = useState<Channel | null>(null);
 
-  const [streamUrl, setStreamUrl] = useState<string>('');
-  const [mode, setMode] = useState<'live' | 'archive'>('live');
+  const [streamUrl, setStreamUrl]               = useState<string>('');
+  const [mode, setMode]                         = useState<'live' | 'archive'>('live');
   const [archiveTimestamp, setArchiveTimestamp] = useState<number | null>(null);
-  const [isStreamLoading, setIsStreamLoading] = useState(false);
+  const [isStreamLoading, setIsStreamLoading]   = useState(false);
 
-  const [programs, setPrograms] = useState<ProgramItem[]>([]);
+  const [programs, setPrograms]             = useState<ProgramItem[]>([]);
   const [nextDayPrograms, setNextDayPrograms] = useState<ProgramItem[]>([]);
-  const [programDate, setProgramDate] = useState(toApiDate());
+  const [programDate, setProgramDate]       = useState(toApiDate());
 
   const [rewindableHours, setRewindableHours] = useState<number>(168);
+  // Ref keeps the latest value available synchronously inside callbacks
+  const rewindableHoursRef = useRef(rewindableHours);
+  useEffect(() => { rewindableHoursRef.current = rewindableHours; }, [rewindableHours]);
+
   const rewindableDays = Math.ceil(rewindableHours / 24);
 
-  const [liveUnixSec, setLiveUnixSec] = useState(Math.floor(Date.now() / 1000));
+  const [liveUnixSec, setLiveUnixSec]     = useState(Math.floor(Date.now() / 1000));
   const [pendingChannel, setPendingChannel] = useState<ChannelWithPlans | null>(null);
 
-  const isMobile = useIsMobile();
-  const isPortrait = useIsPortrait();
+  const isMobile        = useIsMobile();
+  const isPortrait      = useIsPortrait();
   const isMobilePortrait = isMobile && isPortrait;
 
-  const [leftExpanded, setLeftExpanded] = useState(false);
+  const [leftExpanded,  setLeftExpanded]  = useState(false);
   const [rightExpanded, setRightExpanded] = useState(false);
 
-  // ─── Favourites state (driven by favouriteService) ────────────────────────
-  const [favouriteIds, setFavouriteIds] = useState<ReadonlySet<number>>(getFavourites());
+  const [favouriteIds, setFavouriteIds]       = useState<ReadonlySet<number>>(getFavourites());
   const [showFavouritesOnly, setShowFavouritesOnly] = useState(false);
 
-  // Legacy favlist shape kept so DataTableDemo doesn't need props changed
   const favlist = useMemo(
     () => Array.from(favouriteIds).map(id => ({ id })),
     [favouriteIds]
@@ -383,8 +378,9 @@ export const Stream: React.FC = () => {
 
   const [portraitTab, setPortraitTab] = useState<PortraitTab>('channels');
 
-const navigate = useNavigate();
-const { channelId } = useParams<{ channelId?: string }>();
+  const navigate = useNavigate();
+  const { channelId } = useParams<{ channelId?: string }>();
+
   type Category = {
     id: string
     name_ka: string
@@ -396,6 +392,10 @@ const { channelId } = useParams<{ channelId?: string }>();
     updated_at: string
   }
 
+  const [categories, setCategories] = useState<Category[]>([]);
+
+  // ─── Channel access / plans ───────────────────────────────────────────────
+
   const handleChannelSelect = async (channel: Channel) => {
   const hasAccess = accessibleIds.includes(channel.id);
   if (hasAccess) {
@@ -404,19 +404,19 @@ const { channelId } = useParams<{ channelId?: string }>();
     return;
   }
     try {
-      const res = await api.get(`/api/channels/${channel.id}/plans`);
+      const res  = await api.get(`/api/channels/${channel.id}/plans`);
       const data = res.data;
       setPendingChannel({
         ...channel,
         is_free: data.is_free,
-        plans: data.required_plans
+        plans: data.required_plans,
       } as ChannelWithPlans);
     } catch (err) {
       console.error('Failed to fetch channel plans:', err);
     }
   };
 
-  const [categories, setCategories] = useState<Category[]>([]);
+  // ─── Bootstrap ───────────────────────────────────────────────────────────
 
   useEffect(() => {
     api.get('/api/channels/categories')
@@ -429,7 +429,6 @@ const { channelId } = useParams<{ channelId?: string }>();
     return () => clearInterval(id);
   }, []);
 
-  // ─── Favourites — load once, subscribe for live updates ──────────────────
   useEffect(() => {
     fetchFavourites().catch((err: unknown) =>
       console.error('Failed to fetch favourites:', err)
@@ -437,16 +436,10 @@ const { channelId } = useParams<{ channelId?: string }>();
     return subscribeFavourites((ids: ReadonlySet<number>) => setFavouriteIds(ids));
   }, []);
 
-  // Legacy helpers kept so nothing else breaks (they now delegate to the service)
-  const markFavorite = useCallback((channelId: number) => {
-    markFavourite(channelId);
-  }, []);
+  const markFavorite   = useCallback((channelId: number) => { markFavourite(channelId);   }, []);
+  const unmarkFavorite = useCallback((channelId: number) => { unmarkFavourite(channelId); }, []);
 
-  const unmarkFavorite = useCallback((channelId: number) => {
-    unmarkFavourite(channelId);
-  }, []);
-
-  // ─── API ─────────────────────────────────────────────────────────────────────
+  // ─── Stream helpers ───────────────────────────────────────────────────────
 
   const goLive = useCallback(async (channelId: string) => {
     setIsStreamLoading(true);
@@ -463,21 +456,27 @@ const { channelId } = useParams<{ channelId?: string }>();
   }, []);
 
   const goArchive = useCallback(async (channelId: string, timestamp: number) => {
-    const oldestValid = Math.floor(Date.now() / 1000) - rewindableHours * 3600 + 60;
+    // Clamp to the oldest available second (no extra offset — the service
+    // already ensures the token covers the requested window).
+    const oldestValid = Math.floor(Date.now() / 1000) - rewindableHoursRef.current * 3600;
     const safeTs = Math.max(timestamp, oldestValid);
+
     setIsStreamLoading(true);
     try {
       const { url, rewindableHours: hours } = await getArchiveUrl(channelId, safeTs);
       setStreamUrl(url);
       setMode('archive');
       setArchiveTimestamp(safeTs);
-      if (!isNaN(hours)) setRewindableHours(hours);
+      if (!isNaN(hours)) {
+        setRewindableHours(hours);
+        rewindableHoursRef.current = hours;
+      }
     } catch (e) {
       console.error('[goArchive]', e);
     } finally {
       setIsStreamLoading(false);
     }
-  }, [rewindableHours]);
+  }, []);
 
   const fetchPrograms = useCallback(async (channelId: string, date: string) => {
     try {
@@ -489,15 +488,15 @@ const { channelId } = useParams<{ channelId?: string }>();
     }
   }, []);
 
-  // ─── Effects ─────────────────────────────────────────────────────────────────
+  // ─── Channel list fetch ───────────────────────────────────────────────────
 
   useEffect(() => {
     (async () => {
       try {
-        const res = await api.get('/api/channels');
+        const res  = await api.get('/api/channels');
         const data = res.data;
 
-        const raw: any[] = data.channels || [];
+        const raw: any[]        = data.channels || [];
         const normalized: Channel[] = raw.map(ch => ({
           ...ch,
           category: ch.category_en ?? ch.category ?? '',
@@ -507,70 +506,61 @@ const { channelId } = useParams<{ channelId?: string }>();
         setAccessibleIds(data.accessible_external_ids || []);
 
         const fromUrl = channelId
-  ? normalized.find(ch => ch.id === channelId) ?? null
-  : null;
+          ? normalized.find(ch => ch.id === channelId) ?? null
+          : null;
 
-const firstAccessible = normalized.find((ch: Channel) =>
-  data.accessible_external_ids.includes(ch.id)
-) ?? normalized[0];
+        const firstAccessible = normalized.find((ch: Channel) =>
+          data.accessible_external_ids.includes(ch.id)
+        ) ?? normalized[0];
 
-setSelectedChannel(fromUrl ?? firstAccessible ?? null);
+        setSelectedChannel(fromUrl ?? firstAccessible ?? null);
       } catch (e) {
         console.error('[fetchChannels]', e);
       }
     })();
   }, []);
-  const leftPanelRef = useRef<HTMLDivElement>(null);
 
-  // 2. Auto-collapse after timeout when expanded
-  useEffect(() => {
-    if (!leftExpanded) return;
+  // ─── Panel collapse ───────────────────────────────────────────────────────
 
-    const timer = setTimeout(() => {
-      setLeftExpanded(false);
-    }, 3000); // 3 seconds — adjust as needed
-
-    return () => clearTimeout(timer);
-  }, [leftExpanded]);
+  const leftPanelRef  = useRef<HTMLDivElement>(null);
   const rightPanelRef = useRef<HTMLDivElement>(null);
 
-  // Auto-collapse after timeout
+  useEffect(() => {
+    if (!leftExpanded) return;
+    const timer = setTimeout(() => setLeftExpanded(false), 3000);
+    return () => clearTimeout(timer);
+  }, [leftExpanded]);
+
   useEffect(() => {
     if (!rightExpanded) return;
-
-    const timer = setTimeout(() => {
-      setRightExpanded(false);
-    }, 3000);
-
+    const timer = setTimeout(() => setRightExpanded(false), 3000);
     return () => clearTimeout(timer);
   }, [rightExpanded]);
 
-  // Collapse on outside click
-  useEffect(() => {
-    if (!rightExpanded) return;
-
-    const handleClickOutside = (e: MouseEvent) => {
-      if (rightPanelRef.current && !rightPanelRef.current.contains(e.target as Node)) {
-        setRightExpanded(false);
-      }
-    };
-
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, [rightExpanded]);
-  // 3. Collapse when clicking outside
   useEffect(() => {
     if (!leftExpanded) return;
-
-    const handleClickOutside = (e: MouseEvent) => {
+    const handler = (e: MouseEvent) => {
       if (leftPanelRef.current && !leftPanelRef.current.contains(e.target as Node)) {
         setLeftExpanded(false);
       }
     };
-
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
   }, [leftExpanded]);
+
+  useEffect(() => {
+    if (!rightExpanded) return;
+    const handler = (e: MouseEvent) => {
+      if (rightPanelRef.current && !rightPanelRef.current.contains(e.target as Node)) {
+        setRightExpanded(false);
+      }
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [rightExpanded]);
+
+  // ─── Channel / date change effects ───────────────────────────────────────
+
   useEffect(() => {
     if (!selectedChannel) return;
     const today = toApiDate();
@@ -584,7 +574,7 @@ setSelectedChannel(fromUrl ?? firstAccessible ?? null);
     fetchPrograms(selectedChannel.id, programDate);
   }, [programDate]);
 
-  // ─── Callbacks ───────────────────────────────────────────────────────────────
+  // ─── Callbacks ───────────────────────────────────────────────────────────
 
   const handleRewind = useCallback((timestamp: number) => {
     if (!selectedChannel) return;
@@ -627,16 +617,12 @@ setSelectedChannel(fromUrl ?? firstAccessible ?? null);
     setIsCalendarVisible(false);
   };
 
-  // ─── Filtered channels (category + favourites) ───────────────────────────
+  // ─── Filtered channels ────────────────────────────────────────────────────
 
   const filteredChannels = useMemo(() => {
     let result = channels;
-    if (selectedCategory !== '') {
-      result = result.filter(ch => ch.category === selectedCategory);
-    }
-    if (showFavouritesOnly) {
-      result = result.filter(ch => favouriteIds.has(Number(ch.id)));
-    }
+    if (selectedCategory !== '') result = result.filter(ch => ch.category === selectedCategory);
+    if (showFavouritesOnly)      result = result.filter(ch => favouriteIds.has(Number(ch.id)));
     return result;
   }, [channels, selectedCategory, showFavouritesOnly, favouriteIds]);
 
@@ -652,7 +638,8 @@ setSelectedChannel(fromUrl ?? firstAccessible ?? null);
 
   const programDateAsDate = new Date(programDate.replace(/\//g, '-'));
 
-  // ─── Single shared calendar overlay ──────────────────────────────────────
+  // ─── Calendar overlay ─────────────────────────────────────────────────────
+
   const CalendarOverlay = isCalendarVisible ? (
     <div
       className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center px-4"
@@ -690,7 +677,6 @@ setSelectedChannel(fromUrl ?? firstAccessible ?? null);
           </div>
         )}
 
-        {/* Video */}
         <div className="w-full shrink-0 bg-black">
           <VideoPlayer
             programs={programs}
@@ -764,7 +750,6 @@ setSelectedChannel(fromUrl ?? firstAccessible ?? null);
           ))}
         </div>
 
-        {/* Scrollable content */}
         <div className="flex-1 overflow-y-auto overscroll-contain">
           {portraitTab === 'channels' ? (
             <div className="p-3">
@@ -802,7 +787,7 @@ setSelectedChannel(fromUrl ?? firstAccessible ?? null);
   // ════════════════════════════════════════════════════════════
 
   return (
-    <div className="flex flex-col justify-between w-full h-full  relative">
+    <div className="flex flex-col justify-between w-full h-full relative">
 
       {CalendarOverlay}
 
@@ -816,6 +801,7 @@ setSelectedChannel(fromUrl ?? firstAccessible ?? null);
           />
         </div>
       )}
+
       <div className="flex h-full lg:h-[calc(100%-60px)] w-full">
         <div className='w-[65px] flex lg:hidden' />
 
@@ -823,11 +809,12 @@ setSelectedChannel(fromUrl ?? firstAccessible ?? null);
         <div
           ref={leftPanelRef}
           className={`
-    lg:relative lg:w-1/5
-    absolute z-20 flex flex-col h-full lg:h-full overflow bg-yel
-    transition-all duration-300 ease-in-out
-    ${isMobile ? (leftExpanded ? 'w-2/5' : 'w-[65px]') : ''}
-  `}>
+            lg:relative lg:w-1/5
+            absolute z-20 flex flex-col h-full lg:h-full overflow bg-yel
+            transition-all duration-300 ease-in-out
+            ${isMobile ? (leftExpanded ? 'w-2/5' : 'w-[65px]') : ''}
+          `}
+        >
           {isMobile && (
             <button
               onClick={() => setLeftExpanded(v => !v)}
@@ -885,7 +872,6 @@ setSelectedChannel(fromUrl ?? firstAccessible ?? null);
             <div className='w-full h-full flex justify-center items-center'>
               <div className="shrink-0 w-full flex items-center gap-3 px-1 py-2 overflow-x-auto justify-center">
 
-                {/* ── Favourites toggle pill (replaces <IconButtonDemo />) ── */}
                 <div className="flex items-center shrink-0">
                   <div
                     onClick={toggleFavouritesFilter}
@@ -923,14 +909,14 @@ setSelectedChannel(fromUrl ?? firstAccessible ?? null);
                           relative flex items-center gap-1.5 h-10 px-3 rounded-lg cursor-pointer
                           text-xs font-medium transition-all duration-150
                           ${isSelected
-                            ? 'bg-linear-to-br from-[#f82719] to-[#da2b1e] text-white '
+                            ? 'bg-linear-to-br from-[#f82719] to-[#da2b1e] text-white'
                             : 'bg-white/70 dark:bg-white/5 border-black/8 dark:border-white/10 backdrop-blur-md text-black/50 dark:text-white/40 hover:text-black/70 dark:hover:text-white/60 hover:bg-white dark:hover:bg-white/10'
                           }
                         `}
                       >
                         {category.icon_url && (
                           <div className="w-5 h-5 flex items-center justify-center flex-none transition-transform duration-150 text-gray-900 dark:text-blue-200">
-                            <div className={isSelected ? "scale-125" : "scale-100"}>
+                            <div className={isSelected ? 'scale-125' : 'scale-100'}>
                               <span style={{ fontVariationSettings: "'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24" }} className="material-symbols-outlined">{category.icon_url}</span>
                             </div>
                           </div>
@@ -955,11 +941,12 @@ setSelectedChannel(fromUrl ?? firstAccessible ?? null);
         <div
           ref={rightPanelRef}
           className={`
-    lg:relative lg:w-1/5
-    absolute right-0 z-10 flex flex-col h-full bg-yel
-    transition-all duration-300 ease-in-out
-    ${isMobile ? (rightExpanded ? 'w-2/5' : 'w-[65px]') : ''}
-  `}>
+            lg:relative lg:w-1/5
+            absolute right-0 z-10 flex flex-col h-full bg-yel
+            transition-all duration-300 ease-in-out
+            ${isMobile ? (rightExpanded ? 'w-2/5' : 'w-[65px]') : ''}
+          `}
+        >
           {isMobile && (
             <button
               onClick={() => setRightExpanded(v => !v)}
@@ -1023,13 +1010,11 @@ setSelectedChannel(fromUrl ?? firstAccessible ?? null);
 
       </div>
 
-      {/* BOTTOM */}
+      {/* BOTTOM timeline */}
       {!isMobile && (
         <div>
           <div className='relative w-[calc(100vw-40px)] h-15'>
-            <div className='h-5 w-full'>
-
-            </div>
+            <div className='h-5 w-full' />
             <div className='w-full ml-5'>
               <Timeline
                 timeProgramm={programs}
@@ -1039,7 +1024,6 @@ setSelectedChannel(fromUrl ?? firstAccessible ?? null);
                 onSelectTime={handleRewind}
               />
             </div>
-
           </div>
         </div>
       )}
