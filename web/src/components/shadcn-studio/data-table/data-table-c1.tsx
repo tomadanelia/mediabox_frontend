@@ -22,6 +22,8 @@ type Props = {
   timeProgramm?: ProgramItem[] | null
   mode?: 'live' | 'archive'
   archiveTimestamp?: number | null
+  /** Comes from streamService ArchiveResult.rewindableHours (data.length from backend) */
+  rewindableHours?: number
   onProgramSelect?: (startTime: number) => void
   iconOnly?: boolean
 }
@@ -101,10 +103,6 @@ function Tooltip({ tooltip }: { tooltip: TooltipState }) {
 
 // ─── Scroll helper ────────────────────────────────────────────────────────────
 
-/**
- * Scrolls `container` so that `target` is vertically centered.
- * Falls back gracefully if target is near the top/bottom edge.
- */
 function scrollToCenter(container: HTMLElement, target: HTMLElement, behavior: ScrollBehavior = 'smooth') {
   const offset = target.offsetTop - container.clientHeight / 2 + target.clientHeight / 2
   container.scrollTo({ top: Math.max(0, offset), behavior })
@@ -117,6 +115,7 @@ const ChannelScheduleCL = ({
   timeProgramm,
   mode = 'live',
   archiveTimestamp = null,
+  rewindableHours = 168, // default 7 days — matches streamService fallback
   onProgramSelect,
   iconOnly = false,
 }: Props) => {
@@ -127,7 +126,6 @@ const ChannelScheduleCL = ({
 
   const listRef = useRef<HTMLDivElement>(null)
   const dividerRefs = useRef<Record<string, HTMLDivElement | null>>({})
-  // ── NEW: one ref per program row, keyed by UID ─────────────────────────────
   const programRefs = useRef<Record<number, HTMLDivElement | null>>({})
 
   // ── Fetch all programs when channelId changes ──────────────────────────────
@@ -159,9 +157,13 @@ const ChannelScheduleCL = ({
 
   const nowSec = Math.floor(Date.now() / 1000)
 
+  // Earliest unix second that is within the archive rewind window
+  const archiveStartSec = nowSec - rewindableHours * 3600
+
   const activeSec =
     mode === 'archive' && archiveTimestamp !== null ? archiveTimestamp : nowSec
 
+  // The program at the current seek position (or live now in live mode)
   const activeUID = useMemo(() => {
     if (!sorted.length) return null
     const match = sorted.find(p => activeSec >= p.START_TIME && activeSec < p.END_TIME)
@@ -169,6 +171,13 @@ const ChannelScheduleCL = ({
     if (activeSec <= sorted[0].START_TIME) return sorted[0].UID
     return null
   }, [sorted, activeSec])
+
+  // The program actually on air right now on live TV — always wall-clock based
+  const liveUID = useMemo(() => {
+    if (!sorted.length) return null
+    const match = sorted.find(p => nowSec >= p.START_TIME && nowSec < p.END_TIME)
+    return match ? match.UID : null
+  }, [sorted, nowSec])
 
   const dividerKeyForTimestamp = useCallback((targetSec: number): string | null => {
     if (!sorted.length) return null
@@ -190,13 +199,11 @@ const ChannelScheduleCL = ({
   useEffect(() => {
     if (!listRef.current || !sorted.length) return
 
-    // Try to center on the exact active program row first
     if (activeUID !== null && programRefs.current[activeUID]) {
       scrollToCenter(listRef.current, programRefs.current[activeUID]!)
       return
     }
 
-    // Fallback: scroll to the day divider if no active row ref yet
     const targetSec = mode === 'archive' && archiveTimestamp !== null ? archiveTimestamp : nowSec
     const key = dividerKeyForTimestamp(targetSec)
     if (!key) return
@@ -212,14 +219,12 @@ const ChannelScheduleCL = ({
   useEffect(() => {
     if (loading || didInitialScroll.current || !sorted.length || !listRef.current) return
 
-    // Center on the active program row
     if (activeUID !== null && programRefs.current[activeUID]) {
       scrollToCenter(listRef.current, programRefs.current[activeUID]!, 'smooth')
       didInitialScroll.current = true
       return
     }
 
-    // Fallback: scroll to the day divider
     const key = dividerKeyForTimestamp(activeSec)
     if (!key) return
     const divider = dividerRefs.current[key]
@@ -242,15 +247,21 @@ const ChannelScheduleCL = ({
 
   const handleTitleMouseLeave = () => setTooltip(null)
 
-  // ─── Render ────────────────────────────────────────────────────────────────
+  // ─── Program state helpers ─────────────────────────────────────────────────
 
-  const isCurrentProgram = (p: ProgramItem) => p.UID === activeUID
-  const isPastProgram = (p: ProgramItem) => nowSec >= p.END_TIME
-  const isClickable = (p: ProgramItem) => p.START_TIME <= nowSec
+  const isSelectedProgram = (p: ProgramItem) => p.UID === activeUID
+  const isLiveProgram     = (p: ProgramItem) => p.UID === liveUID
+  const isPastProgram     = (p: ProgramItem) => nowSec >= p.END_TIME
+  const isClickable       = (p: ProgramItem) => p.START_TIME <= nowSec
+  // Program ended before the archive rewind window — no recording available
+  const isOutOfArchive    = (p: ProgramItem) => p.END_TIME <= archiveStartSec
+
   const handleClick = (p: ProgramItem) => {
-    if (!isClickable(p)) return
+    if (!isClickable(p) || isOutOfArchive(p)) return
     onProgramSelect?.(p.START_TIME)
   }
+
+  // ─── Render ────────────────────────────────────────────────────────────────
 
   const renderContent = () => {
     if (loading) {
@@ -309,38 +320,56 @@ const ChannelScheduleCL = ({
       }
 
       // ── Program row ──────────────────────────────────────────────────────
-      const isCurrent = isCurrentProgram(p)
-      const isPast    = isPastProgram(p)
-      const clickable = isClickable(p)
-      const isFuture  = !clickable
+      const isSelected = isSelectedProgram(p)
+      const isLive     = isLiveProgram(p)
+      const isPast     = isPastProgram(p)
+      const clickable  = isClickable(p)
+      const isFuture   = !clickable
+      const outOfArc   = isOutOfArchive(p)
 
       items.push(
         <div
           key={p.UID}
-          // ── NEW: attach ref so we can scroll to this row ─────────────────
           ref={el => { programRefs.current[p.UID] = el }}
           onClick={() => handleClick(p)}
-          title={isFuture ? 'Not yet available' : undefined}
+          title={
+            isFuture ? 'Not yet available' :
+            outOfArc ? 'Archive unavailable' :
+            undefined
+          }
           className={cn(
             'flex items-center gap-3 px-4 py-2.5 transition-all duration-150 border-l-2',
-            clickable ? 'cursor-pointer' : 'cursor-default',
-            isCurrent
+            clickable && !outOfArc ? 'cursor-pointer' : 'cursor-default',
+            isSelected
               ? 'bg-linear-to-r from-orange-50 to-yellow-50/60 dark:from-[#d52b1e1a] dark:to-black/5 border-l-[#d52b1e]'
+              : outOfArc
+              ? 'border-l-red-500/50 bg-red-500/5 dark:bg-red-500/8 opacity-60'
               : isPast
               ? 'border-l-transparent hover:bg-black/3 dark:hover:bg-white/4'
               : 'border-l-transparent opacity-30',
           )}
         >
+          {/* Time */}
           <span className={cn(
             'text-sm font-medium w-10 shrink-0 tabular-nums',
-            isCurrent ? 'text-[#d52b1e]' : 'text-black/30 dark:text-white/25'
+            isSelected
+              ? 'text-[#d52b1e]'
+              : outOfArc
+              ? 'text-red-400/70 dark:text-red-400/50'
+              : 'text-black/30 dark:text-white/25'
           )}>
             {formatUnix(p.START_TIME)}
           </span>
 
+          {/* Title */}
           {!iconOnly && (
             <span
-              className='flex-1 text-sm truncate text-black/80 dark:text-white/75'
+              className={cn(
+                'flex-1 text-sm truncate',
+                outOfArc
+                  ? 'text-red-500/55 dark:text-red-400/45 line-through decoration-red-400/40'
+                  : 'text-black/80 dark:text-white/75'
+              )}
               onMouseEnter={e => handleTitleMouseEnter(e, p.TITLE)}
               onMouseLeave={handleTitleMouseLeave}
             >
@@ -348,10 +377,23 @@ const ChannelScheduleCL = ({
             </span>
           )}
 
-          {!iconOnly && isCurrent && (
-            <span className='w-2 h-2 rounded-full bg-[#d52b1e] shrink-0 animate-pulse' />
+          {/* Out-of-archive badge */}
+          {!iconOnly && outOfArc && (
+            <span className="shrink-0 text-[9px] font-semibold uppercase tracking-wider px-1.5 py-0.5 rounded-md bg-red-500/12 text-red-400 border border-red-400/25">
+              არ არის
+            </span>
           )}
 
+          {/* LIVE badge — always pinned to the currently airing program,
+              independent of where the archive seek position is */}
+          {!iconOnly && isLive && (
+            <span className="shrink-0 flex items-center gap-1 px-2 py-0.5 rounded-full bg-[#d52b1e] text-white text-[9px] font-bold uppercase tracking-widest shadow-sm shadow-red-500/40 animate-pulse">
+              <span className="w-1.5 h-1.5 rounded-full bg-white/90" />
+              Live
+            </span>
+          )}
+
+          {/* Future lock */}
           {!iconOnly && isFuture && (
             <span
               className='material-symbols-outlined text-black/25 dark:text-white/20 shrink-0 select-none'
@@ -361,7 +403,7 @@ const ChannelScheduleCL = ({
             </span>
           )}
 
-          {isCurrent && <Equalizer />}
+          {isSelected && <Equalizer />}
         </div>
       )
     })
