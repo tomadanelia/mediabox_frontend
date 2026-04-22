@@ -133,7 +133,8 @@ const DataTableDemo = ({
                       src={channel.logo}
                       alt={channel.name}
                       className='w-10/12 h-10/12 object-contain'
-                      onError={(e) => { e.currentTarget.src = '/placeholder.png' }}
+                      onError={(e) => { console.log("deamn");
+                       }}
                     />
                   </div>
 
