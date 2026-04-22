@@ -1,22 +1,22 @@
+// Home.tsx
 import React, { useEffect, useState } from "react";
 import ChannelScroller, { ChannelCard } from "./comps/ChannelScroller";
 import type { Channel } from "../../src/types/channel";
 import useUIStore from "@/store/ui-store";
 import api from "@/lib/axios";
 import Footer from "@/hmcomponents/footer";
-// top of file, outside components
+
 const FALLBACK_BG = "https://www.proximus-cdn.com/dam/jcr:875dfa83-acf9-44db-b7fd-c2b792de7592/banner_Pickx_Leagues_1200x630v2_en.png";
+
 const HERO_TEXT = {
   En: {
     eyebrow: "Your universe of live content",
-    tagline:
-      "Stream hundreds of live channels, on-demand series, and curated collections — all in one place.",
+    tagline: "Stream hundreds of live channels, on-demand series, and curated collections — all in one place.",
     pills: ["Live TV", "Movies", "Series", "Sports", "News"],
   },
   Ge: {
     eyebrow: "შენი პირდაპირი კონტენტის სამყარო",
-    tagline:
-      "ასობით პირდაპირი არხი, სერიალი და კურირებული კოლექცია — ყველაფერი ერთ ადგილას.",
+    tagline: "ასობით პირდაპირი არხი, სერიალი და კურირებული კოლექცია — ყველაფერი ერთ ადგილას.",
     pills: ["პირდაპირი", "ფილმები", "სერიალები", "სპორტი", "სიახლეები"],
   },
 } as const;
@@ -32,155 +32,134 @@ const HeroBanner: React.FC<HeroBannerProps> = ({ heroImage, language }) => {
   const lang: Lang = language === "Ge" ? "Ge" : "En";
   const t = HERO_TEXT[lang];
   const currentLogo = useUIStore((state) => state.logoLight);
-  const FALLBACK_BG = "https://www.proximus-cdn.com/dam/jcr:875dfa83-acf9-44db-b7fd-c2b792de7592/banner_Pickx_Leagues_1200x630v2_en.png";
+
   return (
     <section className="hero-banner">
-     <img
-  src={heroImage ?? FALLBACK_BG}
-  alt=""
-  aria-hidden="true"
-  className="hero-bg-img"
-  onError={(e) => { e.currentTarget.src = FALLBACK_BG; }}
-/>
+      <img
+        src={heroImage ?? FALLBACK_BG}
+        alt=""
+        aria-hidden="true"
+        className="hero-bg-img"
+        onError={(e) => { e.currentTarget.src = FALLBACK_BG; }}
+      />
       <div className="hero-filler" aria-hidden="true" />
       <div className="hero-grain" aria-hidden="true" />
       <div className="hero-wash" aria-hidden="true" />
       <div className="hero-vignette" aria-hidden="true" />
-
       <div className="hero-content">
         <p className="hero-eyebrow">{t.eyebrow}</p>
-
         <img
           src={currentLogo}
-          onError={(e) => {
-            e.currentTarget.style.visibility = "hidden";
-            e.currentTarget.onerror = null;
-          }}
-          onLoad={(e) => {
-            e.currentTarget.style.visibility = "visible";
-          }}
+          onError={(e) => { e.currentTarget.style.visibility = "hidden"; e.currentTarget.onerror = null; }}
+          onLoad={(e) => { e.currentTarget.style.visibility = "visible"; }}
           alt="mediabox"
           className="hero-logo"
         />
-
         <p className="hero-tagline">{t.tagline}</p>
-
         <div className="hero-pills" aria-hidden="true">
           {t.pills.map((label) => (
-            <span key={label} className="hero-pill">
-              {label}
-            </span>
+            <span key={label} className="hero-pill">{label}</span>
           ))}
         </div>
       </div>
-
       <style>{`
         .hero-banner {
           --hero-accent: #ef4444;
           --hero-accent2: #b91c1c;
-          --hero-h: 340px;
+          --hero-h: 360px;
           --hero-bg: #0c0203;
           position: relative;
           width: 100%;
           height: var(--hero-h);
-          border-radius: 1.25rem;
+          border-radius: 1.5rem;
           overflow: hidden;
           background-color: var(--hero-bg);
           box-shadow:
             0 4px 6px -1px rgb(0 0 0 / 0.6),
-            0 20px 60px -10px rgba(185, 28, 28, 0.25);
+            0 20px 60px -10px rgba(185, 28, 28, 0.3),
+            inset 0 1px 0 rgba(255,255,255,0.06);
         }
         .hero-bg-img {
-          position: absolute;
-          inset: 0;
-          width: 100%;
-          height: 100%;
-          object-fit: cover;
-          object-position: center;
+          position: absolute; inset: 0; width: 100%; height: 100%;
+          object-fit: cover; object-position: center;
         }
         .hero-filler {
-          position: absolute;
-          inset: 0;
-          right: auto;
-          width: 55%;
-          background: linear-gradient(
-            to right,
-            var(--hero-bg) 35%,
-            transparent 100%
-          );
-          z-index: 1;
-          pointer-events: none;
+          position: absolute; inset: 0; right: auto; width: 60%;
+          background: linear-gradient(to right, var(--hero-bg) 30%, transparent 100%);
+          z-index: 1; pointer-events: none;
         }
         .hero-grain {
           position: absolute; inset: 0; z-index: 2;
           background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='1'/%3E%3C/svg%3E");
-          opacity: 0.05; pointer-events: none; mix-blend-mode: overlay;
+          opacity: 0.04; pointer-events: none; mix-blend-mode: overlay;
         }
         .hero-wash {
           position: absolute; inset: 0; z-index: 2;
-          background: radial-gradient(ellipse 60% 50% at 80% 20%, rgba(239,68,68,0.12) 0%, transparent 70%);
+          background: radial-gradient(ellipse 60% 50% at 80% 20%, rgba(239,68,68,0.14) 0%, transparent 70%);
           pointer-events: none;
         }
         .hero-vignette {
           position: absolute; inset: 0; z-index: 2;
-          background: linear-gradient(to bottom, transparent 35%, rgba(12,2,3,0.6) 70%, rgba(12,2,3,0.95) 100%);
+          background: linear-gradient(to bottom, transparent 30%, rgba(12,2,3,0.55) 65%, rgba(12,2,3,0.97) 100%);
           pointer-events: none;
         }
         .hero-banner::before {
           content: "";
-          position: absolute; top: 0; left: 5%; right: 5%; height: 1px; z-index: 3;
-          background: linear-gradient(90deg, transparent, var(--hero-accent) 40%, var(--hero-accent2) 60%, transparent);
-          opacity: 0.7;
+          position: absolute; top: 0; left: 8%; right: 8%; height: 1px; z-index: 3;
+          background: linear-gradient(90deg, transparent, rgba(239,68,68,0.9) 40%, rgba(185,28,28,0.9) 60%, transparent);
+          opacity: 0.65;
+        }
+        .hero-banner::after {
+          content: "";
+          position: absolute; bottom: 0; left: 0; right: 0; height: 1px; z-index: 3;
+          background: linear-gradient(90deg, transparent, rgba(239,68,68,0.2) 50%, transparent);
         }
         .hero-content {
           position: absolute; inset: 0; z-index: 3;
-          display: flex; flex-direction: column;
-          justify-content: flex-end;
-          padding: 2rem 2.25rem 2rem;
-          gap: 0.55rem;
+          display: flex; flex-direction: column; justify-content: flex-end;
+          padding: 2rem 2.5rem 2.25rem; gap: 0.6rem;
         }
         .hero-eyebrow {
           font-family: "SF Mono", "Fira Code", "Cascadia Code", monospace;
-          font-size: 0.65rem; letter-spacing: 0.2em; text-transform: uppercase;
-          color: var(--hero-accent); opacity: 0.9; margin: 0;
+          font-size: 0.62rem; letter-spacing: 0.22em; text-transform: uppercase;
+          color: var(--hero-accent); opacity: 0.85; margin: 0;
           animation: hero-fadein 0.6s ease both;
         }
         .hero-logo {
-          height: clamp(2.8rem, 6vw, 4.4rem);
-          width: auto;
-          object-fit: contain;
-          object-position: left center;
-          filter: drop-shadow(0 2px 24px rgba(239,68,68,0.3)) brightness(1.05);
+          height: clamp(2.8rem, 6vw, 4.4rem); width: auto;
+          object-fit: contain; object-position: left center;
+          filter: drop-shadow(0 2px 28px rgba(239,68,68,0.35)) brightness(1.08);
           animation: hero-fadein 0.7s ease both;
           animation-delay: 0.08s;
         }
         .hero-tagline {
           font-family: "Georgia", serif;
-          font-size: clamp(0.78rem, 1.4vw, 0.92rem);
-          color: rgba(255, 220, 220, 0.7); max-width: 480px;
-          line-height: 1.55; margin: 0;
-          animation: hero-fadein 0.7s ease both; animation-delay: 0.16s;
+          font-size: clamp(0.78rem, 1.4vw, 0.9rem);
+          color: rgba(255, 215, 215, 0.65);
+          max-width: 460px; line-height: 1.6; margin: 0;
+          animation: hero-fadein 0.7s ease both;
+          animation-delay: 0.16s;
         }
         .hero-pills {
-          display: flex; flex-wrap: wrap; gap: 0.45rem; margin-top: 0.25rem;
-          animation: hero-fadein 0.7s ease both; animation-delay: 0.28s;
+          display: flex; flex-wrap: wrap; gap: 0.45rem; margin-top: 0.2rem;
+          animation: hero-fadein 0.7s ease both;
+          animation-delay: 0.28s;
         }
         .hero-pill {
           font-family: "SF Mono", monospace;
-          font-size: 0.6rem; letter-spacing: 0.12em; text-transform: uppercase;
-          padding: 0.28rem 0.75rem; border-radius: 999px;
-          border: 1px solid rgba(239, 68, 68, 0.3);
-          color: rgba(255, 200, 200, 0.8);
-          background: rgba(239, 68, 68, 0.08);
-          backdrop-filter: blur(6px);
+          font-size: 0.58rem; letter-spacing: 0.14em; text-transform: uppercase;
+          padding: 0.28rem 0.8rem; border-radius: 999px;
+          border: 1px solid rgba(239, 68, 68, 0.28);
+          color: rgba(255, 200, 200, 0.75);
+          background: rgba(239, 68, 68, 0.07);
+          backdrop-filter: blur(8px);
           transition: border-color 0.2s, color 0.2s, background 0.2s, transform 0.15s;
-          cursor: pointer;
-          user-select: none;
+          cursor: pointer; user-select: none;
         }
         .hero-pill:hover {
-          border-color: rgba(239, 68, 68, 0.7);
+          border-color: rgba(239, 68, 68, 0.75);
           color: #ffffff;
-          background: rgba(239, 68, 68, 0.18);
+          background: rgba(239, 68, 68, 0.2);
           transform: translateY(-1px);
         }
         .hero-pill:active { transform: translateY(0); }
@@ -189,16 +168,15 @@ const HeroBanner: React.FC<HeroBannerProps> = ({ heroImage, language }) => {
           to   { opacity: 1; transform: translateY(0); }
         }
         @media (max-width: 600px) {
-          .hero-banner { --hero-h: 260px; border-radius: 0.75rem; }
-          .hero-content { padding: 0 1.25rem 1rem; }
+          .hero-banner { --hero-h: 260px; border-radius: 1rem; }
+          .hero-content { padding: 0 1.25rem 1.1rem; }
           .hero-tagline { display: none; }
-          .hero-filler { width: 80%; }
+          .hero-filler { width: 85%; }
         }
       `}</style>
     </section>
   );
 };
-// ─── Types ────────────────────────────────────────────────────────────────────
 
 interface Category {
   id: string;
@@ -209,46 +187,40 @@ interface Category {
   icon_url: string;
 }
 
-interface CategoryScrollerProps {
-  category: Category;
-  channels: Channel[];
-  language: string;
-}
-
 const Home: React.FC = () => {
   const [channels, setChannelsLocal] = useState<Channel[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const { language, setChannels } = useUIStore();
   const [homepageBg, setHomepageBg] = useState<string>(FALLBACK_BG);
-  useEffect(() => {
-  (async () => {
-    try {
-      const [chRes, catRes] = await Promise.all([
-        api.get("/api/channels"),
-        api.get("/api/channels/categories"),
-      ]);
-      const fetched = Array.isArray(chRes.data.channels) ? chRes.data.channels : [];
-      setChannels(fetched);
-      setChannelsLocal(fetched);
-      setCategories(Array.isArray(catRes.data) ? catRes.data : []);
-    } catch (e) {
-      console.error("[Home/fetch]", e);
-    }
-  })();
-}, []);
 
-useEffect(() => {
-  (async () => {
-    try {
-      const bgRes = await api.get("/api/settings/homepage");
-      const url = bgRes.data?.homepage_bg_url;
-      if (url && typeof url === "string" && url.trim() !== "") {
-        setHomepageBg(url);
+  useEffect(() => {
+    (async () => {
+      try {
+        const [chRes, catRes] = await Promise.all([
+          api.get("/api/channels"),
+          api.get("/api/channels/categories"),
+        ]);
+        const fetched = Array.isArray(chRes.data.channels) ? chRes.data.channels : [];
+        setChannels(fetched);
+        setChannelsLocal(fetched);
+        setCategories(Array.isArray(catRes.data) ? catRes.data : []);
+      } catch (e) {
+        console.error("[Home/fetch]", e);
       }
-    } catch {
-    }
-  })();
-}, []);
+    })();
+  }, []);
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const bgRes = await api.get("/api/settings/homepage");
+        const url = bgRes.data?.homepage_bg_url;
+        if (url && typeof url === "string" && url.trim() !== "") {
+          setHomepageBg(url);
+        }
+      } catch {}
+    })();
+  }, []);
 
   const channelsByCategory = React.useMemo(() => {
     const map = new Map<string, Channel[]>();
@@ -270,53 +242,99 @@ useEffect(() => {
   }, [channels, categories]);
 
   return (
-    <main
-      className={`overflow-y-auto bg-backround mx-auto w-full 2_5xl:w-500 max-w-screen flex flex-col gap-8 px-4 pb-12 pt-6 sm:px-6 lg:px-10 xl:px-14`}
-    >
+    <main className={`overflow-y-auto bg-backround mx-auto w-full 2_5xl:w-500 max-w-screen flex flex-col gap-0 px-4 pb-12 pt-6 sm:px-6 lg:px-10 xl:px-14`}>
       <HeroBanner heroImage={homepageBg} language={language} />
-      {[...categories]
-        .sort(
-          (a, b) =>
-            (channelsByCategory.get(b.id)?.length ?? 0) -
-            (channelsByCategory.get(a.id)?.length ?? 0),
-        )
-        .map((cat) => {
-          const catChannels = channelsByCategory.get(cat.id) ?? [];
-          if (catChannels.length === 0) return null;
 
-          const label = language === "Ge" ? cat.name_ka : cat.name_en;
-
-          return (
-            <section key={cat.id} className="space-y-3">
-              <div className="flex items-center gap-3">
-                <div className="flex h-8 w-8 ml-3 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
-                  <span className="material-symbols-outlined ">
-                    {cat.icon_url}
-                  </span>
+      <div className="flex flex-col gap-10 mt-10">
+        {[...categories]
+          .sort(
+            (a, b) =>
+              (channelsByCategory.get(b.id)?.length ?? 0) -
+              (channelsByCategory.get(a.id)?.length ?? 0),
+          )
+          .map((cat, idx) => {
+            const catChannels = channelsByCategory.get(cat.id) ?? [];
+            if (catChannels.length === 0) return null;
+            const label = language === "Ge" ? cat.name_ka : cat.name_en;
+            return (
+              <section key={cat.id} className="space-y-4">
+                {/* Premium section header */}
+                <div className="pm-section-header">
+                  <div className="pm-section-icon">
+                    <span className="material-symbols-outlined" style={{ fontSize: "18px" }}>
+                      {cat.icon_url}
+                    </span>
+                  </div>
+                  <div className="pm-section-labels">
+                    <span className="pm-section-eyebrow">
+                      {language === "Ge" ? "კატეგორია" : "Category"}
+                    </span>
+                    <h3 className="pm-section-title">{label}</h3>
+                  </div>
+                  <div className="pm-section-line" aria-hidden="true" />
                 </div>
-                <div>
-                  <h3 className="text-xl font-semibold text-foreground leading-tight">
-                    {label}
-                  </h3>
+
+                <div className="cat-scroller-no-header overflow-visible">
+                  <ChannelScroller channels={catChannels} />
                 </div>
-              </div>
 
-              {/* Reuse ChannelScroller but suppress its built-in header */}
-              <div className="cat-scroller-no-header overflow-visible">
-                <ChannelScroller channels={catChannels} />
-              </div>
-            </section>
-          );
-        })}
+                {idx < categories.length - 1 && (
+                  <div className="pm-section-sep" aria-hidden="true" />
+                )}
+              </section>
+            );
+          })}
 
-      {/* Fallback: channels with no matched category */}
-      {uncategorised.length > 0 && <ChannelScroller channels={uncategorised} />}
+        {uncategorised.length > 0 && <ChannelScroller channels={uncategorised} />}
+      </div>
 
       <style>{`
+        .pm-section-header {
+          display: flex;
+          align-items: center;
+          gap: 14px;
+          padding-left: 6px;
+        }
+        .pm-section-icon {
+          width: 38px; height: 38px;
+          border-radius: 10px;
+          background: rgba(239, 68, 68, 0.1);
+          border: 1px solid rgba(239, 68, 68, 0.22);
+          display: flex; align-items: center; justify-content: center;
+          color: #ef4444;
+          flex-shrink: 0;
+        }
+        .pm-section-labels {
+          display: flex; flex-direction: column; gap: 1px;
+        }
+        .pm-section-eyebrow {
+          font-family: "SF Mono", monospace;
+          font-size: 9px; letter-spacing: 0.2em; text-transform: uppercase;
+          color: rgba(239, 68, 68, 0.65);
+          line-height: 1;
+        }
+        .pm-section-title {
+          font-family: "Georgia", serif;
+          font-size: 20px; font-weight: normal;
+          color: rgba(255, 255, 255, 0.9);
+          letter-spacing: -0.015em;
+          margin: 0; line-height: 1.2;
+        }
+        .pm-section-line {
+          flex: 1;
+          height: 1px;
+          background: linear-gradient(90deg, rgba(239,68,68,0.25), transparent 80%);
+          margin-left: 8px;
+        }
+        .pm-section-sep {
+          width: 100%; height: 1px; margin-top: 8px;
+          background: linear-gradient(90deg, transparent 0%, rgba(239,68,68,0.15) 30%, rgba(239,68,68,0.06) 70%, transparent 100%);
+        }
         .cat-scroller-no-header > section > div:first-child {
           display: none;
         }
       `}</style>
+
       <Footer />
     </main>
   );

@@ -1,10 +1,11 @@
+// ChannelScroller.tsx  — only ChannelCard changes; ChannelScroller wrapper is unchanged
 import React, { useEffect, useRef, useState } from "react"
 import { Link } from "react-router-dom"
 import Hls from "hls.js"
 import { Lock } from "lucide-react"
 import api from "../../../src/lib/axios"
 import useUIStore from "@/store/ui-store"
-import type {Channel} from "../../../src/types/channel"
+import type { Channel } from "../../../src/types/channel"
 
 const PALETTE = [
   "rgba(59,130,246,0.85)",
@@ -15,16 +16,14 @@ const PALETTE = [
   "rgba(168,85,247,0.85)",
   "rgba(239,68,68,0.85)",
 ]
+
 const translations = {
-  En: {
-    subscriptionLabel: 'subscription is required',
-    locked:"locked"
-  },
-  Ge:{
-    subscriptionLabel: 'საჭიროა პაკეტის შეძენა',
-    locked:"დაბლოკილია"
-  }
+  En: { subscriptionLabel: "subscription is required", locked: "locked" },
+  Ge: { subscriptionLabel: "საჭიროა პაკეტის შეძენა", locked: "დაბლოკილია" },
 }
+
+// ── all the unchanged logic below (extractStreamUrl, captureFrame, grabThumbnail, fetchThumb) ──
+
 function extractStreamUrl(data: unknown): string | null {
   if (!data) return null
   if (typeof data === "string") {
@@ -34,15 +33,13 @@ function extractStreamUrl(data: unknown): string | null {
   }
   if (typeof data === "object") {
     const obj = data as Record<string, unknown>
-    for (const key of ["url", "streamUrl", "stream_url", "hlsUrl", "hls_url", "src", "source", "link", "stream"]) {
+    for (const key of ["url","streamUrl","stream_url","hlsUrl","hls_url","src","source","link","stream"]) {
       if (typeof obj[key] === "string") return extractStreamUrl(obj[key])
     }
     if (obj["data"] && typeof obj["data"] === "object") return extractStreamUrl(obj["data"])
   }
   return null
 }
-
-// ─── Canvas capture ───────────────────────────────────────────────────────────
 
 function captureFrame(video: HTMLVideoElement): string {
   const canvas = document.createElement("canvas")
@@ -58,74 +55,30 @@ type GrabResult =
 
 async function grabThumbnail(streamUrl: string): Promise<GrabResult> {
   if (!Hls.isSupported()) return { ok: false, reason: "no-hls" }
-
   return new Promise((resolve) => {
     const video = document.createElement("video")
-    video.muted = true
-    video.playsInline = true
-    video.autoplay = true
-    Object.assign(video.style, {
-      position: "fixed",
-      top: "-9999px",
-      left: "-9999px",
-      width: "320px",
-      height: "180px",
-      opacity: "0",
-      pointerEvents: "none",
-    })
+    video.muted = true; video.playsInline = true; video.autoplay = true
+    Object.assign(video.style, { position:"fixed", top:"-9999px", left:"-9999px", width:"320px", height:"180px", opacity:"0", pointerEvents:"none" })
     document.body.appendChild(video)
-
-    const hls = new Hls({
-      maxBufferLength: 4,
-      maxMaxBufferLength: 4,
-      maxBufferSize: 0,
-      startLevel: 0,
-      autoStartLoad: true,
-      fragLoadingMaxRetry: 1,
-      manifestLoadingMaxRetry: 1,
-      levelLoadingMaxRetry: 1,
-    })
-
+    const hls = new Hls({ maxBufferLength:4, maxMaxBufferLength:4, maxBufferSize:0, startLevel:0, autoStartLoad:true, fragLoadingMaxRetry:1, manifestLoadingMaxRetry:1, levelLoadingMaxRetry:1 })
     let settled = false
     const finish = (r: GrabResult) => {
-      if (settled) return
-      settled = true
-      hls.stopLoad()
-      hls.detachMedia()
-      hls.destroy()
-      video.remove()
-      resolve(r)
+      if (settled) return; settled = true
+      hls.stopLoad(); hls.detachMedia(); hls.destroy(); video.remove(); resolve(r)
     }
-
     const timeout = setTimeout(() => finish({ ok: false, reason: "timeout" }), 20_000)
-
     const onTimeUpdate = () => {
       if (video.videoWidth === 0 || video.readyState < 2) return
-      clearTimeout(timeout)
-      video.pause()
-      try {
-        finish({ ok: true, dataUrl: captureFrame(video) })
-      } catch {
-        finish({ ok: false, reason: "tainted" })
-      }
+      clearTimeout(timeout); video.pause()
+      try { finish({ ok: true, dataUrl: captureFrame(video) }) }
+      catch { finish({ ok: false, reason: "tainted" }) }
     }
     video.addEventListener("timeupdate", onTimeUpdate)
-
-    hls.on(Hls.Events.ERROR, (_, d) => {
-      if (d.fatal) {
-        clearTimeout(timeout)
-        finish({ ok: false, reason: "hls-error" })
-      }
-    })
-
-    hls.loadSource(streamUrl)
-    hls.attachMedia(video)
-    hls.on(Hls.Events.MANIFEST_PARSED, () => {
-      video.play().catch(() => {})
-    })
+    hls.on(Hls.Events.ERROR, (_, d) => { if (d.fatal) { clearTimeout(timeout); finish({ ok: false, reason: "hls-error" }) } })
+    hls.loadSource(streamUrl); hls.attachMedia(video)
+    hls.on(Hls.Events.MANIFEST_PARSED, () => { video.play().catch(() => {}) })
   })
 }
-
 
 type ThumbState = undefined | "loading" | "failed" | "locked" | string
 
@@ -134,132 +87,198 @@ async function fetchThumb(channelId: string): Promise<ThumbState> {
     const res = await api.get(`/api/channels/${channelId}/stream`)
     const streamUrl = extractStreamUrl(res.data)
     if (!streamUrl) return "failed"
-
     const result = await grabThumbnail(streamUrl)
     return result.ok ? result.dataUrl : "failed"
   } catch (err: unknown) {
-    if (
-      err &&
-      typeof err === "object" &&
-      "response" in err &&
-      (err as { response?: { status?: number } }).response?.status === 403
-    ) {
+    if (err && typeof err === "object" && "response" in err && (err as { response?: { status?: number } }).response?.status === 403) {
       return "locked"
     }
     return "failed"
   }
 }
 
-// ─── Single channel card ──────────────────────────────────────────────────────
-
+// ─── Channel card — redesigned ──────────────────────────────────────────────
 export const ChannelCard: React.FC<{ channel: Channel; index: number }> = ({ channel, index }) => {
-  const color =  PALETTE[index % PALETTE.length]
+  const color = PALETTE[index % PALETTE.length]
   const cardRef = useRef<HTMLAnchorElement>(null)
   const [thumb, setThumb] = useState<ThumbState>(undefined)
   const started = useRef(false)
-  const { isDark, language } = useUIStore();
-  const tx= translations[language];
-  const { setSelectedChannelId } = useUIStore();
+  const { isDark, language } = useUIStore()
+  const tx = translations[language]
+  const { setSelectedChannelId } = useUIStore()
 
   useEffect(() => {
     const el = cardRef.current
     if (!el) return
-
     const observer = new IntersectionObserver(
       (entries) => {
         if (entries[0].isIntersecting && !started.current) {
-          started.current = true
-          observer.disconnect()
-          setThumb("loading")
-          fetchThumb(channel.id).then(setThumb)
+          started.current = true; observer.disconnect()
+          setThumb("loading"); fetchThumb(channel.id).then(setThumb)
         }
       },
       { rootMargin: "0px 100px 0px 0px", threshold: 0.1 }
     )
-
     observer.observe(el)
     return () => observer.disconnect()
   }, [channel.id])
 
   const isLoading = thumb === "loading"
   const isLocked = thumb === "locked"
-  const hasImage = typeof thumb === "string" && !["loading", "failed", "locked"].includes(thumb)
+  const hasImage = typeof thumb === "string" && !["loading","failed","locked"].includes(thumb)
 
   return (
-    <Link
-      ref={cardRef}
-      onClick={() => {
-        if (!isLocked) setSelectedChannelId(channel.id);
-      }}
-      to={isLocked ? "/packets" : `/tv/${channel.id}`}
-      className={`group relative w-80 shrink-0 overflow-hidden rounded-xl border shadow-lg  ease-in-out transition-all duration-500
-  ${isLocked
-    ? "border-white/10 cursor-pointer"
-    : "border-border hover:scale-[1.18] hover:ml-5 hover:mx-3  hover:border-primary/60 hover:shadow-2xl hover:shadow-black/40 hover:z-10"
-  }`}
-    >
-      {/* Gradient base — desaturated when locked */}
-      <div
-        className="absolute inset-0"
-        style={{
-          backgroundImage: `linear-gradient(135deg, ${color}, rgba(15,23,42,0.9))`,
-          filter: isLocked ? "saturate(0.25) brightness(0.45)" : undefined,
-        }}
-      />
-
-      {/* Captured frame */}
-      {hasImage && (
-        <img
-          src={thumb as string}
-          alt={`${channel.name} preview`}
-          className="absolute inset-0 h-full w-full object-cover opacity-85 transition-all duration-500 group-hover:scale-110 group-hover:opacity-95"
+    <>
+      <Link
+        ref={cardRef}
+        onClick={() => { if (!isLocked) setSelectedChannelId(channel.id) }}
+        to={isLocked ? "/packets" : `/tv/${channel.id}`}
+        className={`pm-channel-card group relative w-80 shrink-0 overflow-hidden rounded-2xl shadow-lg ease-in-out transition-all duration-500 ${isLocked ? "pm-card-locked cursor-pointer" : "pm-card-live"}`}
+      >
+        {/* Gradient base */}
+        <div
+          className="absolute inset-0"
+          style={{
+            backgroundImage: `linear-gradient(135deg, ${color}, rgba(10,10,20,0.97))`,
+            filter: isLocked ? "saturate(0.2) brightness(0.45)" : undefined,
+          }}
         />
-      )}
 
-      {/* Frosted dark overlay for locked */}
-      {isLocked && (
-        <div className="absolute inset-0 bg-black/55 backdrop-blur-[3px]" />
-      )}
+        {/* Top gloss highlight */}
+        <div className="pm-card-gloss" aria-hidden="true" />
+        {/* Top shimmer edge */}
+        <div className="pm-card-edge" aria-hidden="true" />
 
-      {/* Spinner */}
-      {isLoading && (
-        <div className="absolute inset-0 flex items-center justify-center">
-          <div className="h-6 w-6 animate-spin rounded-full border-2 border-white/20 border-t-white/60" />
-        </div>
-      )}
+        {/* Captured frame */}
+        {hasImage && (
+          <img
+            src={thumb as string}
+            alt={`${channel.name} preview`}
+            className="absolute inset-0 h-full w-full object-cover opacity-80 transition-all duration-500 group-hover:scale-110 group-hover:opacity-90"
+          />
+        )}
 
-      {/* Lock badge — centred, shown above the text */}
-      {isLocked && (
-        <div className="absolute inset-0 flex flex-col items-center justify-center gap-1.5 pb-6">
-          <div className="flex h-9 w-9 mt-8 items-center justify-center rounded-full bg-white/10 ring-1 ring-white/20">
-            <Lock className="h-4 w-4 text-white/60" />
+        {/* Vignette */}
+        <div className="pm-card-vignette" aria-hidden="true" />
+
+        {/* Frosted overlay for locked */}
+        {isLocked && <div className="absolute inset-0 bg-black/50 backdrop-blur-[3px]" />}
+
+        {/* Spinner */}
+        {isLoading && (
+          <div className="absolute inset-0 flex items-center justify-center">
+            <div className="h-6 w-6 animate-spin rounded-full border-2 border-white/20 border-t-white/60" />
           </div>
-          <span className="text-[11px] font-medium tracking-wide text-white/45">
-            {tx.subscriptionLabel}
-          </span>
-        </div>
-      )}
+        )}
 
-      {/* Text overlay — taller to match bigger card */}
-      <div className={`relative flex h-36 flex-col justify-between p-5 text-white ${isLocked ? "opacity-35" : ""}`}>
-        <div className="space-y-1">
-          <div className="flex items-center gap-2 text-xs text-white/80">
-            <span className={`h-2 w-2 rounded-full ${isLocked ? "bg-white/25" : "bg-green-400"}`} />
-            {isLocked ? tx.locked : "Live"}
+        {/* Lock badge */}
+        {isLocked && (
+          <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 pb-4">
+            <div className="pm-lock-badge">
+              <Lock className="h-4 w-4 text-white/55" />
+            </div>
+            <span className="pm-lock-text">{tx.subscriptionLabel}</span>
           </div>
-          <p className="text-lg font-semibold leading-tight drop-shadow">{channel.name}</p>
+        )}
+
+        {/* Text content */}
+        <div className={`relative flex h-36 flex-col justify-between p-5 text-white ${isLocked ? "opacity-25" : ""}`}>
+          <div className="space-y-1">
+            <div className="flex items-center gap-2 text-xs text-white/80">
+              <span className={`pm-live-dot ${isLocked ? "pm-dot-locked" : "pm-dot-live"}`} />
+              {isLocked ? tx.locked : "Live"}
+            </div>
+            <p className="pm-card-name">{channel.name}</p>
+          </div>
+          <div className="flex items-center justify-between text-xs text-white/80">
+            {!isLocked && (
+              <span className="pm-watch-btn">უყურე</span>
+            )}
+          </div>
         </div>
-        <div className="flex items-center justify-between text-xs text-white/80">
-          {!isLocked && (
-            <span className="rounded-full bg-white/10 px-2 py-1 font-medium">უყურე</span>
-          )}
-        </div>
-      </div>
-    </Link>
+      </Link>
+
+      <style>{`
+        .pm-channel-card {
+          border: 1px solid rgba(255,255,255,0.07);
+        }
+        .pm-card-live:hover {
+          transform: scale(1.12) translateX(8px);
+          border-color: rgba(239,68,68,0.5);
+          box-shadow: 0 20px 60px rgba(0,0,0,0.7), 0 0 0 1px rgba(239,68,68,0.35);
+          z-index: 10;
+          margin-left: 8px;
+          margin-right: 8px;
+        }
+        .pm-card-locked {
+          border-color: rgba(255,255,255,0.05);
+        }
+        .pm-card-gloss {
+          position: absolute; top: 0; left: 0; right: 0; height: 45%;
+          background: linear-gradient(to bottom, rgba(255,255,255,0.08), transparent);
+          pointer-events: none; z-index: 3;
+        }
+        .pm-card-edge {
+          position: absolute; top: 0; left: 8%; right: 8%; height: 1px;
+          background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+          z-index: 4;
+        }
+        .pm-card-vignette {
+          position: absolute; inset: 0;
+          background: linear-gradient(to bottom, transparent 25%, rgba(0,0,0,0.7) 100%);
+          z-index: 2; pointer-events: none;
+        }
+        .pm-live-dot {
+          display: inline-block; width: 7px; height: 7px; border-radius: 50%;
+        }
+        .pm-dot-live {
+          background: #4ade80;
+          animation: live-pulse 2s ease-in-out infinite;
+        }
+        .pm-dot-locked { background: rgba(255,255,255,0.2); }
+        @keyframes live-pulse {
+          0%,100% { opacity:1; transform:scale(1); }
+          50% { opacity:0.55; transform:scale(0.8); }
+        }
+        .pm-card-name {
+          font-family: "Georgia", serif;
+          font-size: 1.05rem; font-weight: normal;
+          line-height: 1.3;
+          color: rgba(255,255,255,0.95);
+          letter-spacing: -0.01em;
+        }
+        .pm-watch-btn {
+          font-family: "SF Mono", monospace;
+          font-size: 0.6rem; letter-spacing: 0.12em; text-transform: uppercase;
+          padding: 0.28rem 0.8rem; border-radius: 999px;
+          border: 1px solid rgba(239,68,68,0.38);
+          color: rgba(255,190,190,0.85);
+          background: rgba(239,68,68,0.1);
+          transition: all 0.2s;
+        }
+        .pm-card-live:hover .pm-watch-btn {
+          border-color: rgba(239,68,68,0.75);
+          background: rgba(239,68,68,0.22);
+          color: #fff;
+        }
+        .pm-lock-badge {
+          width: 36px; height: 36px; border-radius: 50%;
+          background: rgba(255,255,255,0.08);
+          border: 1px solid rgba(255,255,255,0.15);
+          display: flex; align-items: center; justify-content: center;
+        }
+        .pm-lock-text {
+          font-family: "SF Mono", monospace;
+          font-size: 9px; letter-spacing: 0.1em; text-transform: uppercase;
+          color: rgba(255,255,255,0.38);
+          text-align: center; max-width: 100px;
+        }
+      `}</style>
+    </>
   )
 }
 
-
+// ─── ChannelScroller — unchanged ─────────────────────────────────────────────
 const ChannelScroller: React.FC<{ channels: Channel[] }> = ({ channels }) => {
   return (
     <section className="space-y-3">
@@ -267,9 +286,8 @@ const ChannelScroller: React.FC<{ channels: Channel[] }> = ({ channels }) => {
         <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">Quick tune</p>
         <h3 className="text-xl font-semibold text-foreground">Switch channels</h3>
       </div>
-
-     <div style={{ overflowX: "auto", overflowY: "visible" }} className="scrollbar-hide">
-  <div className="flex gap-4 pt-8 pl-3 pb-4 -mt-4" style={{ overflow: "visible" }}>
+      <div style={{ overflowX: "auto", overflowY: "visible" }} className="scrollbar-hide">
+        <div className="flex gap-4 pt-8 pl-3 pb-4 -mt-4" style={{ overflow: "visible" }}>
           {channels.map((channel, i) => (
             <ChannelCard key={channel.id} channel={channel} index={i} />
           ))}
