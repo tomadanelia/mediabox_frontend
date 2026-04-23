@@ -25,7 +25,7 @@ function getDaysInMonth(year: number, month: number): number {
   return new Date(year, month + 1, 0).getDate();
 }
 
-const MONTHS_DRUM = ["იან","თებ","მარ","აპრ","მაი","ივნ","ივლ","აგვ","სექ","ოქტ","ნოე","დეკ"];
+const MONTHS_DRUM   = ["იან","თებ","მარ","აპრ","მაი","ივნ","ივლ","აგვ","სექ","ოქტ","ნოე","დეკ"];
 const MONTHS_FOOTER = ["იანვარი","თებერვალი","მარტი","აპრილი","მაისი","ივნისი","ივლისი","აგვისტო","სექტემბერი","ოქტომბერი","ნოემბერი","დეკემბერი"];
 const ITEM_H = 44;
 
@@ -42,12 +42,28 @@ function Drum({
   onSelect: (i: number) => void
   disabledIndices?: Set<number>
 }) {
-  const ref = useRef<HTMLDivElement>(null);
+  const ref               = useRef<HTMLDivElement>(null);
+  const hasMountedRef     = useRef(false);
+  const lastScrolledIndex = useRef<number>(-1);
 
   useEffect(() => {
     const el = ref.current;
+    if (!el || hasMountedRef.current) return;
+    hasMountedRef.current = true;
+    requestAnimationFrame(() => {
+      el.scrollTop = selectedIndex * ITEM_H;
+      lastScrolledIndex.current = selectedIndex;
+    });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  useEffect(() => {
+    if (!hasMountedRef.current) return;
+    if (selectedIndex === lastScrolledIndex.current) return;
+    const el = ref.current;
     if (!el) return;
-    el.scrollTop = selectedIndex * ITEM_H;
+    lastScrolledIndex.current = selectedIndex;
+    el.scrollTo({ top: selectedIndex * ITEM_H, behavior: 'smooth' });
   }, [selectedIndex]);
 
   const handleScroll = () => {
@@ -56,6 +72,7 @@ function Drum({
     const i = Math.round(el.scrollTop / ITEM_H);
     const clamped = Math.max(0, Math.min(items.length - 1, i));
     if (clamped !== selectedIndex && !disabledIndices.has(clamped)) {
+      lastScrolledIndex.current = clamped;
       onSelect(clamped);
     }
   };
@@ -63,15 +80,32 @@ function Drum({
   return (
     <div className="relative flex-1 flex flex-col items-center">
       {/* Fade top */}
-      <div className="absolute top-0 left-0 right-0 h-16 z-10 pointer-events-none"
-        style={{ background: "linear-gradient(to bottom, #21262c 0%, transparent 100%)" }} />
+      <div
+        className="absolute top-0 left-0 right-0 z-10 pointer-events-none"
+        style={{
+          height: ITEM_H * 1.5,
+          background: "linear-gradient(to bottom, var(--cal-bg) 0%, transparent 100%)",
+        }}
+      />
       {/* Fade bottom */}
-      <div className="absolute bottom-0 left-0 right-0 h-16 z-10 pointer-events-none"
-        style={{ background: "linear-gradient(to top, #21262c 0%, transparent 100%)" }} />
+      <div
+        className="absolute bottom-0 left-0 right-0 z-10 pointer-events-none"
+        style={{
+          height: ITEM_H * 1.5,
+          background: "linear-gradient(to top, var(--cal-bg) 0%, transparent 100%)",
+        }}
+      />
 
-      {/* Selection highlight — red tint */}
-      <div className="absolute left-1 right-1 top-1/2 -translate-y-1/2 z-10 pointer-events-none"
-        style={{ height: ITEM_H, borderRadius: 10, background: "rgba(220,38,38,0.1)", border: "1px solid rgba(220,38,38,0.25)" }} />
+      {/* Selection highlight */}
+      <div
+        className="absolute left-1 right-1 top-1/2 -translate-y-1/2 z-10 pointer-events-none"
+        style={{
+          height: ITEM_H,
+          borderRadius: 10,
+          background: "rgba(220,38,38,0.1)",
+          border: "1px solid rgba(220,38,38,0.25)",
+        }}
+      />
 
       <div
         ref={ref}
@@ -95,8 +129,14 @@ function Drum({
               style={{ height: ITEM_H, scrollSnapAlign: "center" }}
               className={[
                 "flex items-center justify-center text-sm font-medium transition-all duration-150 cursor-pointer select-none",
-                isSelected ? "text-white scale-110" : "",
-                isDisabled ? "text-white/10 cursor-not-allowed" : !isSelected ? "text-gray-500 hover:text-gray-300" : "",
+                isSelected
+                  ? "text-black dark:text-white scale-110"
+                  : "",
+                isDisabled
+                  ? "text-black/15 dark:text-white/10 cursor-not-allowed"
+                  : !isSelected
+                  ? "text-black/35 dark:text-white/35 hover:text-black/60 dark:hover:text-gray-300"
+                  : "",
               ].join(" ")}
             >
               {label}
@@ -141,37 +181,37 @@ export default function MobileCalendar({
   const daysInMonth = useMemo(() => getDaysInMonth(year, month), [year, month]);
   const days = useMemo(() => Array.from({ length: daysInMonth }, (_, i) => i + 1), [daysInMonth]);
 
-  const prevMonthRef = useRef(month);
-  const prevYearRef  = useRef(year);
-const isFirstRender = useRef(true);
+  const prevMonthRef  = useRef(month);
+  const prevYearRef   = useRef(year);
+  const isFirstRender = useRef(true);
 
-useEffect(() => {
-  if (isFirstRender.current) {
-    isFirstRender.current = false;
+  useEffect(() => {
+    if (isFirstRender.current) {
+      isFirstRender.current = false;
+      prevMonthRef.current  = month;
+      prevYearRef.current   = year;
+      return;
+    }
+
+    const prevDate  = new Date(prevYearRef.current, prevMonthRef.current, 1);
+    const currDate  = new Date(year, month, 1);
+    const goingBack = currDate < prevDate;
+
+    if (goingBack) {
+      const lastDay = new Date(year, month + 1, 0);
+      lastDay.setHours(0, 0, 0, 0);
+      const clamped = lastDay > TODAY ? TODAY : lastDay < MIN_DATE ? MIN_DATE : lastDay;
+      setDay(clamped.getDate());
+    } else {
+      const firstDay = new Date(year, month, 1);
+      firstDay.setHours(0, 0, 0, 0);
+      const clamped = firstDay < MIN_DATE ? MIN_DATE : firstDay > TODAY ? TODAY : firstDay;
+      setDay(clamped.getDate());
+    }
+
     prevMonthRef.current = month;
     prevYearRef.current  = year;
-    return;
-  }
-
-  const prevDate = new Date(prevYearRef.current, prevMonthRef.current, 1);
-  const currDate = new Date(year, month, 1);
-  const goingBack = currDate < prevDate;
-
-  if (goingBack) {
-    const lastDay = new Date(year, month + 1, 0);
-    lastDay.setHours(0, 0, 0, 0);
-    const clamped = lastDay > TODAY ? TODAY : lastDay < MIN_DATE ? MIN_DATE : lastDay;
-    setDay(clamped.getDate());
-  } else {
-    const firstDay = new Date(year, month, 1);
-    firstDay.setHours(0, 0, 0, 0);
-    const clamped = firstDay < MIN_DATE ? MIN_DATE : firstDay > TODAY ? TODAY : firstDay;
-    setDay(clamped.getDate());
-  }
-
-  prevMonthRef.current = month;
-  prevYearRef.current  = year;
-}, [month, year]);
+  }, [month, year]);
 
   const selectedDate = useMemo(() => {
     const d = new Date(year, month, Math.min(day, daysInMonth));
@@ -184,10 +224,8 @@ useEffect(() => {
   const disabledMonths = useMemo(() => {
     const s = new Set<number>();
     for (let m = 0; m < 12; m++) {
-      const lastDayOfMonth = new Date(year, m + 1, 0);
-      lastDayOfMonth.setHours(0, 0, 0, 0);
-      const firstDayOfMonth = new Date(year, m, 1);
-      firstDayOfMonth.setHours(0, 0, 0, 0);
+      const lastDayOfMonth  = new Date(year, m + 1, 0); lastDayOfMonth.setHours(0,0,0,0);
+      const firstDayOfMonth = new Date(year, m, 1);     firstDayOfMonth.setHours(0,0,0,0);
       if (lastDayOfMonth < MIN_DATE || firstDayOfMonth > TODAY) s.add(m);
     }
     return s;
@@ -196,8 +234,7 @@ useEffect(() => {
   const disabledDays = useMemo(() => {
     const s = new Set<number>();
     for (let d = 1; d <= daysInMonth; d++) {
-      const date = new Date(year, month, d);
-      date.setHours(0, 0, 0, 0);
+      const date = new Date(year, month, d); date.setHours(0,0,0,0);
       if (date < MIN_DATE || date > TODAY) s.add(d - 1);
     }
     return s;
@@ -209,61 +246,73 @@ useEffect(() => {
   };
 
   const daysAgo = Math.round((TODAY.getTime() - selectedDate.getTime()) / 86400000);
-  const label = daysAgo === 0 ? "დღეს" : daysAgo === 1 ? "გუშინ" : `${daysAgo} დღის წინ`;
+  const label   = daysAgo === 0 ? "დღეს" : daysAgo === 1 ? "გუშინ" : `${daysAgo} დღის წინ`;
 
   const footerDateStr = isValid
     ? `${selectedDate.getDate()} ${MONTHS_FOOTER[selectedDate.getMonth()]}, ${selectedDate.getFullYear()}`
     : "დიაპაზონის გარეთ";
 
   return (
-    <div className="w-full max-w-xl mx-auto">
-      <div className="rounded-2xl bg-[#21262c] border border-white/5 overflow-hidden shadow-2xl shadow-black/40">
+    <>
+      {/* CSS variable bridge for the drum fade gradient */}
+      <style>{`
+        .cal-wrap { --cal-bg: #ffffff; }
+        .dark .cal-wrap { --cal-bg: #21262c; }
+      `}</style>
 
-        {/* Drums */}
-        <div className="flex px-4 pt-3 gap-1" style={{ height: ITEM_H * 5 }}>
-          {/* Day */}
-          <Drum
-            items={days.map(d => String(d).padStart(2, "0"))}
-            selectedIndex={Math.min(day, daysInMonth) - 1}
-            onSelect={i => setDay(i + 1)}
-            disabledIndices={disabledDays}
-          />
-          <div className="flex items-center justify-center text-white/10 text-lg font-light pb-px">/</div>
-          {/* Month */}
-          <Drum
-            items={MONTHS_DRUM}
-            selectedIndex={month}
-            onSelect={i => setMonth(i)}
-            disabledIndices={disabledMonths}
-          />
-          <div className="flex items-center justify-center text-white/10 text-lg font-light pb-px">/</div>
-          {/* Year */}
-          <Drum
-            items={years.map(String)}
-            selectedIndex={years.indexOf(year)}
-            onSelect={i => setYear(years[i])}
-          />
-        </div>
+      <div className="cal-wrap relative w-full max-w-xl mx-auto">
 
-        {/* Footer */}
-        <div className="px-4 py-3 border-t border-white/5 flex items-center justify-between gap-3">
-          <div className="flex flex-col">
-            <span className="text-[0.6rem] text-gray-600 uppercase tracking-widest">მონიშნული</span>
-            <span className={`text-sm font-semibold ${isValid ? "text-gray-100" : "text-red-400"}`}>
-              {footerDateStr}
-            </span>
-            {isValid && <span className="text-[0.6rem] text-gray-500">{label}</span>}
+        <div className="rounded-2xl bg-white dark:bg-[#21262c] border border-black/10 dark:border-white/5 overflow-hidden shadow-2xl shadow-black/10 dark:shadow-black/40">
+
+          {/* Close button — top-right corner, inside the card */}
+          {onClose && (
+            <button
+              onClick={onClose}
+              className="absolute top-3 right-3 z-20 w-7 h-7 rounded-lg
+                bg-black/5 dark:bg-white/8
+                text-black/40 dark:text-gray-400
+                hover:text-black dark:hover:text-white
+                hover:bg-black/10 dark:hover:bg-white/15
+                flex items-center justify-center text-sm
+                transition-all duration-150"
+              aria-label="დახურვა"
+            >
+              ✕
+            </button>
+          )}
+
+          {/* Drums */}
+          <div className="flex px-4 pt-3 gap-1" style={{ height: ITEM_H * 5 }}>
+            <Drum
+              items={days.map(d => String(d).padStart(2, "0"))}
+              selectedIndex={Math.min(day, daysInMonth) - 1}
+              onSelect={i => setDay(i + 1)}
+              disabledIndices={disabledDays}
+            />
+            <div className="flex items-center justify-center text-black/15 dark:text-white/10 text-lg font-light pb-px">/</div>
+            <Drum
+              items={MONTHS_DRUM}
+              selectedIndex={month}
+              onSelect={i => setMonth(i)}
+              disabledIndices={disabledMonths}
+            />
+            <div className="flex items-center justify-center text-black/15 dark:text-white/10 text-lg font-light pb-px">/</div>
+            <Drum
+              items={years.map(String)}
+              selectedIndex={years.indexOf(year)}
+              onSelect={i => setYear(years[i])}
+            />
           </div>
 
-          <div className="flex items-center gap-2">
-            {onClose && (
-              <button
-                onClick={onClose}
-                className="w-9 h-9 flex items-center justify-center rounded-xl text-gray-500 hover:text-white hover:bg-white/10 transition-all duration-150"
-              >
-                <span className="material-symbols-outlined" style={{ fontSize: '20px' }}>close</span>
-              </button>
-            )}
+          {/* Footer */}
+          <div className="px-4 py-3 border-t border-black/8 dark:border-white/5 flex items-center justify-between gap-3">
+            <div className="flex flex-col">
+              <span className="text-[0.6rem] text-black/30 dark:text-gray-600 uppercase tracking-widest">მონიშნული</span>
+              <span className={`text-sm font-semibold ${isValid ? "text-black/80 dark:text-gray-100" : "text-red-400"}`}>
+                {footerDateStr}
+              </span>
+              {isValid && <span className="text-[0.6rem] text-black/35 dark:text-gray-500">{label}</span>}
+            </div>
 
             <button
               onClick={handleConfirm}
@@ -271,15 +320,15 @@ useEffect(() => {
               className={`px-4 py-2 rounded-xl text-sm font-semibold transition-all duration-150 ${
                 isValid
                   ? "bg-red-600 hover:bg-red-500 text-white shadow-lg shadow-red-600/20"
-                  : "bg-white/5 text-white/20 cursor-not-allowed"
+                  : "bg-black/5 dark:bg-white/5 text-black/20 dark:text-white/20 cursor-not-allowed"
               }`}
             >
               Go
             </button>
           </div>
-        </div>
 
+        </div>
       </div>
-    </div>
+    </>
   );
 }

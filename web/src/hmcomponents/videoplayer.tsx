@@ -429,16 +429,18 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
         )}
 
         {/* Fullscreen channel list */}
-        {isFullscreen && showChannels && (
-          <FullScreenList
-            onClose={() => setShowChannels(false)}
-            onSelect={(ev) => {
-              onChannelSelect?.(ev.channel);
-              if (ev.mode === 'archive' && ev.timestamp !== undefined) onRewind(ev.timestamp);
-            }}
-            currentChannelId={currentChannelId}
-            rewindableDays={rewindableDays}
-          />
+       {isFullscreen && showChannels && (
+  <FullScreenList
+    onClose={() => setShowChannels(false)}
+    onSelect={(ev) => {
+      onChannelSelect?.(ev.channel);
+      if (ev.mode === 'archive' && ev.timestamp !== undefined) onRewind(ev.timestamp);
+    }}
+    currentChannelId={currentChannelId}
+    rewindableDays={rewindableDays}
+    mode={mode}
+    archiveTimestamp={archiveTimestamp}
+  />
         )}
 
         {/* Controls */}

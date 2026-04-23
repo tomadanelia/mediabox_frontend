@@ -352,7 +352,6 @@ export const Stream: React.FC = () => {
   const [programDate, setProgramDate]       = useState(toApiDate());
 
   const [rewindableHours, setRewindableHours] = useState<number>(168);
-  // Ref keeps the latest value available synchronously inside callbacks
   const rewindableHoursRef = useRef(rewindableHours);
   useEffect(() => { rewindableHoursRef.current = rewindableHours; }, [rewindableHours]);
 
@@ -397,12 +396,12 @@ export const Stream: React.FC = () => {
   // ─── Channel access / plans ───────────────────────────────────────────────
 
   const handleChannelSelect = async (channel: Channel) => {
-  const hasAccess = accessibleIds.includes(channel.id);
-  if (hasAccess) {
-    setSelectedChannel(channel);
-    navigate(`/tv/${channel.id}`, { replace: true });
-    return;
-  }
+    const hasAccess = accessibleIds.includes(channel.id);
+    if (hasAccess) {
+      setSelectedChannel(channel);
+      navigate(`/TV/${channel.id}`, { replace: true });
+      return;
+    }
     try {
       const res  = await api.get(`/api/channels/${channel.id}/plans`);
       const data = res.data;
@@ -456,17 +455,21 @@ export const Stream: React.FC = () => {
   }, []);
 
   const goArchive = useCallback(async (channelId: string, timestamp: number) => {
-    // Clamp to the oldest available second (no extra offset — the service
-    // already ensures the token covers the requested window).
     const oldestValid = Math.floor(Date.now() / 1000) - rewindableHoursRef.current * 3600;
     const safeTs = Math.max(timestamp, oldestValid);
 
+    // ── Set mode + timestamp IMMEDIATELY so the seekbar jumps to the target
+    //    position right away, before the (possibly async) URL fetch completes.
+    //    This eliminates the snap-back caused by archiveTimestamp and streamUrl
+    //    updating in separate render batches.
     setIsStreamLoading(true);
+    setMode('archive');
+    setArchiveTimestamp(safeTs);
+
     try {
       const { url, rewindableHours: hours } = await getArchiveUrl(channelId, safeTs);
+      // streamUrl update is the only thing deferred until the fetch resolves
       setStreamUrl(url);
-      setMode('archive');
-      setArchiveTimestamp(safeTs);
       if (!isNaN(hours)) {
         setRewindableHours(hours);
         rewindableHoursRef.current = hours;
@@ -606,16 +609,29 @@ export const Stream: React.FC = () => {
     setIsCalendarVisible(v => !v);
   };
 
-  const handleCalendarDateSelect = (date: Date) => {
-    if (!selectedChannel) return;
-    const midnight = new Date(date);
-    midnight.setHours(0, 0, 0, 0);
-    goArchive(selectedChannel.id, Math.floor(midnight.getTime() / 1000));
-    const dateStr = toApiDate(date);
-    fetchPrograms(selectedChannel.id, dateStr);
-    setProgramDate(dateStr);
-    setIsCalendarVisible(false);
-  };
+const handleCalendarDateSelect = async (date: Date) => {
+  if (!selectedChannel) return;
+
+  const midnight = Math.floor(date.getTime() / 1000);
+  const dateStr  = toApiDate(date);
+
+  // Fetch programs for the selected day first so we can find the first
+  // program that actually starts on or after midnight (some shows start
+  // at e.g. 23:50 the night before and would land us on the wrong day).
+  const { programs: dayPrograms } = await getProgramsForTimeline(selectedChannel.id, dateStr);
+
+  const firstOnDay = dayPrograms
+    .filter(p => p.START_TIME >= midnight)
+    .sort((a, b) => a.START_TIME - b.START_TIME)[0];
+
+  const unixTs = firstOnDay ? firstOnDay.START_TIME : midnight;
+
+  goArchive(selectedChannel.id, unixTs);
+
+  setPrograms(dayPrograms);
+  setProgramDate(dateStr);
+  setIsCalendarVisible(false);
+};
 
   // ─── Filtered channels ────────────────────────────────────────────────────
 
