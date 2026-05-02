@@ -326,6 +326,7 @@ export default function AdminChannelsSection({ channels, channelsLoading, fetchC
   const [syncErr, setSyncErr] = useState<string | null>(null);
   const [confirm, setConfirm] = useState<{ message: string; onConfirm: () => void } | null>(null);
   const [activeOverrides, setActiveOverrides] = useState<Record<string, boolean>>({});
+  const [publicOverrides, setPublicOverrides] = useState<Record<string, boolean>>({});
 const doSync = async () => {
   setSyncing(true); setSyncMsg(null); setSyncErr(null);
   try {
@@ -406,7 +407,8 @@ const doSync = async () => {
                 <th className="p-4">#</th>
                 <th className="p-4">არხი</th>
                 <th className="p-4">UUID</th>
-                <th className="p-4">სტატუსი</th>
+                <th className="p-4">მუშა</th>
+                <th className="p-4">საჯარო</th>
                 <th className="p-4">რედაქტირება</th>
                 <th className="p-4 w-16"></th>
               </tr>
@@ -461,6 +463,29 @@ const doSync = async () => {
   >
     <span className={`absolute top-0.5 w-4 h-4 rounded-full bg-white shadow transition-transform ${
       (c.uuid in activeOverrides ? activeOverrides[c.uuid] : c.is_active !== false)
+        ? "translate-x-4" : "translate-x-0.5"
+    }`} />
+  </div>
+</td><td className="p-4" onClick={e => e.stopPropagation()}>
+  <div
+    onClick={async () => {
+      const current = c.uuid in publicOverrides ? publicOverrides[c.uuid] : (c.is_public !== false);
+      const next = !current;
+      setPublicOverrides(prev => ({ ...prev, [c.uuid]: next }));
+      try {
+        await api.patch(`/api/admin/channels/${c.uuid}/toggle-public`);
+      } catch (e: any) {
+        setPublicOverrides(prev => ({ ...prev, [c.uuid]: current }));
+        console.error(e);
+      }
+    }}
+    className={`relative w-9 h-5 rounded-full transition-colors cursor-pointer ${
+      (c.uuid in publicOverrides ? publicOverrides[c.uuid] : c.is_public !== false)
+        ? "bg-violet-500" : "bg-zinc-700"
+    }`}
+  >
+    <span className={`absolute top-0.5 w-4 h-4 rounded-full bg-white shadow transition-transform ${
+      (c.uuid in publicOverrides ? publicOverrides[c.uuid] : c.is_public !== false)
         ? "translate-x-4" : "translate-x-0.5"
     }`} />
   </div>
