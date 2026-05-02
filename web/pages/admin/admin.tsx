@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import AdminUsersExtended from "./AdminUsersExtended";
 import ReactDOM from "react-dom";
+import AdminBundlesSection from "./AdminBundleSection";
 import AdminChannelsSection from "./AdminChannelsSection";
 import TvPriceSettings from "./TvPriceSettings";
 import api from "../../src/lib/axios";
@@ -11,7 +12,7 @@ import AdminDiscountsSection from "./AdminDiscountSection";
 import AdminNotificationsSection from "./AdminNotificationSection";
 import { useNavigate } from "react-router-dom";
 import HomepageBgSettings from "./HomepageBgSettings";
-type AdminSection = "Overview" | "Users" | "Category-Channels" | "Categories" | "Plans" | "Plan-Channels" |"Channels"|"Radios"|"Discounts"|"Notifications"| "Support" | "Settings";
+type AdminSection = "Overview" | "Users" | "Category-Channels" | "Categories" | "Plans" | "Plan-Channels"|"Bundles" |"Channels"|"Radios"|"Discounts"|"Notifications"| "Support" | "Settings";
 const adminSectionLabels: Record<AdminSection, string> = {
   "Overview": "მთავარი",
   "Users": "მომხმარებლები",
@@ -25,6 +26,7 @@ const adminSectionLabels: Record<AdminSection, string> = {
   "Support": "მხარდაჭერა",
   "Settings": "პარამეტრები",
   "Channels": "არხები",
+  "Bundles": "შეკვრები",
 };
 
 
@@ -843,7 +845,7 @@ useEffect(() => {
       <aside className="hidden lg:flex flex-col w-56 bg-zinc-900 border-r border-zinc-800 shrink-0">
         <div className="p-5 border-b border-zinc-800 font-bold text-zinc-100 tracking-tight">ადმინ პანელი</div>
         <nav className="p-3 flex flex-col gap-1">
-      {(["Overview",  "Channels","Categories","Category-Channels", "Plans", "Plan-Channels","Radios", "Discounts","Notifications", "Users", "Settings"] as AdminSection[]).map(s => (
+      {(["Overview",  "Channels","Categories","Category-Channels", "Plans", "Bundles","Radios", "Discounts","Notifications", "Users", "Settings"] as AdminSection[]).map(s => (
         <button
           key={s}
           onClick={() => setSection(s)}
@@ -882,22 +884,10 @@ useEffect(() => {
             </div>
           )}
 
-          {/* Plan-Channels section bulk */}
-          {planChannelsSelectedUuids.length > 0 && section === "Plan-Channels" && (
-            <div className="flex items-center gap-3">
-              <span className="text-xs text-zinc-400">
-                <span className="text-emerald-400 font-semibold">{planChannelsSelectedUuids.length}</span> არჩეული
-              </span>
-              <button
-                onClick={() => { setSelectedPlanId(""); setPlanChannelsBulkModal(true); }}
-                className="cursor-pointer bg-emerald-600 hover:bg-emerald-500 transition-colors text-white text-xs font-medium px-4 py-1.5 rounded-lg flex items-center gap-1.5"
-              >
-                <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M6 1v10M1 6h10" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/></svg>
-                პაკეტში დამატება
-              </button>
-              <button onClick={() => setPlanChannelsSelectedUuids([])} className="cursor-pointer text-xs text-zinc-500 hover:text-zinc-300 px-2 py-1.5 rounded-lg hover:bg-zinc-800 transition-colors">გასუფთავება</button>
-            </div>
-          )}
+          {/* budles section */}
+          {section === "Bundles" && (
+          <AdminBundlesSection plans={plans} />
+        )}
         </header>
 
         <main className="flex-1 overflow-y-auto p-6 pb-25 space-y-5 ">
