@@ -246,7 +246,7 @@ function CategoryMenu({
             onClick={() => { setOpen(false); onDelete(); }}
             className="cursor-pointer w-full flex items-center gap-2.5 px-3 py-2 text-xs text-red-400 hover:bg-red-500/10 transition-colors"
           >
-            <IconTrash /><span>კატეგორიის წაშლა</span>
+            <IconTrash /><span>ჟანრის წაშლა</span>
           </button>
         </div>
       )}
@@ -879,7 +879,7 @@ useEffect(() => {
                 className="cursor-pointer bg-violet-600 hover:bg-violet-500 transition-colors text-white text-xs font-medium px-4 py-1.5 rounded-lg flex items-center gap-1.5"
               >
                 <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M6 1v10M1 6h10" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/></svg>
-                დამატება კატეგორიაში
+                დამატება ჟარნში
               </button>
               <button onClick={() => setSelectedChannelUuids([])} className="cursor-pointer text-xs text-zinc-500 hover:text-zinc-300 px-2 py-1.5 rounded-lg hover:bg-zinc-800 transition-colors">გასუფთავება</button>
             </div>
@@ -914,7 +914,7 @@ useEffect(() => {
               {
                 label: "არხები",
                 value: channels.length,
-                sub: `${uncategorized.length} კატეგორიის გარეშე`,
+                sub: `${uncategorized.length} ჟანრის გარეშე`,
                 subAlert: uncategorized.length > 0,
                 color: "text-sky-400",
                 bg: "bg-sky-500/10 border-sky-500/20",
@@ -927,9 +927,9 @@ useEffect(() => {
                 ),
               },
               {
-                label: "კატეგორიები",
+                label: "ჟანრები",
                 value: categories.length,
-                sub: "სულ კატეგორია",
+                sub: "სულ ჟანრი",
                 color: "text-amber-400",
                 bg: "bg-amber-500/10 border-amber-500/20",
                 icon: (
@@ -1024,13 +1024,13 @@ useEffect(() => {
                   {/* Categories breakdown */}
                   <div className="bg-zinc-900 border border-zinc-800 rounded-2xl overflow-hidden">
                     <div className="px-5 py-4 border-b border-zinc-800 flex items-center justify-between">
-                      <h3 className="text-sm font-semibold text-zinc-100">კატეგორიები</h3>
+                      <h3 className="text-sm font-semibold text-zinc-100">ჟანრები</h3>
                       <span className="text-[0.6rem] text-zinc-500 bg-zinc-800 px-2 py-0.5 rounded-md">{categories.length} სულ</span>
                     </div>
                     {catsLoading ? (
                       <div className="flex items-center justify-center gap-2 py-10 text-zinc-500 text-xs"><IconSpinner /><span>Loading…</span></div>
                     ) : categories.length === 0 ? (
-                      <div className="flex items-center justify-center py-10 text-zinc-600 text-xs">კატეგორიები არ მოიძებნა</div>
+                      <div className="flex items-center justify-center py-10 text-zinc-600 text-xs">ჟანრები არ მოიძებნა</div>
                     ) : (
                       <div className="divide-y divide-zinc-800 max-h-72 overflow-y-auto">
                         {categories.map((cat, idx) => (
@@ -1066,9 +1066,9 @@ useEffect(() => {
                       </svg>
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className="text-amber-300 text-xs font-semibold">კატეგორიის გარეშე არხები</p>
+                      <p className="text-amber-300 text-xs font-semibold">ჟანრის გარეშე არხები</p>
                       <p className="text-amber-500/70 text-[0.65rem] mt-0.5">
-                        <span className="font-bold text-amber-400">{uncategorized.length}</span> არხს კატეგორია არ აქვს მინიჭებული. გადადი <span className="font-medium">"კატეგორიების შევსება"</span> განყოფილებაში.
+                        <span className="font-bold text-amber-400">{uncategorized.length}</span> არხს ჟანრი არ აქვს მინიჭებული. გადადი <span className="font-medium">"ჟანრების შევსება"</span> განყოფილებაში.
                       </p>
                     </div>
                     <button
@@ -1103,7 +1103,7 @@ useEffect(() => {
                       <th className="p-4 w-10"></th>
                       <th className="p-4">არხი</th>
                       <th className="p-4">ID</th>
-                      <th className="p-4">კატეგორია</th>
+                      <th className="p-4">ჟანრი</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -1152,19 +1152,19 @@ useEffect(() => {
           {section === "Categories" && (
             <div className="space-y-5">
               <div className="flex justify-between items-center">
-                <p className="text-zinc-400 text-xs">სულ {categories.length} კატეგორია</p>
+                <p className="text-zinc-400 text-xs">სულ {categories.length} ჟანრი</p>
                 <button
                   onClick={() => setShowAddCategory(true)}
                   className="cursor-pointer bg-violet-600 hover:bg-violet-500 transition-colors text-white px-4 py-2 rounded-xl text-xs font-medium flex items-center gap-1.5"
                 >
                   <svg width="11" height="11" viewBox="0 0 11 11" fill="none"><path d="M5.5 1v9M1 5.5h9" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/></svg>
-                  კატეგორიის დამატება
+                  ჟანრის დამატება
                 </button>
               </div>
 
               {showAddCategory && (
                 <div className="bg-zinc-900 p-5 rounded-2xl border border-zinc-700 space-y-3 shadow-lg">
-                  <p className="text-xs font-semibold text-zinc-400 uppercase tracking-widest mb-1">ახალი კატეგორია</p>
+                  <p className="text-xs font-semibold text-zinc-400 uppercase tracking-widest mb-1">ახალი ჟანრი</p>
                   <div className="grid grid-cols-2 gap-3">
                     <input placeholder="Name (EN)" className="bg-zinc-800 border border-zinc-700 p-2.5 rounded-xl text-sm focus:outline-none focus:border-zinc-500 transition-colors" value={newCat.name_en} onChange={e => setNewCat({ ...newCat, name_en: e.target.value })} />
                     <input placeholder="სახელი (ქართულად)" className="bg-zinc-800 border border-zinc-700 p-2.5 rounded-xl text-sm focus:outline-none focus:border-zinc-500 transition-colors" value={newCat.name_ka} onChange={e => setNewCat({ ...newCat, name_ka: e.target.value })} />
@@ -1623,7 +1623,7 @@ const isActive =
                 <p className="text-[0.65rem] text-zinc-500 mt-0.5">
                   {categoryChannelList === null
                     ? "Loading channels…"
-                    : <><span className="text-violet-400 font-semibold">{categoryChannelList.length}</span> არხი ამ კატეგორიაში</>
+                    : <><span className="text-violet-400 font-semibold">{categoryChannelList.length}</span> არხი ამ ჟარნში</>
                   }
                 </p>
               </div>
@@ -1643,7 +1643,7 @@ const isActive =
                     <path d="M11 20h18M11 26h12" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
                   </svg>
                   <p className="text-sm font-medium">No channels yet</p>
-                  <p className="text-xs text-zinc-700 text-center max-w-48">გადადი არხებზე-აირჩიე რამოდენიმე დაამატე ამ კატეგორიაში</p>
+                  <p className="text-xs text-zinc-700 text-center max-w-48">გადადი არხებზე-აირჩიე რამოდენიმე დაამატე ამ ჟარნში</p>
                 </div>
               )}
               {categoryChannelList !== null && categoryChannelList.length > 0 && (
@@ -1677,7 +1677,7 @@ const isActive =
                 <circle cx="5.5" cy="5.5" r="4.5" stroke="currentColor" strokeWidth="1.2"/>
                 <path d="M5.5 5v3M5.5 3.5v.5" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/>
               </svg>
-              არხების დამატების ინსტრუქცია: არხების ჩანართში → აირჩიეთ არხები → დააჭირეთ "დამატება კატეგორიაში"
+              არხების დამატების ინსტრუქცია: არხების ჩანართში → აირჩიეთ არხები → დააჭირეთ "დამატება ჟარნში"
             </div>
           </div>
         </div>
@@ -1691,7 +1691,7 @@ const isActive =
           <div className="bg-zinc-900 border border-zinc-800 rounded-2xl w-full max-w-sm shadow-2xl overflow-hidden">
             <div className="p-5 border-b border-zinc-800 flex justify-between items-center">
               <div>
-                <h3 className="font-bold text-zinc-100">კატეგორიის რედაქტირება</h3>
+                <h3 className="font-bold text-zinc-100">ჟანრის რედაქტირება</h3>
                 <p className="text-[0.65rem] text-zinc-500 mt-0.5 font-mono">ID: {editCat.id}</p>
               </div>
               <button onClick={() => setEditModal(false)} className="cursor-pointer w-8 h-8 flex items-center justify-center rounded-lg text-zinc-500 hover:text-zinc-200 hover:bg-zinc-800 transition-colors">✕</button>
@@ -1774,7 +1774,7 @@ const isActive =
           <div className="bg-zinc-900 border border-zinc-800 rounded-2xl w-full max-w-md shadow-2xl overflow-hidden flex flex-col">
             <div className="p-5 border-b border-zinc-800 flex justify-between items-start">
               <div>
-                <h3 className="font-bold text-zinc-100 text-base">დამატება კატეგორიაში</h3>
+                <h3 className="font-bold text-zinc-100 text-base">დამატება ჟარნში</h3>
                 <p className="text-xs text-zinc-500 mt-0.5">
                   მონიშნული <span className="text-violet-400 font-semibold">{selectedChannelUuids.length}</span> არხის დამატება
                 </p>
