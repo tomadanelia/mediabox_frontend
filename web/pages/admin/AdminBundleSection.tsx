@@ -15,12 +15,19 @@ interface Bundle {
 }
 
 interface BundleItem {
-  item_id: string | number;
-  item_type: 1 | 2 | 3;
-  name?: string;
-  name_en?: string;
-  logo?: string;
+  id: string;
+  name: string;
+  number?: number;
   icon_url?: string;
+  logo?: string;           // FIX: added logo field
+  is_active?: number | boolean;
+  slug?: string;
+}
+
+interface BundleItemsData {
+  channels: BundleItem[];
+  radio_channels: BundleItem[];
+  modules: BundleItem[];
 }
 
 interface Plan {
@@ -51,6 +58,13 @@ interface AppModule {
   slug: string;
   name: string;
   is_active: boolean;
+}
+
+// FIX: unified available-item type so id is always string and logo is optional
+interface AvailableItem {
+  id: string;
+  name: string;
+  logo?: string;
 }
 
 /* ─────────────────────────────────────────
@@ -100,6 +114,15 @@ const IconLink = () => (
   </svg>
 );
 
+const IconItems = () => (
+  <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+    <rect x="2" y="2" width="5" height="5" rx="1"/>
+    <rect x="9" y="2" width="5" height="5" rx="1"/>
+    <rect x="2" y="9" width="5" height="5" rx="1"/>
+    <rect x="9" y="9" width="5" height="5" rx="1"/>
+  </svg>
+);
+
 const TypeBadge = ({ type }: { type: string }) => {
   const map: Record<string, { label: string; cls: string }> = {
     tv:     { label: "TV",     cls: "bg-violet-500/15 text-violet-300 border-violet-500/25" },
@@ -115,7 +138,7 @@ const TypeBadge = ({ type }: { type: string }) => {
 };
 
 /* ─────────────────────────────────────────
-   BUNDLE ITEMS PANEL (inline expanded row)
+   BUNDLE ITEMS PANEL
 ───────────────────────────────────────── */
 function BundleItemsPanel({
   bundle,
@@ -124,19 +147,17 @@ function BundleItemsPanel({
   bundle: Bundle;
   onItemsChanged: () => void;
 }) {
-  const [items, setItems] = useState<BundleItem[]>([]);
+  const [itemsData, setItemsData] = useState<BundleItemsData>({ channels: [], radio_channels: [], modules: [] });
   const [loading, setLoading] = useState(true);
 
-  /* available items for adding */
   const [channels, setChannels]   = useState<Channel[]>([]);
   const [radios, setRadios]       = useState<RadioChannel[]>([]);
   const [modules, setModules]     = useState<AppModule[]>([]);
   const [resourcesLoaded, setResourcesLoaded] = useState(false);
 
-  /* add-item UI */
   const [addOpen, setAddOpen]         = useState(false);
   const [addSearch, setAddSearch]     = useState("");
-  const [selectedIds, setSelectedIds] = useState<Array<{ item_id: string | number; item_type: 1 | 2 | 3 }>>([]);
+  const [selectedIds, setSelectedIds] = useState<Array<{ item_id: string; item_type: 1 | 2 | 3 }>>([]);
   const [adding, setAdding]           = useState(false);
   const [removing, setRemoving]       = useState<string | null>(null);
 
@@ -146,9 +167,15 @@ function BundleItemsPanel({
     setLoading(true);
     try {
       const res = await api.get(`/api/admin/bundles/${bundle.id}`);
-      setItems(res.data.items ?? []);
-    } catch { setItems([]); }
-    finally { setLoading(false); }
+      const raw = res.data?.items;
+      setItemsData({
+        channels:       Array.isArray(raw?.channels)       ? raw.channels       : [],
+        radio_channels: Array.isArray(raw?.radio_channels) ? raw.radio_channels : [],
+        modules:        Array.isArray(raw?.modules)        ? raw.modules        : [],
+      });
+    } catch {
+      setItemsData({ channels: [], radio_channels: [], modules: [] });
+    } finally { setLoading(false); }
   };
 
   const loadResources = async () => {
@@ -170,7 +197,7 @@ function BundleItemsPanel({
 
   useEffect(() => { loadItems(); }, [bundle.id]);
 
-  const removeItem = async (itemId: string | number, itemType: number) => {
+  const removeItem = async (itemId: string, itemType: 1 | 2 | 3) => {
     const key = `${itemType}-${itemId}`;
     setRemoving(key);
     try {
@@ -204,63 +231,116 @@ function BundleItemsPanel({
     setAddOpen(o => !o);
   };
 
-  /* build list of available items not yet in bundle */
-  const existingIds = new Set(items.map(i => String(i.item_id)));
-  const availableList: Array<{ id: string | number; name: string; logo?: string }> =
-    bundle.type === "tv"
-      ? channels.filter(c => !existingIds.has(String(c.id)))
-      : bundle.type === "radio"
-      ? radios.filter(r => !existingIds.has(String(r.id)))
-      : modules.filter(m => !existingIds.has(String(m.id)));
+  const existingIds = new Set([
+    ...itemsData.channels.map(c => c.id),
+    ...itemsData.radio_channels.map(r => r.id),
+    ...itemsData.modules.map(m => m.id),
+  ]);
 
-  const filtered = availableList.filter(i =>
+  const totalItems = itemsData.channels.length + itemsData.radio_channels.length + itemsData.modules.length;
+
+  // FIX: build availableList as AvailableItem[] so id is always string and logo is always present (possibly undefined)
+  const availableList: AvailableItem[] = bundle.type === "tv"
+    ? channels
+        .filter(c => !existingIds.has(c.uuid))
+        .map(c => ({ id: c.uuid, name: c.name, logo: c.logo }))
+    : bundle.type === "radio"
+    ? radios
+        .filter(r => !existingIds.has(String(r.id)))
+        .map(r => ({ id: String(r.id), name: r.name, logo: r.logo }))
+    : modules
+        .filter(m => !existingIds.has(String(m.id)))
+        .map(m => ({ id: String(m.id), name: m.name, logo: undefined }));
+
+  const filteredAvailable = availableList.filter(i =>
     (i.name ?? "").toLowerCase().includes(addSearch.toLowerCase())
   );
 
-  const toggleSelect = (id: string | number) => {
-    const entry = { item_id: id, item_type: typeForBundle };
+  // FIX: id is now always string
+  const toggleSelect = (id: string) => {
     setSelectedIds(prev =>
-      prev.some(x => String(x.item_id) === String(id))
-        ? prev.filter(x => String(x.item_id) !== String(id))
-        : [...prev, entry]
+      prev.some(x => x.item_id === id)
+        ? prev.filter(x => x.item_id !== id)
+        : [...prev, { item_id: id, item_type: typeForBundle }]
+    );
+  };
+
+  const renderChip = (item: BundleItem, itemType: 1 | 2 | 3) => {
+    const key = `${itemType}-${item.id}`;
+    // FIX: both icon_url and logo are now on BundleItem
+    const img = item.icon_url ?? item.logo;
+    return (
+      <div
+        key={key}
+        className="flex items-center gap-2 bg-zinc-800/80 border border-zinc-700/50 rounded-lg px-2.5 py-1.5 group hover:border-zinc-600 transition-colors"
+      >
+        {img ? (
+          <img src={img} className="w-5 h-5 object-contain shrink-0 rounded" onError={e => (e.currentTarget.style.display = "none")} />
+        ) : (
+          <span className="text-zinc-600 text-xs shrink-0">
+            {itemType === 1 ? "📺" : itemType === 2 ? "📻" : "⚙️"}
+          </span>
+        )}
+        <span className="text-zinc-300 text-xs">{item.name}</span>
+        {item.number != null && (
+          <span className="text-[0.58rem] font-mono text-zinc-600">#{item.number}</span>
+        )}
+        {item.is_active === 0 && (
+          <span className="text-[0.55rem] text-amber-500">გათ.</span>
+        )}
+        <button
+          onClick={() => removeItem(item.id, itemType)}
+          disabled={removing === key}
+          className="cursor-pointer ml-0.5 text-zinc-600 hover:text-red-400 transition-colors disabled:opacity-40"
+          title="წაშლა"
+        >
+          {removing === key ? <Spinner /> : <span className="text-[0.7rem] leading-none">✕</span>}
+        </button>
+      </div>
     );
   };
 
   return (
     <div className="border-t border-zinc-800 bg-zinc-950/40">
-      {/* items list */}
       <div className="p-4">
         {loading ? (
           <div className="flex items-center gap-2 text-zinc-500 text-xs py-2">
             <Spinner />Loading items…
           </div>
-        ) : items.length === 0 ? (
-          <p className="text-zinc-700 text-xs py-2">ელემენტები არ არის დამატებული</p>
+        ) : totalItems === 0 ? (
+          <p className="text-zinc-700 text-xs py-2 italic">ელემენტები არ არის დამატებული</p>
         ) : (
-          <div className="flex flex-wrap gap-2">
-            {items.map((item, idx) => {
-              const name = item.name ?? item.name_en ?? `#${item.item_id}`;
-              const logo = item.logo ?? item.icon_url;
-              const key  = `${item.item_type}-${item.item_id}`;
-              return (
-                <div
-                  key={idx}
-                  className="flex items-center gap-2 bg-zinc-800/80 border border-zinc-700/50 rounded-lg px-2.5 py-1.5 group"
-                >
-                  {logo && (
-                    <img src={logo} className="w-4 h-4 object-contain shrink-0" onError={e => (e.currentTarget.style.display = "none")} />
-                  )}
-                  <span className="text-zinc-300 text-xs">{name}</span>
-                  <button
-                    onClick={() => removeItem(item.item_id, item.item_type)}
-                    disabled={removing === key}
-                    className="cursor-pointer ml-1 text-zinc-600 hover:text-red-400 transition-colors disabled:opacity-40"
-                  >
-                    {removing === key ? <Spinner /> : <span className="text-[0.7rem] leading-none">✕</span>}
-                  </button>
+          <div className="space-y-3">
+            {itemsData.channels.length > 0 && (
+              <div className="space-y-1.5">
+                <p className="text-[0.58rem] uppercase tracking-widest text-zinc-600">
+                  არხები · {itemsData.channels.length}
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  {itemsData.channels.map(item => renderChip(item, 1))}
                 </div>
-              );
-            })}
+              </div>
+            )}
+            {itemsData.radio_channels.length > 0 && (
+              <div className="space-y-1.5">
+                <p className="text-[0.58rem] uppercase tracking-widest text-zinc-600">
+                  რადიო · {itemsData.radio_channels.length}
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  {itemsData.radio_channels.map(item => renderChip(item, 2))}
+                </div>
+              </div>
+            )}
+            {itemsData.modules.length > 0 && (
+              <div className="space-y-1.5">
+                <p className="text-[0.58rem] uppercase tracking-widest text-zinc-600">
+                  მოდულები · {itemsData.modules.length}
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  {itemsData.modules.map(item => renderChip(item, 3))}
+                </div>
+              </div>
+            )}
           </div>
         )}
       </div>
@@ -269,7 +349,11 @@ function BundleItemsPanel({
       <div className="px-4 pb-4">
         <button
           onClick={openAdd}
-          className="cursor-pointer flex items-center gap-1.5 text-xs text-zinc-400 hover:text-zinc-200 transition-colors"
+          className={`cursor-pointer flex items-center gap-1.5 text-xs font-medium transition-colors px-3 py-1.5 rounded-lg border ${
+            addOpen
+              ? "bg-violet-500/15 text-violet-300 border-violet-500/30"
+              : "text-zinc-400 border-zinc-800 hover:border-zinc-600 hover:text-zinc-200"
+          }`}
         >
           <IconPlus />
           <span>ელემენტის დამატება</span>
@@ -283,19 +367,21 @@ function BundleItemsPanel({
               placeholder="ძიება…"
               value={addSearch}
               onChange={e => setAddSearch(e.target.value)}
+              autoFocus
               className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-1.5 text-xs focus:outline-none focus:border-zinc-500 transition-colors"
             />
-            <div className="max-h-48 overflow-y-auto space-y-1 rounded-xl bg-zinc-900 border border-zinc-800 p-2">
+
+            <div className="max-h-52 overflow-y-auto rounded-xl bg-zinc-900 border border-zinc-800 p-1.5">
               {!resourcesLoaded ? (
-                <div className="flex items-center gap-2 text-zinc-500 text-xs p-2"><Spinner />Loading…</div>
-              ) : filtered.length === 0 ? (
-                <p className="text-zinc-600 text-xs p-2">ვერ მოიძებნა</p>
-              ) : filtered.map(item => {
-                const isSelected = selectedIds.some(x => String(x.item_id) === String(item.id));
+                <div className="flex items-center gap-2 text-zinc-500 text-xs p-3"><Spinner />Loading…</div>
+              ) : filteredAvailable.length === 0 ? (
+                <p className="text-zinc-600 text-xs p-3 text-center">ვერ მოიძებნა</p>
+              ) : filteredAvailable.map((item: AvailableItem) => {
+                const isSelected = selectedIds.some(x => x.item_id === item.id);
                 return (
                   <div
                     key={item.id}
-                    onClick={() => toggleSelect(item.id)}
+                    onClick={() => toggleSelect(item.id)}  // FIX: item.id is now always string
                     className={`flex items-center gap-2.5 px-2.5 py-2 rounded-lg cursor-pointer transition-colors select-none ${
                       isSelected
                         ? "bg-violet-500/15 border border-violet-500/30"
@@ -305,25 +391,46 @@ function BundleItemsPanel({
                     <div className={`w-3.5 h-3.5 rounded border-2 flex items-center justify-center shrink-0 transition-colors ${
                       isSelected ? "border-violet-500 bg-violet-500" : "border-zinc-600"
                     }`}>
-                      {isSelected && <svg width="8" height="8" viewBox="0 0 10 10" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M1.5 5l2.5 2.5 4.5-4.5"/></svg>}
+                      {isSelected && (
+                        <svg width="8" height="8" viewBox="0 0 10 10" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                          <path d="M1.5 5l2.5 2.5 4.5-4.5"/>
+                        </svg>
+                      )}
                     </div>
-                    {(item as any).logo && (
-                      <img src={(item as any).logo} className="w-5 h-5 object-contain shrink-0" onError={e => (e.currentTarget.style.display = "none")} />
+                    {/* FIX: item.logo is now typed on AvailableItem, no icon_url fallback needed */}
+                    {item.logo && (
+                      <img src={item.logo} className="w-5 h-5 object-contain shrink-0 rounded" onError={e => (e.currentTarget.style.display = "none")} />
                     )}
                     <span className="text-zinc-300 text-xs truncate">{item.name}</span>
                   </div>
                 );
               })}
             </div>
-            {selectedIds.length > 0 && (
-              <button
-                onClick={addItems}
-                disabled={adding}
-                className="cursor-pointer flex items-center gap-1.5 bg-violet-600 hover:bg-violet-500 disabled:opacity-40 text-white text-xs font-medium px-4 py-1.5 rounded-lg transition-colors"
-              >
-                {adding ? <><Spinner />დამატება…</> : <><IconCheck />{selectedIds.length} ელემენტის დამატება</>}
-              </button>
-            )}
+
+            <div className="flex items-center justify-between">
+              {selectedIds.length > 0 ? (
+                <span className="text-[0.65rem] text-zinc-500">{selectedIds.length} მონიშნული</span>
+              ) : (
+                <span />
+              )}
+              <div className="flex gap-2">
+                {selectedIds.length > 0 && (
+                  <button
+                    onClick={() => setSelectedIds([])}
+                    className="cursor-pointer text-xs text-zinc-600 hover:text-zinc-400 transition-colors px-3 py-1.5"
+                  >
+                    გასუფთავება
+                  </button>
+                )}
+                <button
+                  onClick={addItems}
+                  disabled={adding || selectedIds.length === 0}
+                  className="cursor-pointer flex items-center gap-1.5 bg-violet-600 hover:bg-violet-500 disabled:opacity-40 disabled:cursor-not-allowed text-white text-xs font-medium px-4 py-1.5 rounded-lg transition-colors"
+                >
+                  {adding ? <><Spinner />დამატება…</> : <><IconCheck />{selectedIds.length > 0 ? `${selectedIds.length} ელემენტის დამატება` : "ელემენტის დამატება"}</>}
+                </button>
+              </div>
+            </div>
           </div>
         )}
       </div>
@@ -332,7 +439,7 @@ function BundleItemsPanel({
 }
 
 /* ─────────────────────────────────────────
-   PLAN ATTACH PANEL (inside bundle row)
+   PLAN ATTACH PANEL
 ───────────────────────────────────────── */
 function BundlePlanPanel({
   bundle,
@@ -344,7 +451,7 @@ function BundlePlanPanel({
   onChanged: () => void;
 }) {
   const [attachedPlanIds, setAttachedPlanIds] = useState<string[]>(
-    (bundle.plans ?? []).map(p => String(p.id))
+    Array.isArray(bundle.plans) ? bundle.plans.map(p => String(p.id)) : []
   );
   const [busy, setBusy] = useState<string | null>(null);
 
@@ -367,8 +474,8 @@ function BundlePlanPanel({
   const activePlans = plans.filter(p => Boolean(p.is_active));
 
   return (
-    <div className="px-4 pb-4 pt-1 border-t border-zinc-800/50">
-      <p className="text-[0.6rem] uppercase tracking-widest text-zinc-600 mb-2">მინიჭებული პაკეტები</p>
+    <div className="px-4 pb-4 pt-3 border-t border-zinc-800/50">
+      <p className="text-[0.6rem] uppercase tracking-widest text-zinc-600 mb-2.5">მინიჭებული პაკეტები</p>
       <div className="flex flex-wrap gap-2">
         {activePlans.map(plan => {
           const isOn = attachedPlanIds.includes(String(plan.id));
@@ -378,19 +485,16 @@ function BundlePlanPanel({
               key={plan.id}
               onClick={() => toggle(String(plan.id))}
               disabled={isBusy}
+              title={isOn ? "პაკეტის მოხსნა" : "პაკეტის მინიჭება"}
               className={`cursor-pointer flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-lg border transition-all disabled:opacity-50 disabled:cursor-not-allowed ${
                 isOn
                   ? "bg-emerald-500/15 text-emerald-300 border-emerald-500/30 hover:bg-red-500/15 hover:text-red-300 hover:border-red-500/30"
                   : "bg-zinc-800/60 text-zinc-500 border-zinc-700/50 hover:bg-emerald-500/10 hover:text-emerald-300 hover:border-emerald-500/25"
               }`}
             >
-              {isBusy
-                ? <Spinner />
-                : isOn
-                ? <IconLink />
-                : <IconPlus />
-              }
+              {isBusy ? <Spinner /> : isOn ? <IconLink /> : <IconPlus />}
               {plan.name_en}
+              {isOn && <span className="text-[0.55rem] opacity-60 ml-0.5">· მოხსნა</span>}
             </button>
           );
         })}
@@ -425,7 +529,6 @@ function BundleFormModal({
   const [err, setErr] = useState<string | null>(null);
   const backdropRef = useRef<HTMLDivElement>(null);
 
-  /* auto-slug from name if creating */
   const handleNameChange = (v: string) => {
     setForm(f => ({
       ...f,
@@ -469,10 +572,14 @@ function BundleFormModal({
               value={form.name}
               onChange={e => handleNameChange(e.target.value)}
               placeholder="Bundle name"
+              autoFocus
             />
           </div>
           <div>
-            <label className="text-[0.65rem] text-zinc-500 uppercase tracking-widest block mb-1.5">Slug</label>
+            <label className="text-[0.65rem] text-zinc-500 uppercase tracking-widest block mb-1.5">
+              Slug
+              <span className="ml-1.5 text-zinc-700 normal-case tracking-normal">· auto-generated</span>
+            </label>
             <input
               className="w-full bg-zinc-800 border border-zinc-700 p-2.5 rounded-xl text-sm font-mono focus:outline-none focus:border-zinc-500 transition-colors"
               value={form.slug}
@@ -507,9 +614,11 @@ function BundleFormModal({
             >
               <span className={`absolute top-0.5 w-4 h-4 rounded-full bg-white shadow transition-transform ${form.is_active ? "translate-x-4" : "translate-x-0.5"}`} />
             </div>
-            <span className="text-xs text-zinc-400">აქტიური</span>
+            <span className="text-xs text-zinc-400">
+              {form.is_active ? <span className="text-emerald-400">აქტიური</span> : "გათიშული"}
+            </span>
           </label>
-          {err && <p className="text-xs text-red-400">{err}</p>}
+          {err && <p className="text-xs text-red-400 bg-red-500/10 border border-red-500/20 px-3 py-2 rounded-lg">{err}</p>}
         </div>
         <div className="px-5 pb-5 flex gap-2 justify-end">
           <button onClick={onClose} className="cursor-pointer px-4 py-2 rounded-xl text-xs bg-zinc-800 hover:bg-zinc-700 text-zinc-300 transition-colors">გაუქმება</button>
@@ -570,7 +679,7 @@ function DeleteBundleModal({
               <span className="text-zinc-300 font-medium">"{bundle.name}"</span> სამუდამოდ წაიშლება.<br/>
               თუ შეკვრა პაკეტს უკავშირდება, წაშლა შეუძლებელი იქნება.
             </p>
-            {err && <p className="text-xs text-red-400 mt-2">{err}</p>}
+            {err && <p className="text-xs text-red-400 mt-2 bg-red-500/10 border border-red-500/20 px-3 py-2 rounded-lg w-full">{err}</p>}
           </div>
         </div>
         <div className="px-5 pb-5 flex gap-2">
@@ -596,11 +705,11 @@ interface Props {
 }
 
 export default function AdminBundlesSection({ plans }: Props) {
-  const [bundles, setBundles]     = useState<Bundle[]>([]);
-  const [loading, setLoading]     = useState(false);
+  const [bundles, setBundles]       = useState<Bundle[]>([]);
+  const [loading, setLoading]       = useState(false);
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [showPlansId, setShowPlansId] = useState<string | null>(null);
-  const [search, setSearch]       = useState("");
+  const [search, setSearch]         = useState("");
   const [typeFilter, setTypeFilter] = useState<"all" | "tv" | "radio" | "module">("all");
   const [createModal, setCreateModal] = useState(false);
   const [editTarget, setEditTarget]   = useState<Bundle | null>(null);
@@ -610,8 +719,9 @@ export default function AdminBundlesSection({ plans }: Props) {
     setLoading(true);
     try {
       const res = await api.get("/api/admin/bundles");
-      setBundles(Array.isArray(res.data) ? res.data : res.data.data ?? []);
-    } catch { /**/ }
+      const raw = res.data;
+      setBundles(Array.isArray(raw) ? raw : Array.isArray(raw?.data) ? raw.data : []);
+    } catch { console.error("Failed to fetch bundles"); }
     finally { setLoading(false); }
   };
 
@@ -646,7 +756,7 @@ export default function AdminBundlesSection({ plans }: Props) {
     <div className="space-y-5">
       {/* Header row */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
           {(["all", "tv", "radio", "module"] as const).map(t => (
             <button
               key={t}
@@ -698,7 +808,7 @@ export default function AdminBundlesSection({ plans }: Props) {
       ) : (
         <div className="space-y-2">
           {filtered.map(bundle => {
-            const isExpanded  = expandedId  === bundle.id;
+            const isExpanded   = expandedId  === bundle.id;
             const showingPlans = showPlansId === bundle.id;
 
             return (
@@ -713,7 +823,7 @@ export default function AdminBundlesSection({ plans }: Props) {
                   className="flex items-center gap-4 px-4 py-3 cursor-pointer select-none"
                   onClick={() => toggleExpand(bundle.id)}
                 >
-                  {/* Type accent */}
+                  {/* Type accent bar */}
                   <div className={`w-1.5 h-10 rounded-full shrink-0 ${
                     bundle.type === "tv" ? "bg-violet-500/60" : bundle.type === "radio" ? "bg-sky-500/60" : "bg-amber-500/60"
                   }`} />
@@ -727,7 +837,7 @@ export default function AdminBundlesSection({ plans }: Props) {
                         <span className="text-[0.6rem] bg-zinc-800 text-zinc-600 border border-zinc-700 px-1.5 py-0.5 rounded-md">გათიშული</span>
                       )}
                     </div>
-                    <div className="flex items-center gap-3 mt-0.5">
+                    <div className="flex items-center gap-3 mt-0.5 flex-wrap">
                       <span className="font-mono text-[0.6rem] text-zinc-600">{bundle.slug}</span>
                       {bundle.items_count != null && (
                         <span className="text-[0.6rem] text-zinc-500">
@@ -744,9 +854,23 @@ export default function AdminBundlesSection({ plans }: Props) {
 
                   {/* Actions */}
                   <div className="flex items-center gap-1.5 shrink-0" onClick={e => e.stopPropagation()}>
+                    {/* Items toggle */}
+                    <button
+                      onClick={() => toggleExpand(bundle.id)}
+                      title="ელემენტების მართვა"
+                      className={`cursor-pointer flex items-center gap-1.5 text-[0.65rem] font-medium px-2.5 py-1.5 rounded-lg border transition-all ${
+                        isExpanded
+                          ? "bg-violet-500/15 text-violet-300 border-violet-500/30"
+                          : "text-zinc-500 border-zinc-800 hover:border-zinc-600 hover:text-zinc-300"
+                      }`}
+                    >
+                      <IconItems />
+                      ელემენტები
+                    </button>
                     {/* Plans toggle */}
                     <button
                       onClick={e => togglePlans(e, bundle.id)}
+                      title="პაკეტების მართვა"
                       className={`cursor-pointer flex items-center gap-1.5 text-[0.65rem] font-medium px-2.5 py-1.5 rounded-lg border transition-all ${
                         showingPlans
                           ? "bg-emerald-500/15 text-emerald-300 border-emerald-500/30"
@@ -758,19 +882,18 @@ export default function AdminBundlesSection({ plans }: Props) {
                     </button>
                     <button
                       onClick={e => { e.stopPropagation(); setEditTarget(bundle); }}
+                      title="რედაქტირება"
                       className="cursor-pointer w-7 h-7 flex items-center justify-center rounded-lg text-zinc-600 hover:text-violet-300 hover:bg-violet-500/10 transition-colors"
                     >
                       <IconEdit />
                     </button>
                     <button
                       onClick={e => { e.stopPropagation(); setDeleteTarget(bundle); }}
+                      title="წაშლა"
                       className="cursor-pointer w-7 h-7 flex items-center justify-center rounded-lg text-zinc-600 hover:text-red-400 hover:bg-red-500/10 transition-colors"
                     >
                       <IconTrash />
                     </button>
-                    <div className={`text-zinc-500 transition-transform ${isExpanded ? "rotate-180" : ""}`}>
-                      <IconChevron open={isExpanded} />
-                    </div>
                   </div>
                 </div>
 

@@ -883,11 +883,6 @@ useEffect(() => {
               <button onClick={() => setSelectedChannelUuids([])} className="cursor-pointer text-xs text-zinc-500 hover:text-zinc-300 px-2 py-1.5 rounded-lg hover:bg-zinc-800 transition-colors">გასუფთავება</button>
             </div>
           )}
-
-          {/* budles section */}
-          {section === "Bundles" && (
-          <AdminBundlesSection plans={plans} />
-        )}
         </header>
 
         <main className="flex-1 overflow-y-auto p-6 pb-25 space-y-5 ">
@@ -1310,71 +1305,11 @@ useEffect(() => {
             </div>
           )}
 
-          {/* ── PLAN-CHANNELS ── */}
-          {section === "Plan-Channels" && (
-            <div className="space-y-4">
-              <p className="text-zinc-400 text-xs">აირჩიეთ არხები და დაამატეთ პაკეტში</p>
-              <input
-                type="text" placeholder="Search channels…" value={planChannelsSectionSearch}
-                onChange={e => setPlanChannelsSectionSearch(e.target.value)}
-                className="w-full bg-zinc-900 border border-zinc-800 rounded-xl px-4 py-2 focus:outline-none focus:border-zinc-600 transition-colors"
-              />
-              <div className="bg-zinc-900 border border-zinc-800 rounded-2xl overflow-x-auto">
-                {channelsLoading ? (
-                  <div className="flex items-center justify-center gap-2 py-16 text-zinc-500 text-sm"><IconSpinner /><span>Loading…</span></div>
-                ) : (
-                  <table className="w-full text-left">
-                    <thead className="bg-zinc-800/50 text-[0.6rem] uppercase tracking-widest text-zinc-500">
-                      <tr>
-                        <th className="p-4 w-10"></th>
-                        <th className="p-4">არხი</th>
-                        <th className="p-4">ID</th>
-                        <th className="p-4">კატეგორია</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-  {filteredPlanChannels.map(c => (
-    <tr
-      key={c.id}
-      onClick={() => toggleSelectPlanChannel(c.uuid)}
-      className={`border-t border-zinc-800 cursor-pointer transition-colors select-none ${
-        planChannelsSelectedUuids.includes(c.uuid)
-          ? "bg-emerald-500/8 hover:bg-emerald-500/12"
-          : "hover:bg-zinc-800/30"
-      }`}
-    >
-      <td className="p-4">
-        <div className={`w-4 h-4 rounded border-2 flex items-center justify-center transition-colors ${
-          planChannelsSelectedUuids.includes(c.uuid)
-            ? "border-emerald-500 bg-emerald-500"
-            : "border-zinc-600"
-        }`}>
-          {planChannelsSelectedUuids.includes(c.uuid) && (
-            <svg width="9" height="9" viewBox="0 0 10 10" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M1.5 5l2.5 2.5 4.5-4.5"/>
-            </svg>
-          )}
-        </div>
-      </td>
-      <td className="p-4">
-        <div className="flex items-center gap-3">
-          <img src={c.logo} className="w-8 h-8 rounded bg-zinc-800 object-contain" />
-          <span className="text-zinc-200">{c.name}</span>
-        </div>
-      </td>
-      <td className="p-4 font-mono text-[0.65rem] text-zinc-500">{c.uuid}</td>
-      <td className="p-4">
-        <span className="inline-block bg-violet-600/20 text-violet-300 px-2 py-1 rounded-md text-xs font-medium">{c.category_ka}</span>
-      </td>
-    </tr>
-  ))}
-</tbody>
-                  </table>
-                )}
-              </div>
-            </div>
-          )}
-
+          
+                    {/* budles section */}
+          {section === "Bundles" && (
+          <AdminBundlesSection plans={plans} />
+        )}
           {/* Radios */}
 
           {section === "Radios" && <AdminRadioSection />}
