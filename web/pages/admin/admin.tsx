@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import AdminUsersExtended from "./AdminUsersExtended";
 import ReactDOM from "react-dom";
+import AdminPlansSection from "./AdminPlansSection";
 import AdminBundlesSection from "./AdminBundleSection";
 import AdminChannelsSection from "./AdminChannelsSection";
 import TvPriceSettings from "./TvPriceSettings";
@@ -1203,121 +1204,14 @@ useEffect(() => {
               </div>
             </div>
           )}
-
-          {/* ── PLANS ── */}
-          {section === "Plans" && (
-            <div className="space-y-5">
-              <div className="flex justify-between items-center">
-                <p className="text-zinc-400 text-xs">სულ {plans.length} პაკეტი</p>
-                <button
-                  onClick={() => setShowAddPlan(true)}
-                  className="cursor-pointer bg-emerald-600 hover:bg-emerald-500 transition-colors text-white px-4 py-2 rounded-xl text-xs font-medium flex items-center gap-1.5"
-                >
-                  <svg width="11" height="11" viewBox="0 0 11 11" fill="none"><path d="M5.5 1v9M1 5.5h9" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/></svg>
-                  პაკეტის დამატება
-                </button>
-              </div>
-
-              {showAddPlan && (
-                <div className="bg-zinc-900 p-5 rounded-2xl border border-zinc-700 space-y-3 shadow-lg">
-                  <p className="text-xs font-semibold text-zinc-400 uppercase tracking-widest mb-1">New Plan</p>
-                  <div className="grid grid-cols-2 gap-3">
-                    <input placeholder="Name (EN)" className="bg-zinc-800 border border-zinc-700 p-2.5 rounded-xl text-sm focus:outline-none focus:border-zinc-500 transition-colors" value={newPlan.name_en} onChange={e => setNewPlan({ ...newPlan, name_en: e.target.value })} />
-                    <input placeholder="სახელი (ქართულად)" className="bg-zinc-800 border border-zinc-700 p-2.5 rounded-xl text-sm focus:outline-none focus:border-zinc-500 transition-colors" value={newPlan.name_ka} onChange={e => setNewPlan({ ...newPlan, name_ka: e.target.value })} />
-                  </div>
-                  <div className="grid grid-cols-2 gap-3">
-                    <input placeholder="Description (EN)" className="bg-zinc-800 border border-zinc-700 p-2.5 rounded-xl text-sm focus:outline-none focus:border-zinc-500 transition-colors" value={newPlan.description_en} onChange={e => setNewPlan({ ...newPlan, description_en: e.target.value })} />
-                    <input placeholder="აღწერა (ქართულად)" className="bg-zinc-800 border border-zinc-700 p-2.5 rounded-xl text-sm focus:outline-none focus:border-zinc-500 transition-colors" value={newPlan.description_ka} onChange={e => setNewPlan({ ...newPlan, description_ka: e.target.value })} />
-                  </div>
-                  <div className="grid grid-cols-2 gap-3">
-                    <input type="number" placeholder="ფასი" min="0" step="0.01" className="bg-zinc-800 border border-zinc-700 p-2.5 rounded-xl text-sm focus:outline-none focus:border-zinc-500 transition-colors" value={newPlan.price} onChange={e => setNewPlan({ ...newPlan, price: e.target.value })} />
-                    <input type="number" placeholder="ხანგრძლივობა (დღეებში)" min="1" className="bg-zinc-800 border border-zinc-700 p-2.5 rounded-xl text-sm focus:outline-none focus:border-zinc-500 transition-colors" value={newPlan.duration_days} onChange={e => setNewPlan({ ...newPlan, duration_days: e.target.value })} />
-                  </div>
-                  
-                     <label className="flex items-center gap-2.5 cursor-pointer select-none">
-            <div
-              onClick={() => setNewPlan({ ...newPlan, is_active: !newPlan.is_active })}
-              className={`relative w-9 h-5 rounded-full transition-colors cursor-pointer ${newPlan.is_active ? "bg-emerald-500" : "bg-zinc-700"}`}
-            >
-              <span className={`absolute top-0.5 w-4 h-4 rounded-full bg-white shadow transition-transform ${newPlan.is_active ? "translate-x-4" : "translate-x-0.5"}`} />
-            </div>
-            <span className="text-xs text-zinc-400">აქტიური</span>
-          </label>
-                   <label className="flex items-center gap-2.5 cursor-pointer select-none">
-            <div
-              onClick={() => setNewPlan({ ...newPlan, is_public: !newPlan.is_public })}
-              className={`relative w-9 h-5 rounded-full transition-colors cursor-pointer ${newPlan.is_public ? "bg-emerald-500" : "bg-zinc-700"}`}
-            >
-              <span className={`absolute top-0.5 w-4 h-4 rounded-full bg-white shadow transition-transform ${newPlan.is_public ? "translate-x-4" : "translate-x-0.5"}`} />
-            </div>
-            <span className="text-xs text-zinc-400">გლობალური (გამოჩნდება ყველა მომხმარებლისთვის)</span>
-          </label>
-                  <div className="flex gap-2 pt-1">
-                    <button onClick={handleAddPlan} className="cursor-pointer bg-emerald-600 hover:bg-emerald-500 px-5 py-2 rounded-xl text-xs font-medium transition-colors">შენახვა</button>
-                    <button onClick={() => setShowAddPlan(false)} className="cursor-pointer bg-zinc-800 hover:bg-zinc-700 px-4 py-2 rounded-xl text-xs transition-colors">გაუქმება</button>
-                  </div>
-                </div>
-              )}
-
-              {plansLoading ? (
-                <div className="flex items-center justify-center gap-2 py-16 text-zinc-500 text-sm"><IconSpinner /><span>Loading…</span></div>
-              ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
-                  {plans.map(plan => (
-                    <div key={plan.id} className="group bg-zinc-900 border border-zinc-800 hover:border-zinc-700 transition-colors rounded-2xl p-4 flex items-start gap-4">
-                      {/* Icon / badge */}
-                      <div className="w-11 h-11 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center shrink-0">
-                        <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
-                          <path d="M10 2l2.4 4.8 5.3.8-3.85 3.75.91 5.3L10 14.1l-4.76 2.55.91-5.3L2.3 7.6l5.3-.8L10 2z" stroke="#34d399" strokeWidth="1.4" strokeLinejoin="round"/>
-                        </svg>
-                      </div>
-                      {/* Info */}
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <p className="font-semibold text-zinc-100 truncate leading-tight">{plan.name_en}</p>
-                          {plan.is_active
-                            ? <span className="inline-flex items-center gap-1 text-[0.6rem] bg-emerald-500/15 text-emerald-400 border border-emerald-500/25 px-1.5 py-0.5 rounded-md font-medium">აქტიური</span>
-                            : <span className="inline-flex items-center gap-1 text-[0.6rem] bg-zinc-700/50 text-zinc-500 border border-zinc-700 px-1.5 py-0.5 rounded-md font-medium">გათიშული</span>
-                          }
-                        </div>
-                        <p className="text-[0.65rem] text-zinc-500 truncate mt-0.5">{plan.name_ka}</p>
-                        <div className="flex items-center gap-3 mt-2">
-                          <span className="text-emerald-400 font-bold text-sm">{plan.price} GEL</span>
-                          <span className="text-[0.65rem] text-zinc-600">·</span>
-                          <span className="text-[0.65rem] text-zinc-500">{plan.duration_days} დღე</span>
-                        </div>
-                        {plan.description_en && (
-                          <p className="text-[0.62rem] text-zinc-600 mt-1.5 truncate">{plan.description_en}</p>
-                        )}
-                      </div>
-                     <PlanMenu
-  isActive={Boolean(plan.is_active)}
-  onManage={() => openPlanManageModal(plan)}
-  onEdit={() => openPlanEditModal(plan)}
-  onDisable={() => { setDisablePlan(plan); setDisableModal(true); }}
-  onEnable={() => { setDisablePlan(plan); setDisableModal(true); }}
-  onDelete={() => { setDeletePlanTarget(plan); setDeletePlanModal(true); }}
-/>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          )}
-
-          
-                    {/* budles section */}
-          {section === "Bundles" && (
-          <AdminBundlesSection plans={plans} />
-        )}
+          {/* Plans section */}
+          {section === "Plans" && <AdminPlansSection/>}       
+          { /* budles section */}
+          {section === "Bundles" && (<AdminBundlesSection plans={plans} /> )}
           {/* Radios */}
-
           {section === "Radios" && <AdminRadioSection />}
-
           {/* Discounts */}
-
           {section === "Discounts" && <AdminDiscountsSection plans={plans} />}
-
           {/* Notifications */}
           {section === "Notifications" && <AdminNotificationsSection />}
           {/* ══════════════════════════════════════════
