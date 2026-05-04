@@ -14,6 +14,7 @@ import AdminDiscountsSection from "./AdminDiscountSection";
 import AdminNotificationsSection from "./AdminNotificationSection";
 import { useNavigate } from "react-router-dom";
 import HomepageBgSettings from "./HomepageBgSettings";
+import TokenTtlSettings from "./TokenTtlSettings";
 type AdminSection = "Overview" | "Users" | "Category-Channels" | "Categories" | "Plans" | "Plan-Channels"|"Bundles" |"Channels"|"Radios"|"Discounts"|"Notifications"| "Support" | "Settings";
 const adminSectionLabels: Record<AdminSection, string> = {
   "Overview": "მთავარი",
@@ -1539,6 +1540,7 @@ const isActive =
               </div>
             <TvPriceSettings />
             <HomepageBgSettings/>
+            <TokenTtlSettings />
             </div>
           )}
 
