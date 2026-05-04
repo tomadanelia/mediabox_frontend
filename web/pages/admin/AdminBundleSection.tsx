@@ -11,7 +11,7 @@ interface Bundle {
   type: "tv" | "radio" | "module";
   is_active: boolean | number;
   items_count?: number;
-  plans?: { id: string; name_en: string }[];
+  plans?: { id: string; name_ka: string }[];
 }
 
 interface BundleItem {
@@ -66,7 +66,53 @@ interface AvailableItem {
   name: string;
   logo?: string;
 }
-
+type PlanReference = {
+  id: string;
+  name_ka: string;
+};
+type ConflictItem = {
+  item_id: string;
+  plan_id: string;
+  plan_name_ka: string;
+};
+type AddItemSuccess = {
+  message: 'Item added to bundle';
+};
+type AddItemErrorInFreePlan = {
+  message: string;
+  error_code: 'ITEM_IN_FREE_PLAN';
+  plans: PlanReference[];
+};
+type AddItemErrorInPaidPlan = {
+  message: string;
+  error_code: 'ITEM_IN_PAID_PLAN';
+  plans: PlanReference[];
+};
+type AddItemErrorNotFound = {
+  message: string;
+};
+type AddItemResponse =
+  | AddItemSuccess
+  | AddItemErrorInFreePlan
+  | AddItemErrorInPaidPlan
+  | AddItemErrorNotFound;
+type AttachBundleSuccess = {
+  message: 'Bundle successfully attached to plan';
+};
+type AttachBundleErrorItemsInPaidPlans = {
+  message: string;
+  error_code: 'BUNDLE_ITEMS_IN_PAID_PLANS';
+  conflicts: ConflictItem[];
+};
+type AttachBundleErrorItemsInFreePlan = {
+  message: string;
+  error_code: 'BUNDLE_ITEMS_IN_FREE_PLAN';
+  conflicts: ConflictItem[];
+};
+type AttachBundleResponse =
+  | AttachBundleSuccess
+  | AttachBundleErrorItemsInPaidPlans
+  | AttachBundleErrorItemsInFreePlan;
 /* ─────────────────────────────────────────
    SMALL ICONS
 ───────────────────────────────────────── */
@@ -209,25 +255,56 @@ function BundleItemsPanel({
     } catch { /**/ }
     finally { setRemoving(null); }
   };
+/* ─────────────────────────────────────────
+   BUNDLE ITEMS PANEL  (addItems function only)
+───────────────────────────────────────── */
 
-  const addItems = async () => {
-    if (!selectedIds.length) return;
-    setAdding(true);
+// Replace the existing `addItems` and related state inside BundleItemsPanel:
+
+const [addError, setAddError] = useState<{
+  message: string;
+  plans?: PlanReference[];
+} | null>(null);
+
+const addItems = async () => {
+  if (!selectedIds.length) return;
+  setAdding(true);
+  setAddError(null);
+
+  for (const { item_id, item_type } of selectedIds) {
     try {
-      for (const { item_id, item_type } of selectedIds) {
-        await api.post(`/api/admin/bundles/${bundle.id}/items`, { item_id, item_type });
+      await api.post(`/api/admin/bundles/${bundle.id}/items`, { item_id, item_type });
+    } catch (e: any) {
+      const data = e.response?.data as AddItemResponse | undefined;
+
+      if (
+        e.response?.status === 409 &&
+        data &&
+        "error_code" in data &&
+        (data.error_code === "ITEM_IN_FREE_PLAN" || data.error_code === "ITEM_IN_PAID_PLAN")
+      ) {
+        const planNames = data.plans.map(p => p.name_ka).join(", ");
+        const reason =
+          data.error_code === "ITEM_IN_FREE_PLAN"
+            ? `უფასო პაკეტშია (${planNames})`
+            : `ფასიან პაკეტშია (${planNames})`;
+
+        setAddError({ message: `ელემენტი "${item_id}" ვერ დაემატა — ${reason}` });
+        break;
       }
-      setSelectedIds([]);
-      setAddOpen(false);
-      setAddSearch("");
-      await loadItems();
-      onItemsChanged();
-    } catch { /**/ }
-    finally { setAdding(false); }
-  };
+      setAddError({ message: e.response?.data?.message ?? "დამატება ვერ მოხერხდა" });
+      break;
+    }
+  }
+
+  setAdding(false);
+  await loadItems();
+  onItemsChanged();
+};
 
   const openAdd = () => {
     loadResources();
+    setAddError(null); 
     setAddOpen(o => !o);
   };
 
@@ -406,7 +483,18 @@ function BundleItemsPanel({
                 );
               })}
             </div>
-
+            {addError && (
+  <div className="flex items-start gap-2 text-xs text-red-300 bg-red-500/10 border border-red-500/20 px-3 py-2 rounded-lg">
+    <span className="shrink-0 mt-px">⚠</span>
+    <span>{addError.message}</span>
+    <button
+      onClick={() => setAddError(null)}
+      className="cursor-pointer ml-auto text-red-400 hover:text-red-200 transition-colors"
+    >
+      ✕
+    </button>
+  </div>
+)}
             <div className="flex items-center justify-between">
               {selectedIds.length > 0 ? (
                 <span className="text-[0.65rem] text-zinc-500">{selectedIds.length} მონიშნული</span>
@@ -455,21 +543,68 @@ function BundlePlanPanel({
   );
   const [busy, setBusy] = useState<string | null>(null);
 
-  const toggle = async (planId: string) => {
-    const attached = attachedPlanIds.includes(planId);
-    setBusy(planId);
-    try {
-      if (attached) {
-        await api.delete(`/api/admin/plans/${planId}/bundles`, { data: { bundle_id: bundle.id } });
-        setAttachedPlanIds(prev => prev.filter(id => id !== planId));
-      } else {
-        await api.post(`/api/admin/plans/${planId}/bundles`, { bundle_id: bundle.id });
-        setAttachedPlanIds(prev => [...prev, planId]);
+const [attachError, setAttachError] = useState<{
+  message: string;
+  conflicts?: ConflictItem[];
+} | null>(null);
+
+const toggle = async (planId: string) => {
+  const attached = attachedPlanIds.includes(planId);
+  setBusy(planId);
+  setAttachError(null);
+
+  try {
+    if (attached) {
+      await api.delete(`/api/admin/plans/${planId}/bundles`, {
+        data: { bundle_id: bundle.id },
+      });
+      setAttachedPlanIds(prev => prev.filter(id => id !== planId));
+    } else {
+      await api.post(`/api/admin/plans/${planId}/bundles`, {
+        bundle_id: bundle.id,
+      });
+      setAttachedPlanIds(prev => [...prev, planId]);
+    }
+    onChanged();
+  } catch (e: any) {
+    const data = e.response?.data as AttachBundleResponse | undefined;
+
+    if (
+      e.response?.status === 409 &&
+      data &&
+      "error_code" in data
+    ) {
+      if (
+        data.error_code === "BUNDLE_ITEMS_IN_PAID_PLANS" ||
+        data.error_code === "BUNDLE_ITEMS_IN_FREE_PLAN"
+      ) {
+        // Deduplicate by item_id for a clean summary
+        const uniqueItems = [...new Map(
+          data.conflicts.map(c => [c.item_id, c])
+        ).values()];
+        const conflictSummary = uniqueItems
+          .slice(0, 3)
+          .map(c => `${c.item_id} → ${c.plan_name_ka}`)
+          .join("; ");
+        const more = uniqueItems.length > 3 ? ` და კიდევ ${uniqueItems.length - 3}` : "";
+        const reason =
+          data.error_code === "BUNDLE_ITEMS_IN_PAID_PLANS"
+            ? "შეკვრის ელემენტები უკვე ფასიან პაკეტებშია"
+            : "შეკვრის ელემენტები უკვე უფასო პაკეტშია";
+
+        setAttachError({
+          message: `${reason}: ${conflictSummary}${more}`,
+          conflicts: data.conflicts,
+        });
+        return; 
       }
-      onChanged();
-    } catch { /**/ }
-    finally { setBusy(null); }
-  };
+    }
+
+    setAttachError({ message: e.response?.data?.message ?? "შეცდომა" });
+  } finally {
+    setBusy(null);
+  }
+};
 
   const activePlans = plans.filter(p => Boolean(p.is_active));
 
@@ -502,6 +637,18 @@ function BundlePlanPanel({
           <p className="text-zinc-700 text-xs">აქტიური პაკეტები არ მოიძებნა</p>
         )}
       </div>
+{attachError && (
+  <div className="mt-2.5 flex items-start gap-2 text-xs text-red-300 bg-red-500/10 border border-red-500/20 px-3 py-2 rounded-lg">
+    <span className="shrink-0 mt-px">⚠</span>
+    <span className="flex-1">{attachError.message}</span>
+    <button
+      onClick={() => setAttachError(null)}
+      className="cursor-pointer text-red-400 hover:text-red-200 transition-colors"
+    >
+      ✕
+    </button>
+  </div>
+)}
     </div>
   );
 }
