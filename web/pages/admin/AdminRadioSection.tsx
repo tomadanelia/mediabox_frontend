@@ -3,12 +3,13 @@ import api from "../../src/lib/axios";
 
 /* ── Types ── */
 interface RadioChannel {
-  id: number;
+  id: string;
   external_id: number;
   name: string;
   stream_url: string;
   icon_url: string | null;
   is_active: boolean | number;
+  is_public: boolean | number;
   is_free: boolean | number;
 }
 
@@ -52,16 +53,46 @@ const IconRadio = () => (
   </svg>
 );
 
+/* ── Inline Toggle Switch ── */
+function ToggleSwitch({
+  checked,
+  loading,
+  onChange,
+  colorOn = "bg-emerald-500",
+}: {
+  checked: boolean;
+  loading?: boolean;
+  onChange: () => void;
+  colorOn?: string;
+}) {
+  return (
+    <button
+      onClick={onChange}
+      disabled={loading}
+      className={`cursor-pointer relative inline-flex h-5 w-9 items-center rounded-full transition-colors duration-200 focus:outline-none disabled:opacity-50 disabled:cursor-not-allowed ${
+        checked ? colorOn : "bg-zinc-700"
+      }`}
+    >
+      <span
+        className={`inline-block h-3.5 w-3.5 transform rounded-full bg-white shadow transition-transform duration-200 ${
+          checked ? "translate-x-[18px]" : "translate-x-[3px]"
+        }`}
+      />
+      {loading && (
+        <span className="absolute inset-0 flex items-center justify-center">
+          <IconSpinner />
+        </span>
+      )}
+    </button>
+  );
+}
+
 /* ── Radio Action Menu ── */
 function RadioMenu({
-  isActive,
   onEdit,
-  onToggle,
   onDelete,
 }: {
-  isActive: boolean;
   onEdit: () => void;
-  onToggle: () => void;
   onDelete: () => void;
 }) {
   const [open, setOpen] = useState(false);
@@ -93,21 +124,6 @@ function RadioMenu({
           >
             <IconEdit /><span>რედაქტირება</span>
           </button>
-          {isActive ? (
-            <button
-              onClick={() => { setOpen(false); onToggle(); }}
-              className="cursor-pointer w-full flex items-center gap-2.5 px-3 py-2 text-xs text-amber-400 hover:bg-amber-500/10 transition-colors"
-            >
-              <IconDisable /><span>გამორთვა</span>
-            </button>
-          ) : (
-            <button
-              onClick={() => { setOpen(false); onToggle(); }}
-              className="cursor-pointer w-full flex items-center gap-2.5 px-3 py-2 text-xs text-emerald-400 hover:bg-emerald-500/10 transition-colors"
-            >
-              <IconCheck /><span>ჩართვა</span>
-            </button>
-          )}
           <div className="my-1 border-t border-zinc-700/60" />
           <button
             onClick={() => { setOpen(false); onDelete(); }}
@@ -129,6 +145,9 @@ export default function AdminRadioSection() {
   const [loading, setLoading] = useState(false);
   const [search, setSearch] = useState("");
 
+  // Per-row toggle loading state: { [id]: 'active' | 'public' | null }
+  const [togglingField, setTogglingField] = useState<Record<string, "active" | "public" | null>>({});
+
   /* ── Add form ── */
   const [showAdd, setShowAdd] = useState(false);
   const [newRadio, setNewRadio] = useState({
@@ -137,6 +156,7 @@ export default function AdminRadioSection() {
     stream_url: "",
     icon_url: "",
     is_active: true,
+    is_public: true,
     is_free: false,
   });
   const [addLoading, setAddLoading] = useState(false);
@@ -151,15 +171,11 @@ export default function AdminRadioSection() {
     stream_url: "",
     icon_url: "",
     is_active: true,
+    is_public: true,
     is_free: false,
   });
   const [editLoading, setEditLoading] = useState(false);
   const [editError, setEditError] = useState<string | null>(null);
-
-  /* ── Toggle confirm modal ── */
-  const [toggleModal, setToggleModal] = useState(false);
-  const [toggleTarget, setToggleTarget] = useState<RadioChannel | null>(null);
-  const [toggleLoading, setToggleLoading] = useState(false);
 
   /* ── Delete confirm modal ── */
   const [deleteModal, setDeleteModal] = useState(false);
@@ -189,6 +205,40 @@ export default function AdminRadioSection() {
     String(r.external_id).includes(search)
   );
 
+  /* ── Inline toggle active ── */
+  const handleToggleActive = async (r: RadioChannel) => {
+    setTogglingField(prev => ({ ...prev, [r.id]: "active" }));
+    try {
+      await api.patch(`/api/admin/radios/${r.id}/toggle-active`);
+      setRadios(prev =>
+        prev.map(item =>
+          item.id === r.id ? { ...item, is_active: !Boolean(item.is_active) } : item
+        )
+      );
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setTogglingField(prev => ({ ...prev, [r.id]: null }));
+    }
+  };
+
+  /* ── Inline toggle public ── */
+  const handleTogglePublic = async (r: RadioChannel) => {
+    setTogglingField(prev => ({ ...prev, [r.id]: "public" }));
+    try {
+      await api.patch(`/api/admin/radios/${r.id}/toggle-public`);
+      setRadios(prev =>
+        prev.map(item =>
+          item.id === r.id ? { ...item, is_public: !Boolean(item.is_public) } : item
+        )
+      );
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setTogglingField(prev => ({ ...prev, [r.id]: null }));
+    }
+  };
+
   /* ── Add ── */
   const handleAdd = async () => {
     if (!newRadio.name || !newRadio.stream_url || !newRadio.external_id) return;
@@ -198,11 +248,9 @@ export default function AdminRadioSection() {
       await api.post("/api/admin/radios", {
         ...newRadio,
         external_id: parseInt(newRadio.external_id),
-        is_active: newRadio.is_active,
-        is_free: newRadio.is_free,
       });
       setShowAdd(false);
-      setNewRadio({ external_id: "", name: "", stream_url: "", icon_url: "", is_active: true, is_free: false });
+      setNewRadio({ external_id: "", name: "", stream_url: "", icon_url: "", is_active: true, is_public: true, is_free: false });
       fetchRadios();
     } catch (e: any) {
       setAddError(e.response?.data?.message || "დამატება ვერ მოხერხდა");
@@ -220,6 +268,7 @@ export default function AdminRadioSection() {
       stream_url: r.stream_url,
       icon_url: r.icon_url ?? "",
       is_active: Boolean(r.is_active),
+      is_public: Boolean(r.is_public),
       is_free: Boolean(r.is_free),
     });
     setEditError(null);
@@ -241,28 +290,6 @@ export default function AdminRadioSection() {
       setEditError(e.response?.data?.message || "განახლება ვერ მოხერხდა");
     } finally {
       setEditLoading(false);
-    }
-  };
-
-  /* ── Toggle active ── */
-  const openToggleModal = (r: RadioChannel) => {
-    setToggleTarget(r);
-    setToggleModal(true);
-  };
-
-  const handleToggle = async () => {
-    if (!toggleTarget) return;
-    setToggleLoading(true);
-    try {
-      await api.put(`/api/admin/radios/${toggleTarget.id}`, {
-        is_active: !Boolean(toggleTarget.is_active),
-      });
-      setToggleModal(false);
-      fetchRadios();
-    } catch (e) {
-      console.error(e);
-    } finally {
-      setToggleLoading(false);
     }
   };
 
@@ -359,6 +386,10 @@ export default function AdminRadioSection() {
               აქტიური
             </label>
             <label className="flex items-center gap-2 text-xs text-zinc-400 cursor-pointer select-none">
+              <input type="checkbox" className="accent-sky-500" checked={newRadio.is_public} onChange={e => setNewRadio({ ...newRadio, is_public: e.target.checked })} />
+              საჯარო
+            </label>
+            <label className="flex items-center gap-2 text-xs text-zinc-400 cursor-pointer select-none">
               <input type="checkbox" className="accent-sky-500" checked={newRadio.is_free} onChange={e => setNewRadio({ ...newRadio, is_free: e.target.checked })} />
               უფასო
             </label>
@@ -392,9 +423,7 @@ export default function AdminRadioSection() {
           </div>
         ) : filtered.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-20 gap-3 text-zinc-600">
-            <div className="text-zinc-700">
-              <IconRadio />
-            </div>
+            <div className="text-zinc-700"><IconRadio /></div>
             <p className="text-sm font-medium">რადიო არხები ვერ მოიძებნა</p>
           </div>
         ) : (
@@ -405,7 +434,8 @@ export default function AdminRadioSection() {
                   <th className="p-4">ID</th>
                   <th className="p-4">არხი</th>
                   <th className="p-4">Stream URL</th>
-                  <th className="p-4">სტატუსი</th>
+                  <th className="p-4">აქტიური</th>
+                  <th className="p-4">საჯარო</th>
                   <th className="p-4">ტიპი</th>
                   <th className="p-4 w-12"></th>
                 </tr>
@@ -452,22 +482,27 @@ export default function AdminRadioSection() {
                       </a>
                     </td>
 
-                    {/* Active status */}
+                    {/* is_active toggle */}
                     <td className="p-4">
-                      {Boolean(r.is_active) ? (
-                        <span className="inline-flex items-center gap-1 text-[0.6rem] font-medium bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 px-2 py-0.5 rounded-md">
-                          <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 inline-block" />
-                          აქტიური
-                        </span>
-                      ) : (
-                        <span className="inline-flex items-center gap-1 text-[0.6rem] font-medium bg-zinc-800 text-zinc-500 border border-zinc-700 px-2 py-0.5 rounded-md">
-                          <span className="w-1.5 h-1.5 rounded-full bg-zinc-600 inline-block" />
-                          გათიშული
-                        </span>
-                      )}
+                      <ToggleSwitch
+                        checked={Boolean(r.is_active)}
+                        loading={togglingField[r.id] === "active"}
+                        onChange={() => handleToggleActive(r)}
+                        colorOn="bg-emerald-500"
+                      />
                     </td>
 
-                    {/* Free / Paid */}
+                    {/* is_public toggle */}
+                    <td className="p-4">
+                      <ToggleSwitch
+                        checked={Boolean(r.is_public)}
+                        loading={togglingField[r.id] === "public"}
+                        onChange={() => handleTogglePublic(r)}
+                        colorOn="bg-sky-500"
+                      />
+                    </td>
+
+                    {/* Free / Paid badge */}
                     <td className="p-4">
                       {Boolean(r.is_free) ? (
                         <span className="inline-flex items-center text-[0.6rem] font-medium bg-sky-500/10 text-sky-400 border border-sky-500/20 px-2 py-0.5 rounded-md">
@@ -483,9 +518,7 @@ export default function AdminRadioSection() {
                     {/* Actions */}
                     <td className="p-4">
                       <RadioMenu
-                        isActive={Boolean(r.is_active)}
                         onEdit={() => openEditModal(r)}
-                        onToggle={() => openToggleModal(r)}
                         onDelete={() => openDeleteModal(r)}
                       />
                     </td>
@@ -568,6 +601,10 @@ export default function AdminRadioSection() {
                   აქტიური
                 </label>
                 <label className="flex items-center gap-2 text-xs text-zinc-400 cursor-pointer select-none">
+                  <input type="checkbox" className="accent-sky-500" checked={editForm.is_public} onChange={e => setEditForm({ ...editForm, is_public: e.target.checked })} />
+                  საჯარო
+                </label>
+                <label className="flex items-center gap-2 text-xs text-zinc-400 cursor-pointer select-none">
                   <input type="checkbox" className="accent-sky-500" checked={editForm.is_free} onChange={e => setEditForm({ ...editForm, is_free: e.target.checked })} />
                   უფასო
                 </label>
@@ -589,56 +626,6 @@ export default function AdminRadioSection() {
                 className="cursor-pointer px-5 py-2 rounded-xl text-xs bg-sky-600 hover:bg-sky-500 disabled:opacity-40 disabled:cursor-not-allowed text-white font-medium transition-colors flex items-center gap-2"
               >
                 {editLoading ? <><IconSpinner />შენახვა…</> : <><IconCheck />ცვლილებების შენახვა</>}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* ══════════════════════════════════════════
-          TOGGLE ACTIVE CONFIRM MODAL
-      ══════════════════════════════════════════ */}
-      {toggleModal && toggleTarget && (
-        <div
-          className="fixed inset-0 bg-black/75 z-50 flex items-center justify-center p-4"
-          onClick={e => { if (e.target === e.currentTarget) setToggleModal(false); }}
-        >
-          <div className="bg-zinc-900 border border-zinc-800 rounded-2xl w-full max-w-sm shadow-2xl overflow-hidden">
-            <div className="p-6 flex flex-col items-center text-center gap-4">
-              <div className="w-14 h-14 rounded-2xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center">
-                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#fbbf24" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-                  <circle cx="12" cy="12" r="9"/>
-                  <path d="M7 7l10 10"/>
-                </svg>
-              </div>
-              <div>
-                <h3 className="font-bold text-zinc-100 text-base">
-                  {Boolean(toggleTarget.is_active) ? "არხი გამოირთვება" : "არხი გააქტიურდება"}
-                </h3>
-                <p className="text-xs text-zinc-500 mt-2 leading-relaxed">
-                  {Boolean(toggleTarget.is_active)
-                    ? <><span className="text-zinc-300 font-medium">"{toggleTarget.name}"</span> გამოირთვება.<br/>თავიდან ჩართვა ნებისმიერ დროს შეიძლება.</>
-                    : <><span className="text-zinc-300 font-medium">"{toggleTarget.name}"</span> ხელმისაწვდომი გახდება მომხმარებლებისთვის.</>
-                  }
-                </p>
-              </div>
-            </div>
-            <div className="px-5 pb-5 flex gap-2">
-              <button
-                onClick={() => setToggleModal(false)}
-                className="cursor-pointer flex-1 py-2.5 rounded-xl text-sm bg-zinc-800 hover:bg-zinc-700 text-zinc-300 transition-colors"
-              >
-                გაუქმება
-              </button>
-              <button
-                onClick={handleToggle}
-                disabled={toggleLoading}
-                className="cursor-pointer flex-1 py-2.5 rounded-xl text-sm bg-amber-600 hover:bg-amber-500 disabled:opacity-40 disabled:cursor-not-allowed text-white font-medium transition-colors flex items-center justify-center gap-2"
-              >
-                {toggleLoading
-                  ? <><IconSpinner />{Boolean(toggleTarget.is_active) ? "ითიშება…" : "ირთვება…"}</>
-                  : Boolean(toggleTarget.is_active) ? "გამორთვა" : "ჩართვა"
-                }
               </button>
             </div>
           </div>
