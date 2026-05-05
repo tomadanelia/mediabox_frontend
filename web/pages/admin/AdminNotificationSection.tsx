@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import api from "../../src/lib/axios";
 
 /* ── Types ── */
@@ -15,6 +15,21 @@ interface UserSearchResult {
   account: { balance: string; status?: string } | null;
   active_plans: { id?: string; name: string; expires_at: string; days_left: number }[];
   meta: { is_verified: boolean; has_account: boolean; has_plans: boolean };
+}
+
+interface Notification {
+  id: string | number;
+  title: string;
+  message: string;
+  created_at: string;
+  user?: { full_name?: string; username?: string; email?: string };
+}
+
+interface PaginatedNotifications {
+  data: Notification[];
+  total?: number;
+  current_page?: number;
+  last_page?: number;
 }
 
 /* ── Icons ── */
@@ -62,6 +77,24 @@ const IconClear = () => (
     <path d="M1 1l10 10M11 1L1 11"/>
   </svg>
 );
+const IconTrash = () => (
+  <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M2 4h12M5 4V2.5a.5.5 0 01.5-.5h5a.5.5 0 01.5.5V4M6 7v5M10 7v5M3 4l1 9a1 1 0 001 1h6a1 1 0 001-1l1-9"/>
+  </svg>
+);
+const IconHistory = () => (
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M3 3v5h5"/>
+    <path d="M3.05 13A9 9 0 1 0 6 5.3L3 8"/>
+    <path d="M12 7v5l4 2"/>
+  </svg>
+);
+const IconChevron = ({ down }: { down?: boolean }) => (
+  <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"
+    style={{ transform: down ? "rotate(180deg)" : undefined, transition: "transform 0.2s" }}>
+    <path d="M2 4l4 4 4-4"/>
+  </svg>
+);
 
 /* ── Confirm modal ── */
 function ConfirmModal({
@@ -69,11 +102,13 @@ function ConfirmModal({
   message,
   onConfirm,
   onCancel,
+  danger = false,
 }: {
   title: string;
   message: string;
   onConfirm: () => void;
   onCancel: () => void;
+  danger?: boolean;
 }) {
   return (
     <div
@@ -82,11 +117,17 @@ function ConfirmModal({
     >
       <div className="bg-zinc-900 border border-zinc-800 rounded-2xl w-full max-w-sm shadow-2xl overflow-hidden">
         <div className="p-6 flex flex-col items-center text-center gap-4">
-          <div className="w-12 h-12 rounded-2xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center">
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#fbbf24" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M12 9v4M12 17h.01"/>
-              <path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/>
-            </svg>
+          <div className={`w-12 h-12 rounded-2xl flex items-center justify-center ${danger ? "bg-red-500/10 border border-red-500/20" : "bg-amber-500/10 border border-amber-500/20"}`}>
+            {danger ? (
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#f87171" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M2 4h12M5 4V2.5a.5.5 0 01.5-.5h5a.5.5 0 01.5.5V4M6 7v5M10 7v5M3 4l1 9a1 1 0 001 1h6a1 1 0 001-1l1-9"/>
+              </svg>
+            ) : (
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#fbbf24" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M12 9v4M12 17h.01"/>
+                <path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/>
+              </svg>
+            )}
           </div>
           <div>
             <p className="text-zinc-100 font-semibold text-sm">{title}</p>
@@ -97,8 +138,11 @@ function ConfirmModal({
           <button onClick={onCancel} className="cursor-pointer flex-1 py-2.5 rounded-xl text-sm bg-zinc-800 hover:bg-zinc-700 text-zinc-300 transition-colors">
             გაუქმება
           </button>
-          <button onClick={onConfirm} className="cursor-pointer flex-1 py-2.5 rounded-xl text-sm bg-amber-600 hover:bg-amber-500 text-white font-medium transition-colors">
-            გაგზავნა
+          <button
+            onClick={onConfirm}
+            className={`cursor-pointer flex-1 py-2.5 rounded-xl text-sm text-white font-medium transition-colors ${danger ? "bg-red-600 hover:bg-red-500" : "bg-amber-600 hover:bg-amber-500"}`}
+          >
+            {danger ? "წაშლა" : "გაგზავნა"}
           </button>
         </div>
       </div>
@@ -138,11 +182,9 @@ function UserSearchPanel({
     const u = selectedUser.user;
     return (
       <div className="flex items-center gap-3 bg-zinc-800/60 border border-zinc-700/50 rounded-xl p-3">
-        {/* Avatar */}
         <div className="w-10 h-10 rounded-full bg-linear-to-br from-violet-600 to-violet-800 flex items-center justify-center shrink-0 text-white text-sm font-bold select-none">
           {(u.full_name ?? u.username ?? u.email ?? "?")[0].toUpperCase()}
         </div>
-        {/* Info */}
         <div className="flex-1 min-w-0 space-y-0.5">
           <div className="flex items-center gap-2 flex-wrap">
             <p className="text-zinc-100 font-semibold text-sm truncate">
@@ -163,7 +205,6 @@ function UserSearchPanel({
           </p>
           <p className="text-[0.58rem] font-mono text-zinc-700 truncate">id: {u.id}</p>
         </div>
-        {/* Clear */}
         <button
           onClick={onClear}
           className="cursor-pointer w-7 h-7 flex items-center justify-center rounded-lg text-zinc-600 hover:text-zinc-300 hover:bg-zinc-700 transition-colors shrink-0"
@@ -203,6 +244,203 @@ function UserSearchPanel({
   );
 }
 
+/* ── Notification row with delete ── */
+function NotificationRow({
+  notif,
+  onDeleted,
+  showUser = false,
+}: {
+  notif: Notification;
+  onDeleted: (id: string | number) => void;
+  showUser?: boolean;
+}) {
+  const [deleting, setDeleting] = useState(false);
+  const [confirm, setConfirm] = useState(false);
+  const [removed, setRemoved] = useState(false);
+
+  const doDelete = async () => {
+    setDeleting(true);
+    try {
+      await api.delete(`/api/admin/notifications/${notif.id}`);
+      setRemoved(true);
+      setTimeout(() => onDeleted(notif.id), 350);
+    } catch {
+      setDeleting(false);
+    }
+  };
+
+  const formattedDate = (() => {
+    try {
+      return new Date(notif.created_at).toLocaleString("ka-GE", {
+        day: "2-digit", month: "short", year: "numeric",
+        hour: "2-digit", minute: "2-digit",
+      });
+    } catch { return notif.created_at; }
+  })();
+
+  return (
+    <>
+      <div
+        className={`group flex items-start gap-3 px-4 py-3 border-b border-zinc-800/70 last:border-0 transition-all duration-300 ${removed ? "opacity-0 max-h-0 overflow-hidden py-0" : "opacity-100"}`}
+      >
+        {/* Icon dot */}
+        <div className="w-1.5 h-1.5 rounded-full bg-zinc-600 mt-2 shrink-0" />
+
+        {/* Content */}
+        <div className="flex-1 min-w-0">
+          <div className="flex items-start justify-between gap-2">
+            <p className="text-xs font-semibold text-zinc-200 leading-snug truncate">{notif.title}</p>
+            <span className="text-[0.58rem] text-zinc-600 shrink-0 tabular-nums mt-0.5">{formattedDate}</span>
+          </div>
+          <p className="text-[0.68rem] text-zinc-500 leading-relaxed mt-0.5 line-clamp-2">{notif.message}</p>
+          {showUser && notif.user && (
+            <p className="text-[0.58rem] text-zinc-700 mt-1">
+              → {notif.user.full_name ?? notif.user.username ?? notif.user.email}
+            </p>
+          )}
+        </div>
+
+        {/* Delete btn */}
+        <button
+          onClick={() => setConfirm(true)}
+          disabled={deleting}
+          className="cursor-pointer opacity-0 group-hover:opacity-100 w-7 h-7 flex items-center justify-center rounded-lg text-zinc-700 hover:text-red-400 hover:bg-red-500/10 transition-all shrink-0 disabled:opacity-30"
+          title="წაშლა"
+        >
+          {deleting ? <IconSpinner /> : <IconTrash />}
+        </button>
+      </div>
+
+      {confirm && (
+        <ConfirmModal
+          danger
+          title="შეტყობინების წაშლა"
+          message={`"${notif.title}" — სამუდამოდ წაიშლება. ეს ქმედება შეუქცევადია.`}
+          onConfirm={() => { setConfirm(false); doDelete(); }}
+          onCancel={() => setConfirm(false)}
+        />
+      )}
+    </>
+  );
+}
+
+/* ── History panel (collapsible) ── */
+function NotificationsHistoryPanel({
+  type,
+  userId,
+  refreshTrigger,
+}: {
+  type: "global" | "user";
+  userId?: string | number | null;
+  refreshTrigger: number;
+}) {
+  const [open, setOpen] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [notifications, setNotifications] = useState<Notification[]>([]);
+  const [err, setErr] = useState<string | null>(null);
+  const [page, setPage] = useState(1);
+  const [lastPage, setLastPage] = useState(1);
+
+  const endpoint =
+    type === "global"
+      ? `/api/admin/notifications/global`
+      : userId
+      ? `/api/admin/notifications/user/${userId}`
+      : null;
+
+  const fetchData = useCallback(async (p = 1) => {
+    if (!endpoint) return;
+    setLoading(true); setErr(null);
+    try {
+      const res = await api.get(`${endpoint}?page=${p}`);
+      const payload: PaginatedNotifications = res.data;
+      const items = Array.isArray(payload) ? payload : (payload.data ?? []);
+      setNotifications(p === 1 ? items : prev => [...prev, ...items]);
+      setPage(p);
+      setLastPage(payload.last_page ?? 1);
+    } catch (e: any) {
+      setErr(e.response?.data?.message || "ჩატვირთვა ვერ მოხერხდა");
+    } finally { setLoading(false); }
+  }, [endpoint]);
+
+  // reload when a new notification is sent or open state changes
+  useEffect(() => {
+    if (open && endpoint) {
+      setNotifications([]);
+      fetchData(1);
+    }
+  }, [open, refreshTrigger, endpoint]);
+
+  const handleDeleted = (id: string | number) => {
+    setNotifications(prev => prev.filter(n => n.id !== id));
+  };
+
+  const isEmpty = !loading && notifications.length === 0 && !err;
+
+  if (type === "user" && !userId) return null;
+
+  return (
+    <div className="border-t border-zinc-800">
+      {/* Toggle */}
+      <button
+        onClick={() => setOpen(o => !o)}
+        className="cursor-pointer w-full flex items-center gap-2 px-5 py-3 text-left hover:bg-zinc-800/40 transition-colors group"
+      >
+        <span className="text-zinc-600 group-hover:text-zinc-400 transition-colors"><IconHistory /></span>
+        <span className="text-[0.68rem] text-zinc-600 group-hover:text-zinc-400 font-medium transition-colors flex-1">
+          {open ? "ისტორიის დამალვა" : "გაგზავნილების ნახვა / წაშლა"}
+        </span>
+        <span className="text-zinc-700 group-hover:text-zinc-500 transition-colors"><IconChevron down={open} /></span>
+      </button>
+
+      {/* Content */}
+      {open && (
+        <div>
+          {loading && notifications.length === 0 && (
+            <div className="flex items-center justify-center gap-2 py-6 text-zinc-600 text-xs">
+              <IconSpinner /> იტვირთება…
+            </div>
+          )}
+
+          {err && (
+            <p className="text-xs text-red-400 bg-red-500/10 border border-red-500/20 rounded-xl mx-4 mb-3 px-3 py-2">{err}</p>
+          )}
+
+          {isEmpty && (
+            <p className="text-[0.68rem] text-zinc-700 italic px-5 pb-4">გაგზავნილი შეტყობინებები არ არის</p>
+          )}
+
+          {notifications.length > 0 && (
+            <div>
+              {notifications.map(n => (
+                <NotificationRow
+                  key={n.id}
+                  notif={n}
+                  onDeleted={handleDeleted}
+                  showUser={type === "global"}
+                />
+              ))}
+
+              {/* Load more */}
+              {page < lastPage && (
+                <div className="px-4 py-3">
+                  <button
+                    onClick={() => fetchData(page + 1)}
+                    disabled={loading}
+                    className="cursor-pointer w-full py-2 rounded-xl text-xs text-zinc-500 hover:text-zinc-300 bg-zinc-800/50 hover:bg-zinc-800 transition-colors flex items-center justify-center gap-2 disabled:opacity-40"
+                  >
+                    {loading ? <><IconSpinner />იტვირთება…</> : "მეტის ჩვენება"}
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
 /* ══════════════════════════════════════════
    GLOBAL BROADCAST PANEL
 ══════════════════════════════════════════ */
@@ -213,22 +451,24 @@ function GlobalBroadcastPanel() {
   const [ok, setOk] = useState(false);
   const [err, setErr] = useState<string | null>(null);
   const [confirm, setConfirm] = useState(false);
+  const [refreshTrigger, setRefreshTrigger] = useState(0);
 
   const titleLeft = 100 - title.length;
   const msgLeft = 500 - message.length;
 
   const doSend = async () => {
-  if (!title.trim() || !message.trim()) return;
-  setSending(true); setErr(null); setOk(false);
-  try {
-    await api.post("/api/admin/notifications/global", { title: title.trim(), message: message.trim() });
-    setOk(true);
-    setTitle(""); setMessage("");
-    setTimeout(() => setOk(false), 4000);
-  } catch (e: any) {
-    setErr(e.response?.data?.message || "გაგზავნა ვერ მოხერხდა");
-  } finally { setSending(false); }
-};
+    if (!title.trim() || !message.trim()) return;
+    setSending(true); setErr(null); setOk(false);
+    try {
+      await api.post("/api/admin/notifications/global", { title: title.trim(), message: message.trim() });
+      setOk(true);
+      setTitle(""); setMessage("");
+      setRefreshTrigger(t => t + 1);
+      setTimeout(() => setOk(false), 4000);
+    } catch (e: any) {
+      setErr(e.response?.data?.message || "გაგზავნა ვერ მოხერხდა");
+    } finally { setSending(false); }
+  };
 
   return (
     <div className="bg-zinc-900 border border-zinc-800 rounded-2xl overflow-hidden">
@@ -305,6 +545,9 @@ function GlobalBroadcastPanel() {
         </div>
       </div>
 
+      {/* History / delete */}
+      <NotificationsHistoryPanel type="global" refreshTrigger={refreshTrigger} />
+
       {confirm && (
         <ConfirmModal
           title="გლობალური შეტყობინება"
@@ -317,7 +560,9 @@ function GlobalBroadcastPanel() {
   );
 }
 
-
+/* ══════════════════════════════════════════
+   USER NOTIFICATION PANEL
+══════════════════════════════════════════ */
 function UserNotificationPanel() {
   const [selectedUser, setSelectedUser] = useState<UserSearchResult | null>(null);
   const [title, setTitle] = useState("");
@@ -326,6 +571,7 @@ function UserNotificationPanel() {
   const [ok, setOk] = useState(false);
   const [err, setErr] = useState<string | null>(null);
   const [confirm, setConfirm] = useState(false);
+  const [refreshTrigger, setRefreshTrigger] = useState(0);
 
   const titleLeft = 100 - title.length;
   const msgLeft = 500 - message.length;
@@ -342,10 +588,18 @@ function UserNotificationPanel() {
       });
       setOk(true);
       setTitle(""); setMessage("");
+      setRefreshTrigger(t => t + 1);
       setTimeout(() => setOk(false), 4000);
     } catch (e: any) {
       setErr(e.response?.data?.message || "გაგზავნა ვერ მოხერხდა");
     } finally { setSending(false); }
+  };
+
+  const handleClearUser = () => {
+    setSelectedUser(null);
+    setOk(false);
+    setErr(null);
+    setRefreshTrigger(0);
   };
 
   return (
@@ -373,7 +627,7 @@ function UserNotificationPanel() {
           <UserSearchPanel
             selectedUser={selectedUser}
             onUserFound={r => setSelectedUser(r)}
-            onClear={() => { setSelectedUser(null); setOk(false); setErr(null); }}
+            onClear={handleClearUser}
           />
         </div>
 
@@ -448,6 +702,13 @@ function UserNotificationPanel() {
         )}
       </div>
 
+      {/* History / delete — only when user is selected */}
+      <NotificationsHistoryPanel
+        type="user"
+        userId={selectedUser?.user.id ?? null}
+        refreshTrigger={refreshTrigger}
+      />
+
       {confirm && selectedUser && (
         <ConfirmModal
           title="შეტყობინების გაგზავნა"
@@ -459,6 +720,7 @@ function UserNotificationPanel() {
     </div>
   );
 }
+
 /* ══════════════════════════════════════════
    MAIN COMPONENT
 ══════════════════════════════════════════ */
