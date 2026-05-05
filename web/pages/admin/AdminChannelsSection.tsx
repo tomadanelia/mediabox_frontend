@@ -406,7 +406,7 @@ const doSync = async () => {
               <tr>
                 <th className="p-4">#</th>
                 <th className="p-4">არხი</th>
-                <th className="p-4">UUID</th>
+                <th className="p-4">პაკეტი</th>
                 <th className="p-4">მუშა</th>
                 <th className="p-4">საჯარო</th>
                 <th className="p-4">რედაქტირება</th>
@@ -441,7 +441,13 @@ const doSync = async () => {
             <span className="text-zinc-200 font-medium">{c.name}</span>
           </div>
         </td>
-        <td className="p-4 font-mono text-[0.65rem] text-zinc-500">{c.uuid}</td>
+        <td className="p-4">
+          {c.is_free ? (
+            <span className="inline-block bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 px-2 py-0.5 rounded text-[0.65rem] font-medium">უფასო</span>
+          ) : (
+            <span className="inline-block bg-amber-500/10 text-amber-400 border border-amber-500/20 px-2 py-0.5 rounded text-[0.65rem] font-medium">ფასიანი</span>
+          )}
+        </td>
 <td className="p-4" onClick={e => e.stopPropagation()}>
   <div
     onClick={async () => {
