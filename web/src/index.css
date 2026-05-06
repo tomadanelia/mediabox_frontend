@@ -269,16 +269,33 @@ input[type="checkbox"] {
   scrollbar-width: thin;
   scrollbar-color: rgba(128, 128, 128, 0.4) transparent;
 }
+
 @font-face {
-  font-family: 'Calibri';
-  src: url('/Fonts/BPG\ calibri.ttf') format('truetype');
-  font-weight: normal;
-  font-style: normal;
-  font-display: swap;
+    font-family: 'geo';
+    src: url('../public/Fonts/geo.eot');
+    src: url('../public/Fonts/geo.eot?#iefix') format('embedded-opentype'),
+       url('../public/Fonts/geo.woff2') format('woff2'),
+       url('../public/Fonts/geo.woff') format('woff'),
+       url('../public/Fonts/geo.ttf') format('truetype'),
+       url('../public/Fonts/geo.svg#geo') format('svg');
+    font-weight: normal;
+    font-style: normal;
+}
+
+@font-face {
+    font-family: 'geoMT';
+    src: url('../public/Fonts/geo_mt.eot');
+    src: url('../public/Fonts/geo_mt.eot?#iefix') format('embedded-opentype'),
+       url('../public/Fonts/geo_mt.woff2') format('woff2'),
+       url('../public/Fonts/geo_mt.woff') format('woff'),
+       url('../public/Fonts/geo_mt.ttf') format('truetype'),
+       url('../public/Fonts/geo_mt.svg#geoMT') format('svg');
+    font-weight: normal;
+    font-style: normal;
 }
 
 * {
-  font-family: 'Calibri', sans-serif;
+  font-family: 'geo', sans-serif;
 }
 
 @import "tailwindcss";
