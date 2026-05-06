@@ -416,7 +416,7 @@ const unreadCount = useUIStore((s) => s.unreadCount)
 
   return (
     <>
-      <header className="w-full h-16 bg-nav-bg border border-black/10 dark:border-white/10 backdrop-blur-lg transition-colors duration-300 flex justify-center items-center">
+      <header className={`w-full h-16 ${language === "Ge" ? "font-geo-mt" : ""} bg-nav-bg border border-black/10 dark:border-white/10 backdrop-blur-lg transition-colors duration-300 flex justify-center items-center`}>
         <div className="flex h-full items-center justify-between px-4 sm:px-6 w-full 2_5xl:w-500">
 
           {/* LEFT */}

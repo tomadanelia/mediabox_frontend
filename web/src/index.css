@@ -272,29 +272,35 @@ input[type="checkbox"] {
 
 @font-face {
     font-family: 'geo';
-    src: url('../public/Fonts/geo.eot');
-    src: url('../public/Fonts/geo.eot?#iefix') format('embedded-opentype'),
-       url('../public/Fonts/geo.woff2') format('woff2'),
-       url('../public/Fonts/geo.woff') format('woff'),
-       url('../public/Fonts/geo.ttf') format('truetype'),
-       url('../public/Fonts/geo.svg#geo') format('svg');
+    src: url('/Fonts/geo.eot');
+    src: url('/Fonts/geo.eot?#iefix') format('embedded-opentype'),
+       url('/Fonts/geo.woff2') format('woff2'),
+       url('/Fonts/geo.woff') format('woff'),
+       url('/Fonts/geo.ttf') format('truetype'),
+       url('/Fonts/geo.svg#geo') format('svg');
     font-weight: normal;
     font-style: normal;
 }
 
 @font-face {
     font-family: 'geoMT';
-    src: url('../public/Fonts/geo_mt.eot');
-    src: url('../public/Fonts/geo_mt.eot?#iefix') format('embedded-opentype'),
-       url('../public/Fonts/geo_mt.woff2') format('woff2'),
-       url('../public/Fonts/geo_mt.woff') format('woff'),
-       url('../public/Fonts/geo_mt.ttf') format('truetype'),
-       url('../public/Fonts/geo_mt.svg#geoMT') format('svg');
+    src: url('/Fonts/geo_mt.eot');
+    src: url('/Fonts/geo_mt.eot?#iefix') format('embedded-opentype'),
+       url('/Fonts/geo_mt.woff2') format('woff2'),
+       url('/Fonts/geo_mt.woff') format('woff'),
+       url('/Fonts/geo_mt.ttf') format('truetype'),
+       url('/Fonts/geo_mt.svg#geoMT') format('svg');
     font-weight: normal;
     font-style: normal;
 }
+.font-geo {
+  font-family: 'geo', sans-serif;
+}
 
-* {
+.font-geo-mt {
+  font-family: 'geoMT', sans-serif;
+}
+body {
   font-family: 'geo', sans-serif;
 }
 
