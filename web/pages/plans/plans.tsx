@@ -175,10 +175,22 @@ const ChannelModal = ({
 
   useEffect(() => {
     const fetchChannels = async () => {
-      try {
-        const res = await api.get(`/api/plans/${plan.id}/channels`)
-        setChannels(res.data.channels ?? [])
-      } catch {
+     try {
+  const res = await api.get(`/api/plans/${plan.id}/channels`)
+  const data = res.data
+  const allChannels: Channel[] = data.bundles
+    ? data.bundles.flatMap((b: any) => b.items?.channels ?? [])
+    : []
+
+  const seen = new Set<string>()
+  const unique = allChannels.filter(ch => {
+    if (seen.has(ch.id)) return false
+    seen.add(ch.id)
+    return true
+  })
+
+  setChannels(unique)
+} catch {
         setError(true)
       } finally {
         setLoading(false)
