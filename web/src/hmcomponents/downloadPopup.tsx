@@ -1,7 +1,8 @@
+import Hls from 'hls.js';
 import { useState, useRef, useCallback, useEffect } from 'react';
 import { requestDownload } from '../../src/services/downloadService';
 import type { DownloadResult } from '../../src/services/downloadService';
-import { getPreviewUrl, probeRewindableHours } from '@/services/streamService';
+import { getArchiveUrl, probeRewindableHours } from '@/services/streamService';
 
 function formatDuration(seconds: number): string {
   const m = Math.floor(seconds / 60);
@@ -15,10 +16,27 @@ function formatTime(unixSec: number): string {
   });
 }
 
+/** Parse "HH:MM:SS" into total seconds-of-day, returns null on bad input */
+function parseTimeOfDay(str: string): number | null {
+  const parts = str.trim().split(':').map(Number);
+  if (parts.length !== 3 || parts.some(isNaN)) return null;
+  const [h, m, s] = parts;
+  if (h < 0 || h > 23 || m < 0 || m > 59 || s < 0 || s > 59) return null;
+  return h * 3600 + m * 60 + s;
+}
+
+/** Replace the time-of-day component of a unix timestamp, keeping the date. */
+function applyTimeOfDay(baseTs: number, todSec: number): number {
+  const d = new Date(baseTs * 1000);
+  const startOfDay = Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate()) / 1000;
+  return startOfDay + todSec;
+}
+
 const MAX_CLIP_SEC     = 3 * 60;
 const DEFAULT_CLIP_SEC = 60;
 const FRAME_COUNT      = 8;
 const HANDLE_HIT_PX    = 16;
+const HANDLE_WIDTH_PX  = 24;
 
 const ZOOM_LEVELS = [
   60 * 60 * 24, 60 * 60 * 12, 60 * 60 * 6,
@@ -35,6 +53,66 @@ interface DownloadPopupProps {
 
 type Phase    = 'trim' | 'loading' | 'unavailable' | 'success' | 'error';
 type DragMode = 'start' | 'end' | 'body' | null;
+
+// ─── Editable time field ──────────────────────────────────────────────────────
+
+interface TimeFieldProps {
+  label:    string;
+  value:    number;
+  min:      number;
+  max:      number;
+  align:    'left' | 'right';
+  onChange: (ts: number) => void;
+}
+
+const TimeField: React.FC<TimeFieldProps> = ({ label, value, min, max, align, onChange }) => {
+  const [editing, setEditing] = useState(false);
+  const [draft,   setDraft]   = useState('');
+
+  const startEdit = () => { setDraft(formatTime(value)); setEditing(true); };
+
+  const commit = () => {
+    setEditing(false);
+    const tod = parseTimeOfDay(draft);
+    if (tod === null) return;
+    let ts = applyTimeOfDay(value, tod);
+    // If the parsed time looks like it rolled past midnight, try adjacent day
+    if (ts < min) ts += 86400;
+    if (ts > max) ts -= 86400;
+    ts = Math.max(min, Math.min(max, ts));
+    onChange(ts);
+  };
+
+  return (
+    <div className={`flex flex-col gap-0.5 ${align === 'right' ? '' : 'items-end'}`}>
+      <span className="text-[9px] uppercase tracking-widest text-zinc-700">{label}</span>
+      {editing ? (
+        <input
+          autoFocus
+          value={draft}
+          onChange={e => setDraft(e.target.value)}
+          onBlur={commit}
+          onKeyDown={e => {
+            if (e.key === 'Enter')  { e.preventDefault(); commit(); }
+            if (e.key === 'Escape') { setEditing(false); }
+          }}
+          className="w-[72px] text-[11px] font-mono text-zinc-200 text-center
+            bg-zinc-800 border border-zinc-600 rounded px-1 py-0.5 outline-none
+            focus:border-red-600/60"
+        />
+      ) : (
+        <button
+          onClick={startEdit}
+          title="Click to edit"
+          className="text-[11px] font-mono text-zinc-400 hover:text-zinc-200
+            hover:bg-zinc-800/80 rounded px-1 py-0.5 transition-all text-left"
+        >
+          {formatTime(value)}
+        </button>
+      )}
+    </div>
+  );
+};
 
 // ─── TrimStrip ────────────────────────────────────────────────────────────────
 
@@ -53,17 +131,20 @@ const TrimStrip: React.FC<TrimStripProps> = ({
   channelId,
   viewStart, viewEnd, start, end, absoluteMin, absoluteMax, onChange,
 }) => {
-  const ref = useRef<HTMLDivElement>(null);
-
-  // All live values in a single ref so drag callbacks never read stale closures
+  const ref  = useRef<HTMLDivElement>(null);
   const live = useRef({ viewStart, viewEnd, start, end, absoluteMin, absoluteMax, onChange });
   useEffect(() => { live.current = { viewStart, viewEnd, start, end, absoluteMin, absoluteMax, onChange }; });
 
-  // Stable frame bounds — frozen during drag to prevent video remounting/flashing
-  const [frameView, setFrameView] = useState({ start: viewStart, end: viewEnd });
-  const isDragging = useRef(false);
+  const [frameView,    setFrameView]    = useState({ start: viewStart, end: viewEnd });
+  const isDragging                       = useRef(false);
+  const lastFrameView                    = useRef({ start: viewStart, end: viewEnd });
+
   useEffect(() => {
-    if (!isDragging.current) setFrameView({ start: viewStart, end: viewEnd });
+    if (isDragging.current) return;
+    const prev = lastFrameView.current;
+    if (prev.start === viewStart && prev.end === viewEnd) return;
+    lastFrameView.current = { start: viewStart, end: viewEnd };
+    setFrameView({ start: viewStart, end: viewEnd });
   }, [viewStart, viewEnd]);
 
   const drag = useRef<{
@@ -100,21 +181,26 @@ const TrimStrip: React.FC<TrimStripProps> = ({
     const rect = ref.current?.getBoundingClientRect();
     if (!rect) { d.rafId = requestAnimationFrame(runFrame); return; }
 
-    const vRange    = l.viewEnd - l.viewStart;
-    const overLeft  = Math.max(0, rect.left  - d.currentX);
-    const overRight = Math.max(0, d.currentX - rect.right);
+    const vRange     = l.viewEnd - l.viewStart;
+    const overLeft   = Math.max(0, rect.left  - d.currentX);
+    const overRight  = Math.max(0, d.currentX - rect.right);
     const scrollSpeed = (overLeft + overRight) * 0.04;
 
     if (d.mode === 'start') {
       const targetSec = clientXToSec(d.currentX);
-      const newStart  = Math.max(l.absoluteMin, Math.min(l.end - 1, targetSec));
+      // Clamp: can't go below absoluteMin, can't go within 1s of end,
+      // and can't make the clip longer than MAX_CLIP_SEC
+      const newStart = Math.max(
+        l.absoluteMin,
+        Math.max(l.end - MAX_CLIP_SEC, Math.min(l.end - 1, targetSec))
+      );
       l.onChange(newStart, l.end);
 
     } else if (d.mode === 'end') {
       const targetSec = clientXToSec(d.currentX);
-      const newEnd    = Math.max(l.start + 1,
-                          Math.min(l.absoluteMax,
-                            Math.min(l.start + MAX_CLIP_SEC, targetSec)));
+      const newEnd = Math.max(l.start + 1,
+                      Math.min(l.absoluteMax,
+                        Math.min(l.start + MAX_CLIP_SEC, targetSec)));
       l.onChange(l.start, newEnd);
 
     } else if (d.mode === 'body') {
@@ -142,20 +228,22 @@ const TrimStrip: React.FC<TrimStripProps> = ({
     if (!rect) return;
     const l = live.current;
 
-    const px      = e.clientX - rect.left;
-    const w       = rect.width;
-    const vRange  = l.viewEnd - l.viewStart;
+    const px     = e.clientX - rect.left;
+    const w      = rect.width;
+    const vRange = l.viewEnd - l.viewStart;
     const startPx = ((l.start - l.viewStart) / vRange) * w;
     const endPx   = ((l.end   - l.viewStart) / vRange) * w;
 
-    // Disambiguate overlapping handles when trim size is zero/tiny
-    const nearStart = Math.abs(px - startPx) <= HANDLE_HIT_PX;
-    const nearEnd   = Math.abs(px - endPx)   <= HANDLE_HIT_PX;
+    // Correct hit centers: start handle is fully LEFT of startPx, end is fully RIGHT of endPx
+    const startHandleCenter = startPx - HANDLE_WIDTH_PX / 2;
+    const endHandleCenter   = endPx   + HANDLE_WIDTH_PX / 2;
+
+    const nearStart = Math.abs(px - startHandleCenter) <= HANDLE_HIT_PX;
+    const nearEnd   = Math.abs(px - endHandleCenter)   <= HANDLE_HIT_PX;
     let mode: DragMode = null;
 
     if (nearStart && nearEnd) {
-      // Both handles at same spot — left half grabs start, right half grabs end
-      mode = px <= (startPx + endPx) / 2 ? 'start' : 'end';
+      mode = px <= (startHandleCenter + endHandleCenter) / 2 ? 'start' : 'end';
     } else if (nearStart) {
       mode = 'start';
     } else if (nearEnd) {
@@ -186,8 +274,9 @@ const TrimStrip: React.FC<TrimStripProps> = ({
     cancelAnimationFrame(drag.current.rafId);
     drag.current.mode  = null;
     isDragging.current = false;
-    // Unfreeze frame tiles now that drag is done
-    setFrameView({ start: live.current.viewStart, end: live.current.viewEnd });
+    const l = live.current;
+    lastFrameView.current = { start: l.viewStart, end: l.viewEnd };
+    setFrameView({ start: l.viewStart, end: l.viewEnd });
   }, []);
 
   useEffect(() => () => cancelAnimationFrame(drag.current.rafId), []);
@@ -202,21 +291,13 @@ const TrimStrip: React.FC<TrimStripProps> = ({
       onPointerUp={onPointerUp}
       onPointerLeave={onPointerUp}
     >
-      {/* Frame tiles — keyed by index so elements stay mounted; only src updates */}
+      {/* Frame tiles */}
       <div className="absolute inset-0 flex rounded-lg overflow-hidden">
         {Array.from({ length: FRAME_COUNT }).map((_, i) => {
           const ts  = Math.floor(frameView.start + (frameRange / FRAME_COUNT) * (i + 0.5));
-          const src = getPreviewUrl(channelId, ts);
+          // Use a stable key so tiles don't remount on every render
           return (
-            <div key={i} className="flex-1 h-full border-r border-white/[0.04] last:border-r-0 overflow-hidden bg-zinc-900">
-              {src
-                ? <video src={src} muted playsInline preload="metadata"
-                    className="w-full h-full object-cover pointer-events-none" />
-                : <div className="w-full h-full flex items-center justify-center">
-                    <span className="material-symbols-outlined text-zinc-800" style={{ fontSize: '13px' }}>image</span>
-                  </div>
-              }
-            </div>
+            <FrameTile key={i} channelId={channelId} timestamp={ts} />
           );
         })}
       </div>
@@ -243,14 +324,13 @@ const TrimStrip: React.FC<TrimStripProps> = ({
         style={{
           left:          `${leftPct}%`,
           transform:     'translateX(-100%)',
-          width:         '24px',
+          width:         `${HANDLE_WIDTH_PX}px`,
           cursor:        'ew-resize',
           pointerEvents: 'none',
         }}
       >
         <div className="w-full h-full flex items-center justify-center
-          bg-zinc-900/95 border border-red-600 rounded-l-md
-          shadow-lg shadow-black/60">
+          bg-zinc-900/95 border border-red-600 rounded-l-md shadow-lg shadow-black/60">
           <span className="text-red-500 font-light select-none" style={{ fontSize: '14px' }}>|</span>
         </div>
       </div>
@@ -261,19 +341,18 @@ const TrimStrip: React.FC<TrimStripProps> = ({
         style={{
           left:          `${rightPct}%`,
           transform:     'translateX(0%)',
-          width:         '24px',
+          width:         `${HANDLE_WIDTH_PX}px`,
           cursor:        'ew-resize',
           pointerEvents: 'none',
         }}
       >
         <div className="w-full h-full flex items-center justify-center
-          bg-zinc-900/95 border border-red-600 rounded-r-md
-          shadow-lg shadow-black/60">
+          bg-zinc-900/95 border border-red-600 rounded-r-md shadow-lg shadow-black/60">
           <span className="text-red-500 font-light select-none" style={{ fontSize: '14px' }}>|</span>
         </div>
       </div>
 
-      {/* Duration badge — only when selection wide enough */}
+      {/* Duration badge */}
       {selWidthPct > 10 && (
         <div
           className="absolute top-1/2 -translate-y-1/2 -translate-x-1/2 z-10 pointer-events-none
@@ -287,12 +366,199 @@ const TrimStrip: React.FC<TrimStripProps> = ({
   );
 };
 
+// Stable thumbnail tile — only remounts when channelId or timestamp changes
+const FrameTile: React.FC<{ channelId: string | undefined; timestamp: number }> = ({
+  channelId, timestamp,
+}) => {
+  const [archiveUrl, setArchiveUrl] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!channelId) return;
+    getArchiveUrl(channelId, timestamp).then(r => setArchiveUrl(r.url)).catch(() => {});
+  }, [channelId, timestamp]);
+
+  return (
+    <div className="flex-1 h-full border-r border-white/[0.04] last:border-r-0 overflow-hidden bg-zinc-900">
+      {archiveUrl ? (
+        <HlsThumbnail src={archiveUrl} />
+      ) : (
+        <div className="w-full h-full flex items-center justify-center">
+          <span className="material-symbols-outlined text-zinc-800" style={{ fontSize: '13px' }}>image</span>
+        </div>
+      )}
+    </div>
+  );
+};
+
+// Renders the first frame of an HLS stream as a thumbnail
+const HlsThumbnail: React.FC<{ src: string }> = ({ src }) => {
+  const vidRef = useRef<HTMLVideoElement>(null);
+
+  useEffect(() => {
+    const vid = vidRef.current;
+    if (!vid || !src) return;
+
+    let hls: Hls | null = null;
+
+    const attach = () => {
+      if (vid.canPlayType('application/vnd.apple.mpegurl')) {
+        vid.src = src;
+      } else if (Hls.isSupported()) {
+        hls = new Hls({ maxBufferLength: 2, startPosition: 0 });
+        hls.loadSource(src);
+        hls.attachMedia(vid);
+      }
+    };
+
+    attach();
+    return () => { hls?.destroy(); };
+  }, [src]);
+
+  return (
+    <video
+      ref={vidRef}
+      muted
+      playsInline
+      preload="metadata"
+      className="w-full h-full object-cover pointer-events-none"
+    />
+  );
+};
+
+// ─── Clip Preview Player ──────────────────────────────────────────────────────
+
+interface ClipPreviewProps {
+  channelId:    string | undefined;
+  timestamp:    number;
+  archiveReady: boolean;
+}
+
+const ClipPreview: React.FC<ClipPreviewProps> = ({ channelId, timestamp, archiveReady }) => {
+  const videoRef                  = useRef<HTMLVideoElement>(null);
+  const hlsRef                    = useRef<Hls | null>(null);
+  const [streamUrl, setStreamUrl] = useState<string | null>(null);
+  const [paused,    setPaused]    = useState(false);
+
+  // Fetch the archive stream URL when timestamp or channel changes
+  useEffect(() => {
+    if (!channelId || !archiveReady) { setStreamUrl(null); return; }
+    getArchiveUrl(channelId, timestamp)
+      .then(r => setStreamUrl(r.url))
+      .catch(() => setStreamUrl(null));
+  }, [channelId, timestamp, archiveReady]);
+
+  // Attach HLS to the video element whenever the stream URL changes
+  useEffect(() => {
+    const vid = videoRef.current;
+    if (!vid) return;
+
+    // Tear down previous instance
+    hlsRef.current?.destroy();
+    hlsRef.current = null;
+
+    if (!streamUrl) { vid.src = ''; return; }
+
+    setPaused(false);
+
+    if (vid.canPlayType('application/vnd.apple.mpegurl')) {
+      // Native HLS (Safari)
+      vid.src = streamUrl;
+      vid.play().catch(() => {});
+    } else if (Hls.isSupported()) {
+      const hls = new Hls({ startPosition: 0, maxBufferLength: 10 });
+      hlsRef.current = hls;
+      hls.loadSource(streamUrl);
+      hls.attachMedia(vid);
+      hls.on(Hls.Events.MANIFEST_PARSED, () => {
+        vid.play().catch(() => {});
+      });
+    }
+
+    return () => { hlsRef.current?.destroy(); hlsRef.current = null; };
+  }, [streamUrl]);
+
+  // Sync play/pause imperatively
+  useEffect(() => {
+    const vid = videoRef.current;
+    if (!vid) return;
+    if (paused) { vid.pause(); }
+    else        { vid.play().catch(() => {}); }
+  }, [paused]);
+
+  useEffect(() => () => { hlsRef.current?.destroy(); }, []);
+
+  const togglePause = () => setPaused(p => !p);
+
+  return (
+    <div
+      className="w-full rounded-xl overflow-hidden bg-zinc-950 border border-zinc-800/80 relative group"
+      style={{ aspectRatio: '16/9' }}
+    >
+      {streamUrl ? (
+        <>
+          <video
+            ref={videoRef}
+            muted
+            loop
+            playsInline
+            className="w-full h-full object-cover"
+            onPlay={() => setPaused(false)}
+            onPause={() => setPaused(true)}
+          />
+
+          {/* Click-to-pause overlay */}
+          <button
+            onClick={togglePause}
+            className="absolute inset-0 w-full h-full flex items-center justify-center cursor-pointer bg-transparent"
+            style={{ WebkitTapHighlightColor: 'transparent' }}
+            aria-label={paused ? 'Play' : 'Pause'}
+          >
+            <div className={`flex items-center justify-center w-10 h-10 rounded-full
+              bg-black/60 border border-white/15 backdrop-blur-sm
+              transition-opacity duration-150
+              ${paused ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}`}>
+              <span
+                className="material-symbols-outlined text-white"
+                style={{ fontSize: '22px', fontVariationSettings: "'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 24" }}
+              >
+                {paused ? 'play_arrow' : 'pause'}
+              </span>
+            </div>
+          </button>
+
+          {/* Timestamp badge */}
+          <div className="absolute bottom-2 left-2 px-2 py-0.5 rounded-md bg-black/70 border border-zinc-700/60 pointer-events-none">
+            <span className="text-[10px] font-mono text-zinc-400">{formatTime(timestamp)}</span>
+          </div>
+
+          {paused && (
+            <div className="absolute top-2 right-2 px-2 py-0.5 rounded-md bg-black/70 border border-zinc-700/60 pointer-events-none">
+              <span className="text-[10px] font-mono text-zinc-400 uppercase tracking-wider">Paused</span>
+            </div>
+          )}
+        </>
+      ) : (
+        <div className="absolute inset-0 flex flex-col items-center justify-center gap-2">
+          <span
+            className="material-symbols-outlined text-zinc-800"
+            style={{ fontSize: '28px', fontVariationSettings: "'FILL' 0, 'wght' 300, 'GRAD' 0, 'opsz' 24" }}
+          >
+            movie
+          </span>
+          <span className="text-[10px] text-zinc-700 tracking-wide">Loading preview…</span>
+        </div>
+      )}
+    </div>
+  );
+};
+
 // ─── Main popup ───────────────────────────────────────────────────────────────
 
 export const DownloadPopup: React.FC<DownloadPopupProps> = ({
   channelId, currentTimestamp, oldestTimestamp, onClose,
 }) => {
-  const now    = Math.floor(Date.now() / 1000);
+  const nowRef = useRef(Math.floor(Date.now() / 1000));
+  const now    = nowRef.current;
   const center = currentTimestamp ?? now - 60;
 
   const [start,      setStart]      = useState(() => Math.max(oldestTimestamp, center - DEFAULT_CLIP_SEC / 2));
@@ -316,6 +582,12 @@ export const DownloadPopup: React.FC<DownloadPopupProps> = ({
       });
     }
   }, [viewWindow, oldestTimestamp, now]);
+
+  /** Zoom in/out re-centering the view on the current selection midpoint */
+  const zoom = useCallback((delta: number) => {
+    setZoomIdx(i => Math.max(0, Math.min(ZOOM_LEVELS.length - 1, i + delta)));
+    setViewCenter((start + end) / 2);
+  }, [start, end]);
 
   const clipDuration = end - start;
   const overMax      = clipDuration > MAX_CLIP_SEC;
@@ -348,6 +620,15 @@ export const DownloadPopup: React.FC<DownloadPopupProps> = ({
       .then(() => setArchiveReady(true))
       .catch(() => setArchiveReady(true));
   }, [channelId]);
+
+  // Debounced preview timestamp — only updates after user stops dragging
+  const [previewTs,         setPreviewTs]         = useState(start);
+  const previewDebounceRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  useEffect(() => {
+    clearTimeout(previewDebounceRef.current);
+    previewDebounceRef.current = setTimeout(() => setPreviewTs(start), 300);
+    return () => clearTimeout(previewDebounceRef.current);
+  }, [start]);
 
   const zoomLabel = (() => {
     const s = viewWindow;
@@ -384,6 +665,12 @@ export const DownloadPopup: React.FC<DownloadPopupProps> = ({
         {phase === 'trim' && (
           <div className="px-5 py-5 flex flex-col gap-4">
 
+            <ClipPreview
+              channelId={archiveReady ? channelId : undefined}
+              timestamp={previewTs}
+              archiveReady={archiveReady}
+            />
+
             <div className="px-6">
               <TrimStrip
                 channelId={archiveReady ? channelId : undefined}
@@ -396,7 +683,7 @@ export const DownloadPopup: React.FC<DownloadPopupProps> = ({
 
             {/* Zoom + time row */}
             <div className="flex items-center gap-2">
-              <button onClick={() => setZoomIdx(i => Math.max(0, i - 1))}
+              <button onClick={() => zoom(-1)}
                 disabled={zoomIdx === 0}
                 className="w-7 h-7 flex items-center justify-center rounded-lg
                   bg-zinc-900 border border-zinc-800 text-zinc-500
@@ -405,7 +692,7 @@ export const DownloadPopup: React.FC<DownloadPopupProps> = ({
                 <span className="material-symbols-outlined" style={{ fontSize: '16px' }}>remove</span>
               </button>
               <span className="text-[10px] font-mono text-zinc-700 w-8 text-center">{zoomLabel}</span>
-              <button onClick={() => setZoomIdx(i => Math.min(ZOOM_LEVELS.length - 1, i + 1))}
+              <button onClick={() => zoom(1)}
                 disabled={zoomIdx === ZOOM_LEVELS.length - 1}
                 className="w-7 h-7 flex items-center justify-center rounded-lg
                   bg-zinc-900 border border-zinc-800 text-zinc-500
@@ -417,19 +704,35 @@ export const DownloadPopup: React.FC<DownloadPopupProps> = ({
               <div className="flex-1" />
 
               <div className="flex items-center gap-3">
-                <div className="flex flex-col items-end gap-0.5">
-                  <span className="text-[9px] uppercase tracking-widest text-zinc-700">Start</span>
-                  <span className="text-[11px] font-mono text-zinc-400">{formatTime(start)}</span>
-                </div>
+                <TimeField
+                  label="Start"
+                  value={start}
+                  min={oldestTimestamp}
+                  max={end - 1}
+                  align="right"
+                  onChange={ts => {
+                    const ns = Math.max(oldestTimestamp, Math.max(end - MAX_CLIP_SEC, Math.min(end - 1, ts)));
+                    setStart(ns);
+                    setViewCenter((ns + end) / 2);
+                  }}
+                />
                 <div className={`px-2.5 py-0.5 rounded-full text-[11px] font-semibold font-mono
                   ${overMax ? 'bg-red-500/12 text-red-500 border border-red-500/25'
                             : 'bg-zinc-800 text-zinc-400 border border-zinc-700'}`}>
                   {formatDuration(clipDuration)}
                 </div>
-                <div className="flex flex-col gap-0.5">
-                  <span className="text-[9px] uppercase tracking-widest text-zinc-700">End</span>
-                  <span className="text-[11px] font-mono text-zinc-400">{formatTime(end)}</span>
-                </div>
+                <TimeField
+                  label="End"
+                  value={end}
+                  min={start + 1}
+                  max={now}
+                  align="left"
+                  onChange={ts => {
+                    const ne = Math.max(start + 1, Math.min(now, Math.min(start + MAX_CLIP_SEC, ts)));
+                    setEnd(ne);
+                    setViewCenter((start + ne) / 2);
+                  }}
+                />
               </div>
             </div>
 
@@ -466,7 +769,7 @@ export const DownloadPopup: React.FC<DownloadPopupProps> = ({
                 flex items-center justify-center gap-2
                 bg-red-600 hover:bg-red-500 active:bg-red-700
                 disabled:bg-zinc-800 disabled:text-zinc-700 disabled:cursor-not-allowed
-                text-white transition-all duration-150 shadow-lg shadow-red-950/50">
+                text-white transition-all duration-150">
               <span className="material-symbols-outlined"
                 style={{ fontSize: '17px', fontVariationSettings: "'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 24" }}>
                 download

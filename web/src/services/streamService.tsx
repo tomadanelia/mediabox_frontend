@@ -277,3 +277,27 @@ export function getPreviewUrl(channelId: string | undefined, timestamp: number):
 
   return `${base}/${yyyy}/${mm}/${dd}/${hh}/${min}/${sec}-preview.mp4?${tokenQS}`;
 }
+
+/**
+ * Builds a direct MP4 archive download URL from the cached token.
+ * Format: {cdnBase}/archive-{startEpoch}-{durationSec}.mp4?{tokenQS}
+ * Call getArchiveUrl() first to ensure the cache is warm.
+ */
+export function buildArchiveDownloadUrl(
+  channelId: string,
+  startTs:    number,
+  durationSec: number
+): string | null {
+  const cached = archiveCache[channelId];
+  if (!cached) return null;
+
+  const tokenMatch = cached.suffix.match(/\?(.*)/);
+  if (!tokenMatch) return null;
+  const tokenQS = tokenMatch[1];
+
+  const prefixMatch = cached.prefix.match(/^(https?:\/\/[^/]+\/tv\/[^/]+)\//);
+  if (!prefixMatch) return null;
+  const base = prefixMatch[1];
+
+  return `${base}/archive-${startTs}-${durationSec}.mp4?${tokenQS}`;
+}

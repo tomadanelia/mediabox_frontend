@@ -940,13 +940,27 @@ const handleCalendarDateSelect = async (date: Date) => {
               rewindableDays={rewindableDays}
             />
           </div>
-          <div className='flex px-2 h-10 py-1 justify-center items-center w-full'>
+          <div className='flex px-2 h-10 py-1 justify-end items-center w-full pr-10'>
             <FavouriteButton channelId={selectedChannel?.id} />
             <DownloadButton
               channelId={selectedChannel?.id}
               currentTimestamp={archiveTimestamp}
               oldestTimestamp={Math.floor(Date.now() / 1000) - rewindableHours * 3600}
             />
+            <button
+    className='flex items-center gap-1.5 px-3 h-8 rounded-lg
+    text-black/40 dark:text-white/35
+    hover:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-500/10
+    transition-all duration-150 cursor-pointer'
+  >
+    <span className="material-symbols-outlined text-[20px]">
+      share
+    </span>
+
+    <span className="text-xs font-medium">
+      Share
+    </span>
+  </button>
           </div>
 
           {!isMobile && (
