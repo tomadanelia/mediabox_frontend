@@ -4,6 +4,7 @@ import { useState, useCallback, useEffect, useRef } from 'react'
 import api from '../../src/lib/axios'
 import useUIStore from '../../src/store/ui-store'
 
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://new.mediabox.ge';
 interface Device {
   device_id: string
   name: string
@@ -259,7 +260,7 @@ export default function RemotePage() {
     setStatus('connecting')
     try {
       const { io } = await import('socket.io-client')
-      const socket = io('https://tv-api.telecomm1.com', {
+      const socket = io(API_BASE_URL, {
         auth: { token: device.socket_token },
         transports: ['websocket'],
         reconnectionAttempts: 3,

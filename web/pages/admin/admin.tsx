@@ -1,7 +1,10 @@
 import { useState, useEffect, useRef } from "react";
 import AdminUsersExtended from "./AdminUsersExtended";
 import ReactDOM from "react-dom";
+import AdminPlansSection from "./AdminPlansSection";
+import AdminBundlesSection from "./AdminBundleSection";
 import AdminChannelsSection from "./AdminChannelsSection";
+import AdminCategoryChannelsSection from "./AdminCategoryChannelsSection";
 import TvPriceSettings from "./TvPriceSettings";
 import api from "../../src/lib/axios";
 import type { Channel } from "../../src/types/channel";
@@ -11,7 +14,8 @@ import AdminDiscountsSection from "./AdminDiscountSection";
 import AdminNotificationsSection from "./AdminNotificationSection";
 import { useNavigate } from "react-router-dom";
 import HomepageBgSettings from "./HomepageBgSettings";
-type AdminSection = "Overview" | "Users" | "Category-Channels" | "Categories" | "Plans" | "Plan-Channels" |"Channels"|"Radios"|"Discounts"|"Notifications"| "Support" | "Settings";
+import TokenTtlSettings from "./TokenTtlSettings";
+type AdminSection = "Overview" | "Users" | "Category-Channels" | "Categories" | "Plans" | "Plan-Channels"|"Bundles" |"Channels"|"Radios"|"Discounts"|"Notifications"| "Support" | "Settings";
 const adminSectionLabels: Record<AdminSection, string> = {
   "Overview": "მთავარი",
   "Users": "მომხმარებლები",
@@ -25,6 +29,7 @@ const adminSectionLabels: Record<AdminSection, string> = {
   "Support": "მხარდაჭერა",
   "Settings": "პარამეტრები",
   "Channels": "არხები",
+  "Bundles": "შეკვრები",
 };
 
 
@@ -243,7 +248,7 @@ function CategoryMenu({
             onClick={() => { setOpen(false); onDelete(); }}
             className="cursor-pointer w-full flex items-center gap-2.5 px-3 py-2 text-xs text-red-400 hover:bg-red-500/10 transition-colors"
           >
-            <IconTrash /><span>კატეგორიის წაშლა</span>
+            <IconTrash /><span>ჟანრის წაშლა</span>
           </button>
         </div>
       )}
@@ -843,7 +848,7 @@ useEffect(() => {
       <aside className="hidden lg:flex flex-col w-56 bg-zinc-900 border-r border-zinc-800 shrink-0">
         <div className="p-5 border-b border-zinc-800 font-bold text-zinc-100 tracking-tight">ადმინ პანელი</div>
         <nav className="p-3 flex flex-col gap-1">
-      {(["Overview",  "Channels","Categories","Category-Channels", "Plans", "Plan-Channels","Radios", "Discounts","Notifications", "Users", "Settings"] as AdminSection[]).map(s => (
+      {(["Overview",  "Channels","Categories","Category-Channels", "Plans", "Bundles","Radios", "Discounts","Notifications", "Users", "Settings"] as AdminSection[]).map(s => (
         <button
           key={s}
           onClick={() => setSection(s)}
@@ -864,40 +869,6 @@ useEffect(() => {
         {/* HEADER */}
         <header className="px-5 py-3 border-b border-zinc-800 bg-zinc-950/80 backdrop-blur flex justify-between items-center sticky top-0 z-10">
           <h2 className="font-semibold text-zinc-100">{adminSectionLabels[section] ?? section}</h2>
-
-          {/* Channels section bulk */}
-          {selectedChannelUuids.length > 0 && section === "Category-Channels" && (
-            <div className="flex items-center gap-3">
-              <span className="text-xs text-zinc-400">
-                <span className="text-violet-400 font-semibold">{selectedChannelUuids.length}</span> არჩეული
-              </span>
-              <button
-                onClick={() => { setSelectedCategoryId(""); setBulkAssignModal(true); }}
-                className="cursor-pointer bg-violet-600 hover:bg-violet-500 transition-colors text-white text-xs font-medium px-4 py-1.5 rounded-lg flex items-center gap-1.5"
-              >
-                <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M6 1v10M1 6h10" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/></svg>
-                დამატება კატეგორიაში
-              </button>
-              <button onClick={() => setSelectedChannelUuids([])} className="cursor-pointer text-xs text-zinc-500 hover:text-zinc-300 px-2 py-1.5 rounded-lg hover:bg-zinc-800 transition-colors">გასუფთავება</button>
-            </div>
-          )}
-
-          {/* Plan-Channels section bulk */}
-          {planChannelsSelectedUuids.length > 0 && section === "Plan-Channels" && (
-            <div className="flex items-center gap-3">
-              <span className="text-xs text-zinc-400">
-                <span className="text-emerald-400 font-semibold">{planChannelsSelectedUuids.length}</span> არჩეული
-              </span>
-              <button
-                onClick={() => { setSelectedPlanId(""); setPlanChannelsBulkModal(true); }}
-                className="cursor-pointer bg-emerald-600 hover:bg-emerald-500 transition-colors text-white text-xs font-medium px-4 py-1.5 rounded-lg flex items-center gap-1.5"
-              >
-                <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M6 1v10M1 6h10" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/></svg>
-                პაკეტში დამატება
-              </button>
-              <button onClick={() => setPlanChannelsSelectedUuids([])} className="cursor-pointer text-xs text-zinc-500 hover:text-zinc-300 px-2 py-1.5 rounded-lg hover:bg-zinc-800 transition-colors">გასუფთავება</button>
-            </div>
-          )}
         </header>
 
         <main className="flex-1 overflow-y-auto p-6 pb-25 space-y-5 ">
@@ -928,7 +899,7 @@ useEffect(() => {
               {
                 label: "არხები",
                 value: channels.length,
-                sub: `${uncategorized.length} კატეგორიის გარეშე`,
+                sub: `${uncategorized.length} ჟანრის გარეშე`,
                 subAlert: uncategorized.length > 0,
                 color: "text-sky-400",
                 bg: "bg-sky-500/10 border-sky-500/20",
@@ -941,9 +912,9 @@ useEffect(() => {
                 ),
               },
               {
-                label: "კატეგორიები",
+                label: "ჟანრები",
                 value: categories.length,
-                sub: "სულ კატეგორია",
+                sub: "სულ ჟანრი",
                 color: "text-amber-400",
                 bg: "bg-amber-500/10 border-amber-500/20",
                 icon: (
@@ -1038,13 +1009,13 @@ useEffect(() => {
                   {/* Categories breakdown */}
                   <div className="bg-zinc-900 border border-zinc-800 rounded-2xl overflow-hidden">
                     <div className="px-5 py-4 border-b border-zinc-800 flex items-center justify-between">
-                      <h3 className="text-sm font-semibold text-zinc-100">კატეგორიები</h3>
+                      <h3 className="text-sm font-semibold text-zinc-100">ჟანრები</h3>
                       <span className="text-[0.6rem] text-zinc-500 bg-zinc-800 px-2 py-0.5 rounded-md">{categories.length} სულ</span>
                     </div>
                     {catsLoading ? (
                       <div className="flex items-center justify-center gap-2 py-10 text-zinc-500 text-xs"><IconSpinner /><span>Loading…</span></div>
                     ) : categories.length === 0 ? (
-                      <div className="flex items-center justify-center py-10 text-zinc-600 text-xs">კატეგორიები არ მოიძებნა</div>
+                      <div className="flex items-center justify-center py-10 text-zinc-600 text-xs">ჟანრები არ მოიძებნა</div>
                     ) : (
                       <div className="divide-y divide-zinc-800 max-h-72 overflow-y-auto">
                         {categories.map((cat, idx) => (
@@ -1080,9 +1051,9 @@ useEffect(() => {
                       </svg>
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className="text-amber-300 text-xs font-semibold">კატეგორიის გარეშე არხები</p>
+                      <p className="text-amber-300 text-xs font-semibold">ჟანრის გარეშე არხები</p>
                       <p className="text-amber-500/70 text-[0.65rem] mt-0.5">
-                        <span className="font-bold text-amber-400">{uncategorized.length}</span> არხს კატეგორია არ აქვს მინიჭებული. გადადი <span className="font-medium">"კატეგორიების შევსება"</span> განყოფილებაში.
+                        <span className="font-bold text-amber-400">{uncategorized.length}</span> არხს ჟანრი არ აქვს მინიჭებული. გადადი <span className="font-medium">"ჟანრების შევსება"</span> განყოფილებაში.
                       </p>
                     </div>
                     <button
@@ -1104,81 +1075,37 @@ useEffect(() => {
                  />
           )}
           {section === "Category-Channels" && (
-            <div className="space-y-4">
-              <input
-                type="text" placeholder="Search channels…" value={channelSearch}
-                onChange={e => setChannelSearch(e.target.value)}
-                className="w-full bg-zinc-900 border border-zinc-800 rounded-xl px-4 py-2 focus:outline-none focus:border-zinc-600 transition-colors"
-              />
-              <div className="bg-zinc-900 border border-zinc-800 rounded-2xl overflow-hidden">
-                <table className="w-full text-left">
-                  <thead className="bg-zinc-800/50 text-[0.6rem] uppercase tracking-widest text-zinc-500">
-                    <tr>
-                      <th className="p-4 w-10"></th>
-                      <th className="p-4">არხი</th>
-                      <th className="p-4">ID</th>
-                      <th className="p-4">კატეგორია</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-  {filteredChannels.map(c => (
-    <tr
-      key={c.id}
-      onClick={() => toggleSelectChannel(c.uuid)}
-      className={`border-t border-zinc-800 cursor-pointer transition-colors select-none ${
-        selectedChannelUuids.includes(c.uuid)
-          ? "bg-violet-500/10 hover:bg-violet-500/15"
-          : "hover:bg-zinc-800/30"
-      }`}
-    >
-      <td className="p-4">
-        <div className={`w-4 h-4 rounded border-2 flex items-center justify-center transition-colors ${
-          selectedChannelUuids.includes(c.uuid)
-            ? "border-violet-500 bg-violet-500"
-            : "border-zinc-600"
-        }`}>
-          {selectedChannelUuids.includes(c.uuid) && (
-            <svg width="9" height="9" viewBox="0 0 10 10" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M1.5 5l2.5 2.5 4.5-4.5"/>
-            </svg>
-          )}
-        </div>
-      </td>
-      <td className="p-4">
-        <div className="flex items-center gap-3">
-          <img src={c.logo} className="w-8 h-8 rounded bg-zinc-800 object-contain" />
-          <span className="text-zinc-200">{c.name}</span>
-        </div>
-      </td>
-      <td className="p-4 font-mono text-[0.65rem] text-zinc-500">{c.uuid}</td>
-      <td className="p-4">
-        <span className="inline-block bg-violet-600/20 text-violet-300 px-2 py-1 rounded-md text-xs font-medium">{c.category_ka}</span>
-      </td>
-    </tr>
-  ))}
-</tbody>
-                </table>
-              </div>
-            </div>
-          )}
+               <AdminCategoryChannelsSection
+           channels={channels}
+           channelsLoading={channelsLoading}
+           categories={categories}
+            catsLoading={catsLoading}
+           onBulkAssign={async (selectedUuids, categoryId) => {
+      await api.post(`/api/admin/categories/${categoryId}`, {
+        channel_ids: selectedUuids,
+      });
+             fetchChannels();
+        }}
+        />
+        )}
 
           {/* ── CATEGORIES ── */}
           {section === "Categories" && (
             <div className="space-y-5">
               <div className="flex justify-between items-center">
-                <p className="text-zinc-400 text-xs">სულ {categories.length} კატეგორია</p>
+                <p className="text-zinc-400 text-xs">სულ {categories.length} ჟანრი</p>
                 <button
                   onClick={() => setShowAddCategory(true)}
                   className="cursor-pointer bg-violet-600 hover:bg-violet-500 transition-colors text-white px-4 py-2 rounded-xl text-xs font-medium flex items-center gap-1.5"
                 >
                   <svg width="11" height="11" viewBox="0 0 11 11" fill="none"><path d="M5.5 1v9M1 5.5h9" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/></svg>
-                  კატეგორიის დამატება
+                  ჟანრის დამატება
                 </button>
               </div>
 
               {showAddCategory && (
                 <div className="bg-zinc-900 p-5 rounded-2xl border border-zinc-700 space-y-3 shadow-lg">
-                  <p className="text-xs font-semibold text-zinc-400 uppercase tracking-widest mb-1">ახალი კატეგორია</p>
+                  <p className="text-xs font-semibold text-zinc-400 uppercase tracking-widest mb-1">ახალი ჟანრი</p>
                   <div className="grid grid-cols-2 gap-3">
                     <input placeholder="Name (EN)" className="bg-zinc-800 border border-zinc-700 p-2.5 rounded-xl text-sm focus:outline-none focus:border-zinc-500 transition-colors" value={newCat.name_en} onChange={e => setNewCat({ ...newCat, name_en: e.target.value })} />
                     <input placeholder="სახელი (ქართულად)" className="bg-zinc-800 border border-zinc-700 p-2.5 rounded-xl text-sm focus:outline-none focus:border-zinc-500 transition-colors" value={newCat.name_ka} onChange={e => setNewCat({ ...newCat, name_ka: e.target.value })} />
@@ -1218,181 +1145,14 @@ useEffect(() => {
               </div>
             </div>
           )}
-
-          {/* ── PLANS ── */}
-          {section === "Plans" && (
-            <div className="space-y-5">
-              <div className="flex justify-between items-center">
-                <p className="text-zinc-400 text-xs">სულ {plans.length} პაკეტი</p>
-                <button
-                  onClick={() => setShowAddPlan(true)}
-                  className="cursor-pointer bg-emerald-600 hover:bg-emerald-500 transition-colors text-white px-4 py-2 rounded-xl text-xs font-medium flex items-center gap-1.5"
-                >
-                  <svg width="11" height="11" viewBox="0 0 11 11" fill="none"><path d="M5.5 1v9M1 5.5h9" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/></svg>
-                  პაკეტის დამატება
-                </button>
-              </div>
-
-              {showAddPlan && (
-                <div className="bg-zinc-900 p-5 rounded-2xl border border-zinc-700 space-y-3 shadow-lg">
-                  <p className="text-xs font-semibold text-zinc-400 uppercase tracking-widest mb-1">New Plan</p>
-                  <div className="grid grid-cols-2 gap-3">
-                    <input placeholder="Name (EN)" className="bg-zinc-800 border border-zinc-700 p-2.5 rounded-xl text-sm focus:outline-none focus:border-zinc-500 transition-colors" value={newPlan.name_en} onChange={e => setNewPlan({ ...newPlan, name_en: e.target.value })} />
-                    <input placeholder="სახელი (ქართულად)" className="bg-zinc-800 border border-zinc-700 p-2.5 rounded-xl text-sm focus:outline-none focus:border-zinc-500 transition-colors" value={newPlan.name_ka} onChange={e => setNewPlan({ ...newPlan, name_ka: e.target.value })} />
-                  </div>
-                  <div className="grid grid-cols-2 gap-3">
-                    <input placeholder="Description (EN)" className="bg-zinc-800 border border-zinc-700 p-2.5 rounded-xl text-sm focus:outline-none focus:border-zinc-500 transition-colors" value={newPlan.description_en} onChange={e => setNewPlan({ ...newPlan, description_en: e.target.value })} />
-                    <input placeholder="აღწერა (ქართულად)" className="bg-zinc-800 border border-zinc-700 p-2.5 rounded-xl text-sm focus:outline-none focus:border-zinc-500 transition-colors" value={newPlan.description_ka} onChange={e => setNewPlan({ ...newPlan, description_ka: e.target.value })} />
-                  </div>
-                  <div className="grid grid-cols-2 gap-3">
-                    <input type="number" placeholder="ფასი" min="0" step="0.01" className="bg-zinc-800 border border-zinc-700 p-2.5 rounded-xl text-sm focus:outline-none focus:border-zinc-500 transition-colors" value={newPlan.price} onChange={e => setNewPlan({ ...newPlan, price: e.target.value })} />
-                    <input type="number" placeholder="ხანგრძლივობა (დღეებში)" min="1" className="bg-zinc-800 border border-zinc-700 p-2.5 rounded-xl text-sm focus:outline-none focus:border-zinc-500 transition-colors" value={newPlan.duration_days} onChange={e => setNewPlan({ ...newPlan, duration_days: e.target.value })} />
-                  </div>
-                  
-                     <label className="flex items-center gap-2.5 cursor-pointer select-none">
-            <div
-              onClick={() => setNewPlan({ ...newPlan, is_active: !newPlan.is_active })}
-              className={`relative w-9 h-5 rounded-full transition-colors cursor-pointer ${newPlan.is_active ? "bg-emerald-500" : "bg-zinc-700"}`}
-            >
-              <span className={`absolute top-0.5 w-4 h-4 rounded-full bg-white shadow transition-transform ${newPlan.is_active ? "translate-x-4" : "translate-x-0.5"}`} />
-            </div>
-            <span className="text-xs text-zinc-400">აქტიური</span>
-          </label>
-                   <label className="flex items-center gap-2.5 cursor-pointer select-none">
-            <div
-              onClick={() => setNewPlan({ ...newPlan, is_public: !newPlan.is_public })}
-              className={`relative w-9 h-5 rounded-full transition-colors cursor-pointer ${newPlan.is_public ? "bg-emerald-500" : "bg-zinc-700"}`}
-            >
-              <span className={`absolute top-0.5 w-4 h-4 rounded-full bg-white shadow transition-transform ${newPlan.is_public ? "translate-x-4" : "translate-x-0.5"}`} />
-            </div>
-            <span className="text-xs text-zinc-400">გლობალური (გამოჩნდება ყველა მომხმარებლისთვის)</span>
-          </label>
-                  <div className="flex gap-2 pt-1">
-                    <button onClick={handleAddPlan} className="cursor-pointer bg-emerald-600 hover:bg-emerald-500 px-5 py-2 rounded-xl text-xs font-medium transition-colors">შენახვა</button>
-                    <button onClick={() => setShowAddPlan(false)} className="cursor-pointer bg-zinc-800 hover:bg-zinc-700 px-4 py-2 rounded-xl text-xs transition-colors">გაუქმება</button>
-                  </div>
-                </div>
-              )}
-
-              {plansLoading ? (
-                <div className="flex items-center justify-center gap-2 py-16 text-zinc-500 text-sm"><IconSpinner /><span>Loading…</span></div>
-              ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
-                  {plans.map(plan => (
-                    <div key={plan.id} className="group bg-zinc-900 border border-zinc-800 hover:border-zinc-700 transition-colors rounded-2xl p-4 flex items-start gap-4">
-                      {/* Icon / badge */}
-                      <div className="w-11 h-11 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center shrink-0">
-                        <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
-                          <path d="M10 2l2.4 4.8 5.3.8-3.85 3.75.91 5.3L10 14.1l-4.76 2.55.91-5.3L2.3 7.6l5.3-.8L10 2z" stroke="#34d399" strokeWidth="1.4" strokeLinejoin="round"/>
-                        </svg>
-                      </div>
-                      {/* Info */}
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <p className="font-semibold text-zinc-100 truncate leading-tight">{plan.name_en}</p>
-                          {plan.is_active
-                            ? <span className="inline-flex items-center gap-1 text-[0.6rem] bg-emerald-500/15 text-emerald-400 border border-emerald-500/25 px-1.5 py-0.5 rounded-md font-medium">აქტიური</span>
-                            : <span className="inline-flex items-center gap-1 text-[0.6rem] bg-zinc-700/50 text-zinc-500 border border-zinc-700 px-1.5 py-0.5 rounded-md font-medium">გათიშული</span>
-                          }
-                        </div>
-                        <p className="text-[0.65rem] text-zinc-500 truncate mt-0.5">{plan.name_ka}</p>
-                        <div className="flex items-center gap-3 mt-2">
-                          <span className="text-emerald-400 font-bold text-sm">{plan.price} GEL</span>
-                          <span className="text-[0.65rem] text-zinc-600">·</span>
-                          <span className="text-[0.65rem] text-zinc-500">{plan.duration_days} დღე</span>
-                        </div>
-                        {plan.description_en && (
-                          <p className="text-[0.62rem] text-zinc-600 mt-1.5 truncate">{plan.description_en}</p>
-                        )}
-                      </div>
-                     <PlanMenu
-  isActive={Boolean(plan.is_active)}
-  onManage={() => openPlanManageModal(plan)}
-  onEdit={() => openPlanEditModal(plan)}
-  onDisable={() => { setDisablePlan(plan); setDisableModal(true); }}
-  onEnable={() => { setDisablePlan(plan); setDisableModal(true); }}
-  onDelete={() => { setDeletePlanTarget(plan); setDeletePlanModal(true); }}
-/>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          )}
-
-          {/* ── PLAN-CHANNELS ── */}
-          {section === "Plan-Channels" && (
-            <div className="space-y-4">
-              <p className="text-zinc-400 text-xs">აირჩიეთ არხები და დაამატეთ პაკეტში</p>
-              <input
-                type="text" placeholder="Search channels…" value={planChannelsSectionSearch}
-                onChange={e => setPlanChannelsSectionSearch(e.target.value)}
-                className="w-full bg-zinc-900 border border-zinc-800 rounded-xl px-4 py-2 focus:outline-none focus:border-zinc-600 transition-colors"
-              />
-              <div className="bg-zinc-900 border border-zinc-800 rounded-2xl overflow-x-auto">
-                {channelsLoading ? (
-                  <div className="flex items-center justify-center gap-2 py-16 text-zinc-500 text-sm"><IconSpinner /><span>Loading…</span></div>
-                ) : (
-                  <table className="w-full text-left">
-                    <thead className="bg-zinc-800/50 text-[0.6rem] uppercase tracking-widest text-zinc-500">
-                      <tr>
-                        <th className="p-4 w-10"></th>
-                        <th className="p-4">არხი</th>
-                        <th className="p-4">ID</th>
-                        <th className="p-4">კატეგორია</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-  {filteredPlanChannels.map(c => (
-    <tr
-      key={c.id}
-      onClick={() => toggleSelectPlanChannel(c.uuid)}
-      className={`border-t border-zinc-800 cursor-pointer transition-colors select-none ${
-        planChannelsSelectedUuids.includes(c.uuid)
-          ? "bg-emerald-500/8 hover:bg-emerald-500/12"
-          : "hover:bg-zinc-800/30"
-      }`}
-    >
-      <td className="p-4">
-        <div className={`w-4 h-4 rounded border-2 flex items-center justify-center transition-colors ${
-          planChannelsSelectedUuids.includes(c.uuid)
-            ? "border-emerald-500 bg-emerald-500"
-            : "border-zinc-600"
-        }`}>
-          {planChannelsSelectedUuids.includes(c.uuid) && (
-            <svg width="9" height="9" viewBox="0 0 10 10" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M1.5 5l2.5 2.5 4.5-4.5"/>
-            </svg>
-          )}
-        </div>
-      </td>
-      <td className="p-4">
-        <div className="flex items-center gap-3">
-          <img src={c.logo} className="w-8 h-8 rounded bg-zinc-800 object-contain" />
-          <span className="text-zinc-200">{c.name}</span>
-        </div>
-      </td>
-      <td className="p-4 font-mono text-[0.65rem] text-zinc-500">{c.uuid}</td>
-      <td className="p-4">
-        <span className="inline-block bg-violet-600/20 text-violet-300 px-2 py-1 rounded-md text-xs font-medium">{c.category_ka}</span>
-      </td>
-    </tr>
-  ))}
-</tbody>
-                  </table>
-                )}
-              </div>
-            </div>
-          )}
-
+          {/* Plans section */}
+          {section === "Plans" && <AdminPlansSection/>}       
+          { /* budles section */}
+          {section === "Bundles" && (<AdminBundlesSection plans={plans} /> )}
           {/* Radios */}
-
           {section === "Radios" && <AdminRadioSection />}
-
           {/* Discounts */}
-
           {section === "Discounts" && <AdminDiscountsSection plans={plans} />}
-
           {/* Notifications */}
           {section === "Notifications" && <AdminNotificationsSection />}
           {/* ══════════════════════════════════════════
@@ -1780,6 +1540,7 @@ const isActive =
               </div>
             <TvPriceSettings />
             <HomepageBgSettings/>
+            <TokenTtlSettings />
             </div>
           )}
 
@@ -1804,7 +1565,7 @@ const isActive =
                 <p className="text-[0.65rem] text-zinc-500 mt-0.5">
                   {categoryChannelList === null
                     ? "Loading channels…"
-                    : <><span className="text-violet-400 font-semibold">{categoryChannelList.length}</span> არხი ამ კატეგორიაში</>
+                    : <><span className="text-violet-400 font-semibold">{categoryChannelList.length}</span> არხი ამ ჟარნში</>
                   }
                 </p>
               </div>
@@ -1824,7 +1585,7 @@ const isActive =
                     <path d="M11 20h18M11 26h12" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
                   </svg>
                   <p className="text-sm font-medium">No channels yet</p>
-                  <p className="text-xs text-zinc-700 text-center max-w-48">გადადი არხებზე-აირჩიე რამოდენიმე დაამატე ამ კატეგორიაში</p>
+                  <p className="text-xs text-zinc-700 text-center max-w-48">გადადი არხებზე-აირჩიე რამოდენიმე დაამატე ამ ჟარნში</p>
                 </div>
               )}
               {categoryChannelList !== null && categoryChannelList.length > 0 && (
@@ -1858,7 +1619,7 @@ const isActive =
                 <circle cx="5.5" cy="5.5" r="4.5" stroke="currentColor" strokeWidth="1.2"/>
                 <path d="M5.5 5v3M5.5 3.5v.5" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/>
               </svg>
-              არხების დამატების ინსტრუქცია: არხების ჩანართში → აირჩიეთ არხები → დააჭირეთ "დამატება კატეგორიაში"
+              არხების დამატების ინსტრუქცია: არხების ჩანართში → აირჩიეთ არხები → დააჭირეთ "დამატება ჟარნში"
             </div>
           </div>
         </div>
@@ -1872,7 +1633,7 @@ const isActive =
           <div className="bg-zinc-900 border border-zinc-800 rounded-2xl w-full max-w-sm shadow-2xl overflow-hidden">
             <div className="p-5 border-b border-zinc-800 flex justify-between items-center">
               <div>
-                <h3 className="font-bold text-zinc-100">კატეგორიის რედაქტირება</h3>
+                <h3 className="font-bold text-zinc-100">ჟანრის რედაქტირება</h3>
                 <p className="text-[0.65rem] text-zinc-500 mt-0.5 font-mono">ID: {editCat.id}</p>
               </div>
               <button onClick={() => setEditModal(false)} className="cursor-pointer w-8 h-8 flex items-center justify-center rounded-lg text-zinc-500 hover:text-zinc-200 hover:bg-zinc-800 transition-colors">✕</button>
@@ -1941,50 +1702,6 @@ const isActive =
                 className="cursor-pointer flex-1 py-2.5 rounded-xl text-sm bg-red-600 hover:bg-red-500 disabled:opacity-40 disabled:cursor-not-allowed text-white font-medium transition-colors flex items-center justify-center gap-2"
               >
                 {deleteLoading ? <><IconSpinner />Deleting…</> : "Delete"}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* ══════════════════════════════════════════
-          CATEGORY BULK ASSIGN MODAL
-      ══════════════════════════════════════════ */}
-      {bulkAssignModal && (
-        <div className="fixed inset-0 bg-black/75 z-50 flex items-center justify-center p-4" onClick={e => { if (e.target === e.currentTarget) setBulkAssignModal(false); }}>
-          <div className="bg-zinc-900 border border-zinc-800 rounded-2xl w-full max-w-md shadow-2xl overflow-hidden flex flex-col">
-            <div className="p-5 border-b border-zinc-800 flex justify-between items-start">
-              <div>
-                <h3 className="font-bold text-zinc-100 text-base">დამატება კატეგორიაში</h3>
-                <p className="text-xs text-zinc-500 mt-0.5">
-                  მონიშნული <span className="text-violet-400 font-semibold">{selectedChannelUuids.length}</span> არხის დამატება
-                </p>
-              </div>
-              <button onClick={() => setBulkAssignModal(false)} className="cursor-pointer w-8 h-8 flex items-center justify-center rounded-lg text-zinc-500 hover:text-zinc-200 hover:bg-zinc-800 transition-colors">✕</button>
-            </div>
-            <div className="p-4 space-y-2 max-h-72 overflow-y-auto">
-              {categories.map(cat => (
-                <label key={cat.id} className={`flex items-center gap-3 p-3 rounded-xl border cursor-pointer transition-all ${selectedCategoryId === cat.id ? "border-violet-500 bg-violet-500/10" : "border-zinc-800 bg-zinc-800/30 hover:border-zinc-700 hover:bg-zinc-800/60"}`}>
-                  <input type="radio" name="bulkCat" value={cat.id} checked={selectedCategoryId === cat.id} onChange={() => setSelectedCategoryId(cat.id)} className="accent-violet-500" />
-                  <div className="w-7 h-7 rounded-lg bg-zinc-800 flex items-center justify-center shrink-0">
-                    {cat.icon_url ? <span  className="material-symbols-outlined w-7 h-7" >{cat.icon_url}</span> : <span className="text-sm">📁</span>}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-zinc-100 font-medium text-sm truncate">{cat.name_en}</p>
-                    <p className="text-[0.6rem] text-zinc-500 truncate">{cat.name_ka}</p>
-                  </div>
-                  {selectedCategoryId === cat.id && <span className="text-violet-400 shrink-0"><IconCheck /></span>}
-                </label>
-              ))}
-            </div>
-            <div className="p-4 border-t border-zinc-800 flex gap-2 justify-end">
-              <button onClick={() => setBulkAssignModal(false)} className="cursor-pointer px-4 py-2 rounded-xl text-xs bg-zinc-800 hover:bg-zinc-700 text-zinc-300 transition-colors">Cancel</button>
-              <button
-                onClick={confirmBulkAssign}
-                disabled={!selectedCategoryId || bulkAssigning}
-                className="cursor-pointer px-5 py-2 rounded-xl text-xs bg-violet-600 hover:bg-violet-500 disabled:opacity-40 disabled:cursor-not-allowed text-white font-medium transition-colors flex items-center gap-2"
-              >
-                {bulkAssigning ? <><IconSpinner />Assigning…</> : "OK — Assign"}
               </button>
             </div>
           </div>
@@ -2174,121 +1891,7 @@ const isActive =
         </div>
       )}
 
-      {/* ══════════════════════════════════════════
-          PLAN DISABLE MODAL
-      ══════════════════════════════════════════ */}
-      {disableModal && disablePlan && (
-        <div className="fixed inset-0 bg-black/75 z-50 flex items-center justify-center p-4" onClick={e => { if (e.target === e.currentTarget) setDisableModal(false); }}>
-          <div className="bg-zinc-900 border border-zinc-800 rounded-2xl w-full max-w-sm shadow-2xl overflow-hidden">
-            <div className="p-6 flex flex-col items-center text-center gap-4">
-              <div className="w-14 h-14 rounded-2xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center">
-                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#fbbf24" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-                  <circle cx="12" cy="12" r="9"/>
-                  <path d="M7 7l10 10"/>
-                </svg>
-              </div>
-              <div>
-                <h3 className="font-bold text-zinc-100 text-base">
-                  {Boolean(disablePlan?.is_active) ? "პაკეტი გამოირთვება" : "პაკეტი გააქტიურდება"}
-                </h3>
-                <p className="text-xs text-zinc-500 mt-2 leading-relaxed">
-                  {Boolean(disablePlan?.is_active)
-                    ? <><span className="text-zinc-300 font-medium">"{disablePlan.name_en}"</span> გამოირთვება და მომხმარებლები ვეღარ შეძლებენ ნახვას<br/>თავიდან ჩართვა შესაძლებელია</>
-                    : <><span className="text-zinc-300 font-medium">"{disablePlan.name_en}"</span> თავიდან ჩაირთვება და მომხმარებლებისთვის ხილული იქნება.</>
-                  }
-                </p>
-              </div>
-            </div>
-            <div className="px-5 pb-5 flex gap-2">
-              <button onClick={() => setDisableModal(false)} className="cursor-pointer flex-1 py-2.5 rounded-xl text-sm bg-zinc-800 hover:bg-zinc-700 text-zinc-300 transition-colors">გაუქმება</button>
-              <button
-                onClick={Boolean(disablePlan?.is_active) ? handleDisablePlan : handleEnablePlan}
-                disabled={disableLoading}
-                className="cursor-pointer flex-1 py-2.5 rounded-xl text-sm bg-amber-600 hover:bg-amber-500 disabled:opacity-40 disabled:cursor-not-allowed text-white font-medium transition-colors flex items-center justify-center gap-2"
-              >
-                {disableLoading ? <><IconSpinner />{Boolean(disablePlan?.is_active) ? "ითიშება…" : "ირთვება…"}</> : Boolean(disablePlan?.is_active) ? "გამორთვა" : "ჩართვა"}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {deletePlanModal && deletePlanTarget && (
-        <div className="fixed inset-0 bg-black/75 z-50 flex items-center justify-center p-4" onClick={e => { if (e.target === e.currentTarget) setDeletePlanModal(false); }}>
-          <div className="bg-zinc-900 border border-zinc-800 rounded-2xl w-full max-w-sm shadow-2xl overflow-hidden">
-            <div className="p-6 flex flex-col items-center text-center gap-4">
-              <div className="w-14 h-14 rounded-2xl bg-red-500/10 border border-red-500/20 flex items-center justify-center">
-                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#f87171" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6"/>
-                  <path d="M10 11v4M14 11v4"/>
-                </svg>
-              </div>
-              <div>
-                <h3 className="font-bold text-zinc-100 text-base">Delete Plan?</h3>
-                <p className="text-xs text-zinc-500 mt-2 leading-relaxed">
-                  <span className="text-zinc-300 font-medium">"{deletePlanTarget.name_en}"</span> will be permanently deleted.<br/>This action cannot be undone.
-                </p>
-              </div>
-            </div>
-            <div className="px-5 pb-5 flex gap-2">
-              <button onClick={() => setDeletePlanModal(false)} className="cursor-pointer flex-1 py-2.5 rounded-xl text-sm bg-zinc-800 hover:bg-zinc-700 text-zinc-300 transition-colors">გაუქმება</button>
-              <button
-                onClick={handleDeletePlan}
-                disabled={deletePlanLoading}
-                className="cursor-pointer flex-1 py-2.5 rounded-xl text-sm bg-red-600 hover:bg-red-500 disabled:opacity-40 disabled:cursor-not-allowed text-white font-medium transition-colors flex items-center justify-center gap-2"
-              >
-                {deletePlanLoading ? <><IconSpinner />Deleting…</> : "Delete"}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* ══════════════════════════════════════════
-          PLAN-CHANNELS BULK ASSIGN TO PLAN MODAL
-      ══════════════════════════════════════════ */}
-      {planChannelsBulkModal && (
-        <div className="fixed inset-0 bg-black/75 z-50 flex items-center justify-center p-4" onClick={e => { if (e.target === e.currentTarget) setPlanChannelsBulkModal(false); }}>
-          <div className="bg-zinc-900 border border-zinc-800 rounded-2xl w-full max-w-md shadow-2xl overflow-hidden flex flex-col">
-            <div className="p-5 border-b border-zinc-800 flex justify-between items-start">
-              <div>
-                <h3 className="font-bold text-zinc-100 text-base">დამატება პლანში</h3>
-                <p className="text-xs text-zinc-500 mt-0.5">
-                  მონიშნული <span className="text-emerald-400 font-semibold">{planChannelsSelectedUuids.length}</span> არხის დამატება
-                </p>
-              </div>
-              <button onClick={() => setPlanChannelsBulkModal(false)} className="cursor-pointer w-8 h-8 flex items-center justify-center rounded-lg text-zinc-500 hover:text-zinc-200 hover:bg-zinc-800 transition-colors">✕</button>
-            </div>
-            <div className="p-4 space-y-2 max-h-72 overflow-y-auto">
-              {plans.map(plan => (
-                <label key={plan.id} className={`flex items-center gap-3 p-3 rounded-xl border cursor-pointer transition-all ${selectedPlanId === plan.id ? "border-emerald-500 bg-emerald-500/10" : "border-zinc-800 bg-zinc-800/30 hover:border-zinc-700 hover:bg-zinc-800/60"}`}>
-                  <input type="radio" name="bulkPlan" value={plan.id} checked={selectedPlanId === plan.id} onChange={() => setSelectedPlanId(plan.id)} className="accent-emerald-500" />
-                  <div className="w-7 h-7 rounded-lg bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center shrink-0">
-                    <svg width="13" height="13" viewBox="0 0 20 20" fill="none">
-                      <path d="M10 2l2.4 4.8 5.3.8-3.85 3.75.91 5.3L10 14.1l-4.76 2.55.91-5.3L2.3 7.6l5.3-.8L10 2z" stroke="#34d399" strokeWidth="1.6" strokeLinejoin="round"/>
-                    </svg>
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-zinc-100 font-medium text-sm truncate">{plan.name_en}</p>
-                    <p className="text-[0.6rem] text-zinc-500 truncate">{plan.name_ka} · ${plan.price} · {plan.duration_days}d</p>
-                  </div>
-                  {selectedPlanId === plan.id && <span className="text-emerald-400 shrink-0"><IconCheck /></span>}
-                </label>
-              ))}
-            </div>
-            <div className="p-4 border-t border-zinc-800 flex gap-2 justify-end">
-              <button onClick={() => setPlanChannelsBulkModal(false)} className="cursor-pointer px-4 py-2 rounded-xl text-xs bg-zinc-800 hover:bg-zinc-700 text-zinc-300 transition-colors">Cancel</button>
-              <button
-                onClick={confirmBulkAssignPlan}
-                disabled={!selectedPlanId || bulkAssigningPlan}
-                className="cursor-pointer px-5 py-2 rounded-xl text-xs bg-emerald-600 hover:bg-emerald-500 disabled:opacity-40 disabled:cursor-not-allowed text-white font-medium transition-colors flex items-center gap-2"
-              >
-                {bulkAssigningPlan ? <><IconSpinner />Assigning…</> : "OK — Assign"}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+    
       {/* ══════════════════════════════════════════
     GRANT PLAN MODAL
 ══════════════════════════════════════════ */}

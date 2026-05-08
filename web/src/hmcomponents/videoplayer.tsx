@@ -130,7 +130,7 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
     hideTimer.current = setTimeout(() => {
       setShowControls(false);
       setShowVolumeSlider(false);
-    }, 3000);
+    }, 5000);
   };
 
   const cancelHide = () => {

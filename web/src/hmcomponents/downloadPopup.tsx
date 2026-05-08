@@ -1,12 +1,14 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
 import { requestDownload } from '../../src/services/downloadService';
 import type { DownloadResult } from '../../src/services/downloadService';
+import { getPreviewUrl, probeRewindableHours } from '@/services/streamService';
 
 function formatDuration(seconds: number): string {
   const m = Math.floor(seconds / 60);
   const s = Math.floor(seconds % 60);
   return `${m}:${String(s).padStart(2, '0')}`;
 }
+
 function formatTime(unixSec: number): string {
   return new Date(unixSec * 1000).toLocaleTimeString([], {
     hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false,
@@ -30,29 +32,39 @@ interface DownloadPopupProps {
   oldestTimestamp:  number;
   onClose:          () => void;
 }
+
 type Phase    = 'trim' | 'loading' | 'unavailable' | 'success' | 'error';
 type DragMode = 'start' | 'end' | 'body' | null;
 
 // ─── TrimStrip ────────────────────────────────────────────────────────────────
 
 interface TrimStripProps {
-  viewStart:    number;
-  viewEnd:      number;
-  start:        number;
-  end:          number;
-  absoluteMin:  number;
-  absoluteMax:  number;
-  onChange:     (newStart: number, newEnd: number, viewShift?: number) => void;
+  channelId:   string | undefined;
+  viewStart:   number;
+  viewEnd:     number;
+  start:       number;
+  end:         number;
+  absoluteMin: number;
+  absoluteMax: number;
+  onChange:    (newStart: number, newEnd: number, viewShift?: number) => void;
 }
 
 const TrimStrip: React.FC<TrimStripProps> = ({
+  channelId,
   viewStart, viewEnd, start, end, absoluteMin, absoluteMax, onChange,
 }) => {
   const ref = useRef<HTMLDivElement>(null);
 
-  // ── All live values in a single ref so drag callbacks never read stale closures ──
+  // All live values in a single ref so drag callbacks never read stale closures
   const live = useRef({ viewStart, viewEnd, start, end, absoluteMin, absoluteMax, onChange });
   useEffect(() => { live.current = { viewStart, viewEnd, start, end, absoluteMin, absoluteMax, onChange }; });
+
+  // Stable frame bounds — frozen during drag to prevent video remounting/flashing
+  const [frameView, setFrameView] = useState({ start: viewStart, end: viewEnd });
+  const isDragging = useRef(false);
+  useEffect(() => {
+    if (!isDragging.current) setFrameView({ start: viewStart, end: viewEnd });
+  }, [viewStart, viewEnd]);
 
   const drag = useRef<{
     mode:          DragMode;
@@ -60,10 +72,11 @@ const TrimStrip: React.FC<TrimStripProps> = ({
     bodyOrigEnd:   number;
     bodyStartX:    number;
     rafId:         number;
-    currentX:      number; // latest pointer X, updated by pointermove
+    currentX:      number;
   }>({ mode: null, bodyOrigStart: 0, bodyOrigEnd: 0, bodyStartX: 0, rafId: 0, currentX: 0 });
 
-  const viewRange = viewEnd - viewStart;
+  const viewRange  = viewEnd - viewStart;
+  const frameRange = frameView.end - frameView.start;
 
   const secToPct = (sec: number) =>
     Math.max(0, Math.min(100, ((sec - viewStart) / viewRange) * 100));
@@ -73,7 +86,6 @@ const TrimStrip: React.FC<TrimStripProps> = ({
   const selWidthPct = rightPct - leftPct;
   const dur         = end - start;
 
-  // Convert a clientX to unix seconds using live rect + live viewStart/viewRange
   const clientXToSec = (clientX: number): number => {
     const rect = ref.current?.getBoundingClientRect();
     if (!rect) return live.current.viewStart;
@@ -81,7 +93,6 @@ const TrimStrip: React.FC<TrimStripProps> = ({
     return live.current.viewStart + pct * (live.current.viewEnd - live.current.viewStart);
   };
 
-  // The RAF loop — runs every frame while a drag is active
   const runFrame = useCallback(() => {
     const d = drag.current;
     if (!d.mode) return;
@@ -89,13 +100,10 @@ const TrimStrip: React.FC<TrimStripProps> = ({
     const rect = ref.current?.getBoundingClientRect();
     if (!rect) { d.rafId = requestAnimationFrame(runFrame); return; }
 
-    const vRange  = l.viewEnd - l.viewStart;
-    const pxPerSec = rect.width / vRange;
-
-    // Auto-scroll speed when pointer is outside the strip
+    const vRange    = l.viewEnd - l.viewStart;
     const overLeft  = Math.max(0, rect.left  - d.currentX);
     const overRight = Math.max(0, d.currentX - rect.right);
-    const scrollSpeed = (overLeft + overRight) * 0.04; // sec/frame proportional to overshoot
+    const scrollSpeed = (overLeft + overRight) * 0.04;
 
     if (d.mode === 'start') {
       const targetSec = clientXToSec(d.currentX);
@@ -140,13 +148,25 @@ const TrimStrip: React.FC<TrimStripProps> = ({
     const startPx = ((l.start - l.viewStart) / vRange) * w;
     const endPx   = ((l.end   - l.viewStart) / vRange) * w;
 
+    // Disambiguate overlapping handles when trim size is zero/tiny
+    const nearStart = Math.abs(px - startPx) <= HANDLE_HIT_PX;
+    const nearEnd   = Math.abs(px - endPx)   <= HANDLE_HIT_PX;
     let mode: DragMode = null;
-    if      (Math.abs(px - startPx) <= HANDLE_HIT_PX) mode = 'start';
-    else if (Math.abs(px - endPx)   <= HANDLE_HIT_PX) mode = 'end';
-    else if (px > startPx - HANDLE_HIT_PX && px < endPx + HANDLE_HIT_PX) mode = 'body';
+
+    if (nearStart && nearEnd) {
+      // Both handles at same spot — left half grabs start, right half grabs end
+      mode = px <= (startPx + endPx) / 2 ? 'start' : 'end';
+    } else if (nearStart) {
+      mode = 'start';
+    } else if (nearEnd) {
+      mode = 'end';
+    } else if (px > startPx - HANDLE_HIT_PX && px < endPx + HANDLE_HIT_PX) {
+      mode = 'body';
+    }
 
     if (!mode) return;
     e.currentTarget.setPointerCapture(e.pointerId);
+    isDragging.current = true;
 
     drag.current = {
       mode,
@@ -164,7 +184,10 @@ const TrimStrip: React.FC<TrimStripProps> = ({
 
   const onPointerUp = useCallback(() => {
     cancelAnimationFrame(drag.current.rafId);
-    drag.current.mode = null;
+    drag.current.mode  = null;
+    isDragging.current = false;
+    // Unfreeze frame tiles now that drag is done
+    setFrameView({ start: live.current.viewStart, end: live.current.viewEnd });
   }, []);
 
   useEffect(() => () => cancelAnimationFrame(drag.current.rafId), []);
@@ -179,18 +202,20 @@ const TrimStrip: React.FC<TrimStripProps> = ({
       onPointerUp={onPointerUp}
       onPointerLeave={onPointerUp}
     >
-      {/* Frame tiles */}
+      {/* Frame tiles — keyed by index so elements stay mounted; only src updates */}
       <div className="absolute inset-0 flex rounded-lg overflow-hidden">
         {Array.from({ length: FRAME_COUNT }).map((_, i) => {
-          const ts = viewStart + (viewRange / FRAME_COUNT) * (i + 0.5);
+          const ts  = Math.floor(frameView.start + (frameRange / FRAME_COUNT) * (i + 0.5));
+          const src = getPreviewUrl(channelId, ts);
           return (
-            <div key={i} title={formatTime(ts)}
-              className="flex-1 h-full border-r border-white/[0.04] last:border-r-0
-                bg-zinc-900 flex items-center justify-center">
-              <span className="material-symbols-outlined text-zinc-800"
-                style={{ fontSize: '13px', fontVariationSettings: "'FILL' 0, 'wght' 300, 'GRAD' 0, 'opsz' 24" }}>
-                image
-              </span>
+            <div key={i} className="flex-1 h-full border-r border-white/[0.04] last:border-r-0 overflow-hidden bg-zinc-900">
+              {src
+                ? <video src={src} muted playsInline preload="metadata"
+                    className="w-full h-full object-cover pointer-events-none" />
+                : <div className="w-full h-full flex items-center justify-center">
+                    <span className="material-symbols-outlined text-zinc-800" style={{ fontSize: '13px' }}>image</span>
+                  </div>
+              }
             </div>
           );
         })}
@@ -206,58 +231,49 @@ const TrimStrip: React.FC<TrimStripProps> = ({
           <div className="absolute inset-y-0 right-0 bg-black/70"
             style={{ width: `${100 - rightPct}%` }} />
         )}
-        {/* top / bottom red borders */}
         <div className="absolute top-0 h-[2px] bg-red-600/80"
           style={{ left: `${leftPct}%`, width: `${selWidthPct}%` }} />
         <div className="absolute bottom-0 h-[2px] bg-red-600/80"
           style={{ left: `${leftPct}%`, width: `${selWidthPct}%` }} />
       </div>
 
-      {/* START handle — absolutely outside selection, left side */}
+      {/* START handle */}
       <div
         className="absolute top-0 bottom-0 z-20 flex items-center justify-center"
         style={{
-          // center the 24px handle on the left edge; positioned with transform so it
-          // sits outside / on the edge without contributing to selection width
-          left:      `${leftPct}%`,
-          transform: 'translateX(-100%)',
-          width:     '24px',
-          cursor:    'ew-resize',
-          pointerEvents: 'none', // hit area is the strip itself
+          left:          `${leftPct}%`,
+          transform:     'translateX(-100%)',
+          width:         '24px',
+          cursor:        'ew-resize',
+          pointerEvents: 'none',
         }}
       >
         <div className="w-full h-full flex items-center justify-center
           bg-zinc-900/95 border border-red-600 rounded-l-md
           shadow-lg shadow-black/60">
-          <span className="material-symbols-outlined text-red-500"
-            style={{ fontSize: '18px', fontVariationSettings: "'FILL' 1, 'wght' 700, 'GRAD' 0, 'opsz' 24" }}>
-            chevron_left
-          </span>
+          <span className="text-red-500 font-light select-none" style={{ fontSize: '14px' }}>|</span>
         </div>
       </div>
 
-      {/* END handle — absolutely outside selection, right side */}
+      {/* END handle */}
       <div
         className="absolute top-0 bottom-0 z-20 flex items-center justify-center"
         style={{
-          left:      `${rightPct}%`,
-          transform: 'translateX(0%)',
-          width:     '24px',
-          cursor:    'ew-resize',
+          left:          `${rightPct}%`,
+          transform:     'translateX(0%)',
+          width:         '24px',
+          cursor:        'ew-resize',
           pointerEvents: 'none',
         }}
       >
         <div className="w-full h-full flex items-center justify-center
           bg-zinc-900/95 border border-red-600 rounded-r-md
           shadow-lg shadow-black/60">
-          <span className="material-symbols-outlined text-red-500"
-            style={{ fontSize: '18px', fontVariationSettings: "'FILL' 1, 'wght' 700, 'GRAD' 0, 'opsz' 24" }}>
-            chevron_right
-          </span>
+          <span className="text-red-500 font-light select-none" style={{ fontSize: '14px' }}>|</span>
         </div>
       </div>
 
-      {/* Duration badge — only when wide enough */}
+      {/* Duration badge — only when selection wide enough */}
       {selWidthPct > 10 && (
         <div
           className="absolute top-1/2 -translate-y-1/2 -translate-x-1/2 z-10 pointer-events-none
@@ -285,9 +301,9 @@ export const DownloadPopup: React.FC<DownloadPopupProps> = ({
   const [viewCenter, setViewCenter] = useState(center);
 
   const viewWindow = ZOOM_LEVELS[zoomIdx];
-  const rawVS  = viewCenter - viewWindow / 2;
-  const viewStart = Math.max(oldestTimestamp, rawVS);
-  const viewEnd   = Math.min(now, viewStart + viewWindow);
+  const rawVS      = viewCenter - viewWindow / 2;
+  const viewStart  = Math.max(oldestTimestamp, rawVS);
+  const viewEnd    = Math.min(now, viewStart + viewWindow);
 
   const handleChange = useCallback((ns: number, ne: number, viewShift = 0) => {
     setStart(ns);
@@ -325,6 +341,14 @@ export const DownloadPopup: React.FC<DownloadPopupProps> = ({
     return () => window.removeEventListener('keydown', h);
   }, [onClose]);
 
+  const [archiveReady, setArchiveReady] = useState(false);
+  useEffect(() => {
+    if (!channelId) return;
+    probeRewindableHours(channelId)
+      .then(() => setArchiveReady(true))
+      .catch(() => setArchiveReady(true));
+  }, [channelId]);
+
   const zoomLabel = (() => {
     const s = viewWindow;
     if (s >= 3600) return `${s / 3600}h`;
@@ -360,9 +384,9 @@ export const DownloadPopup: React.FC<DownloadPopupProps> = ({
         {phase === 'trim' && (
           <div className="px-5 py-5 flex flex-col gap-4">
 
-            {/* strip with extra px on each side for the handle overflow */}
             <div className="px-6">
               <TrimStrip
+                channelId={archiveReady ? channelId : undefined}
                 viewStart={viewStart} viewEnd={viewEnd}
                 start={start} end={end}
                 absoluteMin={oldestTimestamp} absoluteMax={now}
@@ -535,6 +559,7 @@ export const DownloadPopup: React.FC<DownloadPopupProps> = ({
             </button>
           </div>
         )}
+
       </div>
     </div>
   );

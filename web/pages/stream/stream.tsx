@@ -100,6 +100,80 @@ function useIsPortrait(): boolean {
   return isPortrait;
 }
 
+// ─── Hook: stable layout (prevents Z Fold / fullscreen / rotation flicker) ───
+
+/**
+ * Returns true if the device should use the mobile-portrait layout.
+ *
+ * The value is LOCKED while:
+ *   - the browser is in fullscreen (document.fullscreenElement is set)
+ *   - a brief stabilization window after orientation change (prevents
+ *     Z Fold / any foldable from flickering between layouts mid-rotation)
+ *
+ * This prevents the Z Fold issue where browser chrome hiding/showing,
+ * entering fullscreen, or rotating kicks the user out of fullscreen
+ * by triggering a layout mode switch.
+ */
+function useStableLayout(): boolean {
+  const classify = () => {
+    const w = window.innerWidth;
+    const h = window.innerHeight;
+    const mobile = w < 1024;
+    const portrait = h > w;
+    return mobile && portrait;
+  };
+
+  const [value, setValue] = useState(classify);
+  const lockedRef = useRef(false);
+  const timerRef  = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    const tryUpdate = () => {
+      if (document.fullscreenElement) return;
+      if (lockedRef.current) return;
+      setValue(classify());
+    };
+
+    const onFullscreen = () => {
+      if (document.fullscreenElement) {
+        lockedRef.current = true;
+      } else {
+        if (timerRef.current) clearTimeout(timerRef.current);
+        timerRef.current = setTimeout(() => {
+          lockedRef.current = false;
+          setValue(classify());
+        }, 400);
+      }
+    };
+
+    const onOrientationChange = () => {
+      lockedRef.current = true;
+      if (timerRef.current) clearTimeout(timerRef.current);
+      timerRef.current = setTimeout(() => {
+        if (!document.fullscreenElement) {
+          lockedRef.current = false;
+          setValue(classify());
+        }
+      }, 500);
+    };
+
+    window.addEventListener('resize', tryUpdate);
+    document.addEventListener('fullscreenchange', onFullscreen);
+    window.addEventListener('orientationchange', onOrientationChange);
+    screen.orientation?.addEventListener('change', onOrientationChange);
+
+    return () => {
+      window.removeEventListener('resize', tryUpdate);
+      document.removeEventListener('fullscreenchange', onFullscreen);
+      window.removeEventListener('orientationchange', onOrientationChange);
+      screen.orientation?.removeEventListener('change', onOrientationChange);
+      if (timerRef.current) clearTimeout(timerRef.current);
+    };
+  }, []);
+
+  return value;
+}
+
 // ─── Mobile Portrait: Channel Grid ───────────────────────────────────────────
 
 interface ChannelGridProps {
@@ -361,8 +435,7 @@ export const Stream: React.FC = () => {
   const [pendingChannel, setPendingChannel] = useState<ChannelWithPlans | null>(null);
 
   const isMobile        = useIsMobile();
-  const isPortrait      = useIsPortrait();
-  const isMobilePortrait = isMobile && isPortrait;
+  const isMobilePortrait = useStableLayout();
 
   const [leftExpanded,  setLeftExpanded]  = useState(false);
   const [rightExpanded, setRightExpanded] = useState(false);
@@ -458,17 +531,12 @@ export const Stream: React.FC = () => {
     const oldestValid = Math.floor(Date.now() / 1000) - rewindableHoursRef.current * 3600;
     const safeTs = Math.max(timestamp, oldestValid);
 
-    // ── Set mode + timestamp IMMEDIATELY so the seekbar jumps to the target
-    //    position right away, before the (possibly async) URL fetch completes.
-    //    This eliminates the snap-back caused by archiveTimestamp and streamUrl
-    //    updating in separate render batches.
     setIsStreamLoading(true);
     setMode('archive');
     setArchiveTimestamp(safeTs);
 
     try {
       const { url, rewindableHours: hours } = await getArchiveUrl(channelId, safeTs);
-      // streamUrl update is the only thing deferred until the fetch resolves
       setStreamUrl(url);
       if (!isNaN(hours)) {
         setRewindableHours(hours);
@@ -615,9 +683,6 @@ const handleCalendarDateSelect = async (date: Date) => {
   const midnight = Math.floor(date.getTime() / 1000);
   const dateStr  = toApiDate(date);
 
-  // Fetch programs for the selected day first so we can find the first
-  // program that actually starts on or after midnight (some shows start
-  // at e.g. 23:50 the night before and would land us on the wrong day).
   const { programs: dayPrograms } = await getProgramsForTimeline(selectedChannel.id, dateStr);
 
   const firstOnDay = dayPrograms

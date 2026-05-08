@@ -9,4 +9,5 @@ export type Channel = {
   category_id?: string,
   is_free: boolean,
   is_active?: boolean,
+  is_public?: boolean;
 }
