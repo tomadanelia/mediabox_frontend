@@ -100,6 +100,80 @@ function useIsPortrait(): boolean {
   return isPortrait;
 }
 
+// ─── Hook: stable layout (prevents Z Fold / fullscreen / rotation flicker) ───
+
+/**
+ * Returns true if the device should use the mobile-portrait layout.
+ *
+ * The value is LOCKED while:
+ *   - the browser is in fullscreen (document.fullscreenElement is set)
+ *   - a brief stabilization window after orientation change (prevents
+ *     Z Fold / any foldable from flickering between layouts mid-rotation)
+ *
+ * This prevents the Z Fold issue where browser chrome hiding/showing,
+ * entering fullscreen, or rotating kicks the user out of fullscreen
+ * by triggering a layout mode switch.
+ */
+function useStableLayout(): boolean {
+  const classify = () => {
+    const w = window.innerWidth;
+    const h = window.innerHeight;
+    const mobile = w < 1024;
+    const portrait = h > w;
+    return mobile && portrait;
+  };
+
+  const [value, setValue] = useState(classify);
+  const lockedRef = useRef(false);
+  const timerRef  = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    const tryUpdate = () => {
+      if (document.fullscreenElement) return;
+      if (lockedRef.current) return;
+      setValue(classify());
+    };
+
+    const onFullscreen = () => {
+      if (document.fullscreenElement) {
+        lockedRef.current = true;
+      } else {
+        if (timerRef.current) clearTimeout(timerRef.current);
+        timerRef.current = setTimeout(() => {
+          lockedRef.current = false;
+          setValue(classify());
+        }, 400);
+      }
+    };
+
+    const onOrientationChange = () => {
+      lockedRef.current = true;
+      if (timerRef.current) clearTimeout(timerRef.current);
+      timerRef.current = setTimeout(() => {
+        if (!document.fullscreenElement) {
+          lockedRef.current = false;
+          setValue(classify());
+        }
+      }, 500);
+    };
+
+    window.addEventListener('resize', tryUpdate);
+    document.addEventListener('fullscreenchange', onFullscreen);
+    window.addEventListener('orientationchange', onOrientationChange);
+    screen.orientation?.addEventListener('change', onOrientationChange);
+
+    return () => {
+      window.removeEventListener('resize', tryUpdate);
+      document.removeEventListener('fullscreenchange', onFullscreen);
+      window.removeEventListener('orientationchange', onOrientationChange);
+      screen.orientation?.removeEventListener('change', onOrientationChange);
+      if (timerRef.current) clearTimeout(timerRef.current);
+    };
+  }, []);
+
+  return value;
+}
+
 // ─── Mobile Portrait: Channel Grid ───────────────────────────────────────────
 
 interface ChannelGridProps {
@@ -352,7 +426,6 @@ export const Stream: React.FC = () => {
   const [programDate, setProgramDate]       = useState(toApiDate());
 
   const [rewindableHours, setRewindableHours] = useState<number>(168);
-  // Ref keeps the latest value available synchronously inside callbacks
   const rewindableHoursRef = useRef(rewindableHours);
   useEffect(() => { rewindableHoursRef.current = rewindableHours; }, [rewindableHours]);
 
@@ -362,8 +435,7 @@ export const Stream: React.FC = () => {
   const [pendingChannel, setPendingChannel] = useState<ChannelWithPlans | null>(null);
 
   const isMobile        = useIsMobile();
-  const isPortrait      = useIsPortrait();
-  const isMobilePortrait = isMobile && isPortrait;
+  const isMobilePortrait = useStableLayout();
 
   const [leftExpanded,  setLeftExpanded]  = useState(false);
   const [rightExpanded, setRightExpanded] = useState(false);
@@ -397,12 +469,12 @@ export const Stream: React.FC = () => {
   // ─── Channel access / plans ───────────────────────────────────────────────
 
   const handleChannelSelect = async (channel: Channel) => {
-  const hasAccess = accessibleIds.includes(channel.id);
-  if (hasAccess) {
-    setSelectedChannel(channel);
-    navigate(`/tv/${channel.id}`, { replace: true });
-    return;
-  }
+    const hasAccess = accessibleIds.includes(channel.id);
+    if (hasAccess) {
+      setSelectedChannel(channel);
+      navigate(`/TV/${channel.id}`, { replace: true });
+      return;
+    }
     try {
       const res  = await api.get(`/api/channels/${channel.id}/plans`);
       const data = res.data;
@@ -456,17 +528,16 @@ export const Stream: React.FC = () => {
   }, []);
 
   const goArchive = useCallback(async (channelId: string, timestamp: number) => {
-    // Clamp to the oldest available second (no extra offset — the service
-    // already ensures the token covers the requested window).
     const oldestValid = Math.floor(Date.now() / 1000) - rewindableHoursRef.current * 3600;
     const safeTs = Math.max(timestamp, oldestValid);
 
     setIsStreamLoading(true);
+    setMode('archive');
+    setArchiveTimestamp(safeTs);
+
     try {
       const { url, rewindableHours: hours } = await getArchiveUrl(channelId, safeTs);
       setStreamUrl(url);
-      setMode('archive');
-      setArchiveTimestamp(safeTs);
       if (!isNaN(hours)) {
         setRewindableHours(hours);
         rewindableHoursRef.current = hours;
@@ -606,16 +677,26 @@ export const Stream: React.FC = () => {
     setIsCalendarVisible(v => !v);
   };
 
-  const handleCalendarDateSelect = (date: Date) => {
-    if (!selectedChannel) return;
-    const midnight = new Date(date);
-    midnight.setHours(0, 0, 0, 0);
-    goArchive(selectedChannel.id, Math.floor(midnight.getTime() / 1000));
-    const dateStr = toApiDate(date);
-    fetchPrograms(selectedChannel.id, dateStr);
-    setProgramDate(dateStr);
-    setIsCalendarVisible(false);
-  };
+const handleCalendarDateSelect = async (date: Date) => {
+  if (!selectedChannel) return;
+
+  const midnight = Math.floor(date.getTime() / 1000);
+  const dateStr  = toApiDate(date);
+
+  const { programs: dayPrograms } = await getProgramsForTimeline(selectedChannel.id, dateStr);
+
+  const firstOnDay = dayPrograms
+    .filter(p => p.START_TIME >= midnight)
+    .sort((a, b) => a.START_TIME - b.START_TIME)[0];
+
+  const unixTs = firstOnDay ? firstOnDay.START_TIME : midnight;
+
+  goArchive(selectedChannel.id, unixTs);
+
+  setPrograms(dayPrograms);
+  setProgramDate(dateStr);
+  setIsCalendarVisible(false);
+};
 
   // ─── Filtered channels ────────────────────────────────────────────────────
 
@@ -859,13 +940,27 @@ export const Stream: React.FC = () => {
               rewindableDays={rewindableDays}
             />
           </div>
-          <div className='flex px-2 h-10 py-1 justify-center items-center w-full'>
+          <div className='flex px-2 h-10 py-1 justify-end items-center w-full pr-10'>
             <FavouriteButton channelId={selectedChannel?.id} />
             <DownloadButton
               channelId={selectedChannel?.id}
               currentTimestamp={archiveTimestamp}
               oldestTimestamp={Math.floor(Date.now() / 1000) - rewindableHours * 3600}
             />
+            <button
+    className='flex items-center gap-1.5 px-3 h-8 rounded-lg
+    text-black/40 dark:text-white/35
+    hover:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-500/10
+    transition-all duration-150 cursor-pointer'
+  >
+    <span className="material-symbols-outlined text-[20px]">
+      share
+    </span>
+
+    <span className="text-xs font-medium">
+      Share
+    </span>
+  </button>
           </div>
 
           {!isMobile && (

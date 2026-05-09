@@ -27,27 +27,34 @@ export const FavouriteButton: React.FC<FavouriteButtonProps> = ({ channelId }) =
   };
 
   return (
-    <button
-      onClick={toggle}
-      className="w-8 h-8 flex items-center justify-center rounded-lg cursor-pointer
-        text-black/40 dark:text-white/35
-        hover:text-orange-400 hover:bg-orange-50 dark:hover:bg-orange-400/10
-        transition-all duration-150"
-      title={isFav ? 'Remove from favourites' : 'Add to favourites'}
+  <button
+    onClick={toggle}
+    className="
+      h-8 px-3 flex items-center gap-1.5
+      rounded-lg cursor-pointer
+      text-black/40 dark:text-white/35
+      hover:text-orange-400 hover:bg-orange-50 dark:hover:bg-orange-400/10
+      transition-all duration-150
+    "
+    title={isFav ? 'Remove from favourites' : 'Add to favourites'}
+  >
+    <span
+      className="material-symbols-outlined"
+      style={{
+        fontSize: '20px',
+        color: isFav ? '#f97316' : undefined,
+        fontVariationSettings: isFav
+          ? "'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 24"
+          : "'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24",
+        transition: 'color 0.15s, font-variation-settings 0.15s',
+      }}
     >
-      <span
-        className="material-symbols-outlined"
-        style={{
-          fontSize: '20px',
-          color: isFav ? '#f97316' : undefined,
-          fontVariationSettings: isFav
-            ? "'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 24"
-            : "'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24",
-          transition: 'color 0.15s, font-variation-settings 0.15s',
-        }}
-      >
-        star
-      </span>
-    </button>
-  );
+      star
+    </span>
+
+    <span className="text-xs font-medium">
+      Favorite
+    </span>
+  </button>
+);
 };

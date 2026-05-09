@@ -179,7 +179,7 @@ export async function getArchiveUrl(
       suffix: parsed.suffix,
       staleAt,
       rewindableHours,
-      lastRequestedTs: timestamp,
+      lastRequestedTs: timestamp, 
     };
     console.log(`🟡 [streamService] ARCHIVE cached     ch=${channelId}  stale-in=${ARCHIVE_CACHE_TTL_SEC}s  rewindableHours=${rewindableHours}  prefix=${parsed.prefix}`);
   } else {
@@ -243,4 +243,61 @@ export function evictChannel(channelId: string): void {
 export function evictAll(): void {
   Object.keys(liveCache).forEach(k => delete liveCache[k]);
   Object.keys(archiveCache).forEach(k => delete archiveCache[k]);
+}
+
+/**
+ * Builds a preview thumbnail URL for a given timestamp.
+ * Preview URLs follow: /tv/{channel}/{YYYY}/{MM}/{DD}/{HH}/{mm}/{ss}-preview.mp4?token=...
+ * The token is reused from the cached archive entry — zero extra API calls.
+ */
+export function getPreviewUrl(channelId: string | undefined, timestamp: number): string | null {
+  if (!channelId) return null;
+  const cached = archiveCache[channelId];
+
+  // Extract the token query string from the suffix: ".m3u8?token=abc123..."
+  const tokenMatch = cached.suffix.match(/\?(.*)/);
+  if (!tokenMatch) return null;
+  const tokenQS = tokenMatch[1]; // e.g. "token=abc123-..."
+
+  // Convert unix timestamp to path segments
+  const d = new Date(timestamp * 1000);
+  const pad = (n: number) => String(n).padStart(2, '0');
+  const yyyy = d.getUTCFullYear();
+  const mm   = pad(d.getUTCMonth() + 1);
+  const dd   = pad(d.getUTCDate());
+  const hh   = pad(d.getUTCHours());
+  const min  = pad(d.getUTCMinutes());
+  const sec  = pad(d.getUTCSeconds());
+
+  // Extract base CDN host + channel path from prefix
+  // prefix looks like: "https://cdn.streamer.mediabox.ge/tv/meore_arkhi/video-timeshift_abs-"
+  const prefixMatch = cached.prefix.match(/^(https:\/\/[^/]+\/tv\/[^/]+)\//);
+  if (!prefixMatch) return null;
+  const base = prefixMatch[1]; // "https://cdn.streamer.mediabox.ge/tv/meore_arkhi"
+
+  return `${base}/${yyyy}/${mm}/${dd}/${hh}/${min}/${sec}-preview.mp4?${tokenQS}`;
+}
+
+/**
+ * Builds a direct MP4 archive download URL from the cached token.
+ * Format: {cdnBase}/archive-{startEpoch}-{durationSec}.mp4?{tokenQS}
+ * Call getArchiveUrl() first to ensure the cache is warm.
+ */
+export function buildArchiveDownloadUrl(
+  channelId: string,
+  startTs:    number,
+  durationSec: number
+): string | null {
+  const cached = archiveCache[channelId];
+  if (!cached) return null;
+
+  const tokenMatch = cached.suffix.match(/\?(.*)/);
+  if (!tokenMatch) return null;
+  const tokenQS = tokenMatch[1];
+
+  const prefixMatch = cached.prefix.match(/^(https?:\/\/[^/]+\/tv\/[^/]+)\//);
+  if (!prefixMatch) return null;
+  const base = prefixMatch[1];
+
+  return `${base}/archive-${startTs}-${durationSec}.mp4?${tokenQS}`;
 }

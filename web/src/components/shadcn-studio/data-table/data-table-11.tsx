@@ -133,8 +133,7 @@ const DataTableDemo = ({
                       src={channel.logo}
                       alt={channel.name}
                       className='w-10/12 h-10/12 object-contain'
-                      onError={(e) => { console.log("deamn");
-                       }}
+                      onError={(e) => { console.log("deamn");}}
                     />
                   </div>
 

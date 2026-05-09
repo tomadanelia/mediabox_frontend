@@ -1,4 +1,4 @@
-import api from '@/lib/axios';
+import { getArchiveUrl, buildArchiveDownloadUrl } from '@/services/streamService';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -9,76 +9,64 @@ export type DownloadResult =
 
 export type DownloadRequest = {
   channelId: string;
-  startTime: number; // unix seconds → sent as `start`
-  endTime:   number; // unix seconds → duration = endTime - startTime
+  startTime: number; // unix seconds
+  endTime:   number; // unix seconds
 };
 
 // ─── Public API ───────────────────────────────────────────────────────────────
 
 /**
- * Calls GET /api/channels/:channelId/download?start=&duration=
- * The backend streams an MP4 directly, so we fetch it as a blob
- * and trigger a real browser "Save file" download.
+ * Downloads a clip directly from the CDN using the cached archive token.
+ * URL format: {cdnBase}/archive-{startEpoch}-{durationSec}.mp4?token=...
+ *
+ * No backend download endpoint needed — the token from getArchiveUrl() is
+ * already valid for the entire session and works for MP4 archive URLs too.
  */
 export async function requestDownload({
   channelId,
   startTime,
   endTime,
 }: DownloadRequest): Promise<DownloadResult> {
-  const duration = Math.round(endTime - startTime);
+  const startTs   = Math.round(startTime);
+  const duration  = Math.round(endTime - startTime);
 
   try {
- const response = await api.get(`/api/channels/${channelId}/download`, {
-  params: { 
-    start: Math.round(startTime),   // ← add Math.round
-    duration: Math.round(duration), // ← already rounded but be safe
-  },
-  responseType: 'blob',
-  validateStatus: status => status < 500,
-});
+    // Warm the cache (no-op if already warm)
+    await getArchiveUrl(channelId, startTs);
 
-    if (response.status === 404) {
-      return { ok: false, reason: 'unavailable' };
+    const url = buildArchiveDownloadUrl(channelId, startTs, duration);
+    if (!url) return { ok: false, reason: 'unavailable' };
+
+    // Fetch as blob so the browser triggers a Save dialog rather than playing it
+    const response = await fetch(url);
+
+    if (response.status === 404) return { ok: false, reason: 'unavailable' };
+    if (!response.ok) {
+      return { ok: false, reason: 'error', message: `HTTP ${response.status}` };
     }
 
-    if (response.status !== 200) {
-      return {
-        ok: false,
-        reason: 'error',
-        message: `Unexpected response: HTTP ${response.status}`,
-      };
-    }
-
-    // Build a temporary object URL and click-download it
-    const blob     = new Blob([response.data], { type: 'video/mp4' });
-    const url      = URL.createObjectURL(blob);
-    const filename = `clip_${channelId}_${startTime}.mp4`;
-
-    const anchor         = document.createElement('a');
-    anchor.href          = url;
-    anchor.download      = filename;
+    const blob      = await response.blob();
+    const objectUrl = URL.createObjectURL(blob);
+    const anchor    = document.createElement('a');
+    anchor.href     = objectUrl;
+    anchor.download = `clip_${channelId}_${startTs}_${duration}s.mp4`;
     anchor.style.display = 'none';
     document.body.appendChild(anchor);
     anchor.click();
     document.body.removeChild(anchor);
-
-    // Release the object URL after the browser has had time to start the download
-    setTimeout(() => URL.revokeObjectURL(url), 10_000);
+    setTimeout(() => URL.revokeObjectURL(objectUrl), 30_000);
 
     return { ok: true };
 
   } catch (err: any) {
     const status = err?.response?.status;
-
-    // Network error or endpoint not yet deployed
     if (!status || status === 501 || status === 503) {
       return { ok: false, reason: 'unavailable' };
     }
-
     return {
       ok: false,
       reason: 'error',
-      message: err?.response?.data?.message ?? err?.message ?? 'Something went wrong.',
+      message: err?.message ?? 'Something went wrong.',
     };
   }
 }

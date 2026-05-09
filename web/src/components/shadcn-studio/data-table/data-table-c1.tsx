@@ -45,7 +45,7 @@ function startOfDayKey(unixSec: number): string {
   return `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`
 }
 
-const GEO_WEEKDAYS_SHORT = ['კვი', 'ორშ', 'სამ', 'ოთხ', 'ხუთ', 'პარ', 'შაბ']
+const GEO_WEEKDAYS_SHORT = ['კვირა', 'ორშაბათი', 'სამშაბათი', 'ოთხშაბათი', 'ხუთშაბათი', 'პარასკევი', 'შაბათი']
 
 function dayLabel(unixSec: number): string {
   const d = new Date(unixSec * 1000)
@@ -58,8 +58,20 @@ function dayLabel(unixSec: number): string {
   return GEO_WEEKDAYS_SHORT[d.getDay()]
 }
 
-const GEO_MONTHS_SHORT = ['იან','თებ','მარ','აპრ','მაი','ივნ','ივლ','აგვ','სექ','ოქტ','ნოე','დეკ']
-
+const GEO_MONTHS_SHORT = [
+  'იანვარი',
+  'თებერვალი',
+  'მარტი',
+  'აპრილი',
+  'მაისი',
+  'ივნისი',
+  'ივლისი',
+  'აგვისტო',
+  'სექტემბერი',
+  'ოქტომბერი',
+  'ნოემბერი',
+  'დეკემბერი'
+]
 function localeDateShort(unixSec: number): string {
   const d = new Date(unixSec * 1000)
   return `${d.getDate()} ${GEO_MONTHS_SHORT[d.getMonth()]}, ${d.getFullYear()}`
@@ -305,7 +317,7 @@ const ChannelScheduleCL = ({
                 'bg-red-500/80 dark:bg-red-500/20 border-red-500 dark:border-red-400/70',
               )}
             >
-              <span className="text-[10px] font-bold text-white uppercase tracking-wider">
+              <span className="text-[10px] text-white/70 uppercase tracking-wider">
                 {dayLabel(p.START_TIME)}
               </span>
               {!iconOnly && (
