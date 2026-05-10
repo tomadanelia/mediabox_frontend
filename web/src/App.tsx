@@ -58,19 +58,19 @@ const App: React.FC = () => {
     fetchUser()
   }, [fetchUser])
 
-  useEffect(() => {
-  if (!user) return
- 
-  notificationService.connect()
-   const unsub = notificationService.subscribe(() => {
-    incrementUnread()
-  })
- 
-  return () => {
-    unsub()
-    notificationService.disconnect()
+ useEffect(() => {
+  if (!user) {
+    notificationService.disconnect();
+    return;
   }
-}, [user])
+  notificationService.connect();
+  
+  const unsub = notificationService.subscribe(() => {
+    incrementUnread();
+  });
+  
+  return () => { unsub(); }; 
+}, [user]);
    
   useEffect(() => {
   if (!user) {
