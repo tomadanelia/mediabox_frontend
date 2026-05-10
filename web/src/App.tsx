@@ -71,6 +71,18 @@ const App: React.FC = () => {
   
   return () => { unsub(); }; 
 }, [user]);
+  useEffect(() => {
+    const initializeSession = async () => {
+      try {
+        await api.get("/sanctum/csrf-cookie");
+        const response = await api.get("/api/init-visitor");
+      } catch (error) {
+        console.error("Failed to initialize visitor session:", error);
+      }
+    };
+
+    initializeSession();
+  }, []);
    
   useEffect(() => {
   if (!user) {
