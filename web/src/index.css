@@ -163,7 +163,7 @@
   --auth-heading: oklch(0.984 0.003 247.858);
   --eye-icon: #0d90b166;
   
---plans-bg: rgb(33, 38, 44);
+--plans-bg: #0f0f0f;
 --plans-card-bg: oklch(20.904% 0.00002 271.152 / 0.349);
 --plans-card-popular-bg: oklch(25.409% 0.01392 17.995);
 --plans-skeleton-bg: oklch(16% 0 0);
@@ -185,8 +185,8 @@
 
 
 
-  --background: #21262c;
-  --nav-bg:#21262c;
+  --background: #0f0f0f;
+  --nav-bg: #0f0f0f;
   --foreground: oklch(0.984 0.003 247.858);
   --card: oklch(0.208 0.042 265.755);
   --card-foreground: oklch(0.984 0.003 247.858);

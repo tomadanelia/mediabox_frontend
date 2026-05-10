@@ -445,25 +445,23 @@ const unreadCount = useUIStore((s) => s.unreadCount)
             {/* desktop nav */}
             <nav className="hidden lg:flex items-center gap-0.5 ml-3">
               {tx.navLinks.map((link: NavLinkItem) => (
-                <NavLink
-                  key={link.to}
-                  to={link.to}
-                  end={link.to === "/"}
-                  className={({ isActive }: { isActive: boolean }) =>
-                    [
-                      "rounded-full px-3 py-1.5 text-sm font-medium transition-colors whitespace-nowrap",
-                      isActive
-                        ? "text-white"
-                        : "text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white hover:bg-zinc-100 dark:hover:bg-white/6",
-                    ].join(" ")
-                  }
-                  style={({ isActive }) => isActive
-                    ? { backgroundColor: '#d52b1e' }
-                    : {}
-                  }
-                >
-                  {link.label}
-                </NavLink>
+                // Desktop nav — replace the NavLink className/style with:
+<NavLink
+  key={link.to}
+  to={link.to}
+  end={link.to === "/"}
+  className={({ isActive }) =>
+    [
+      "px-3 py-1.5 text-sm font-medium transition-colors whitespace-nowrap",
+      "border-b-2",
+      isActive
+        ? "text-zinc-900 dark:text-white border-[#d52b1e]"
+        : "text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white border-transparent",
+    ].join(" ")
+  }
+>
+  {link.label}
+</NavLink>
               ))}
             </nav>
           </div>
@@ -512,13 +510,6 @@ const unreadCount = useUIStore((s) => s.unreadCount)
             </button>
 
             {/* go live — desktop only */}
-
-           <Link
-          to="/tv"
-          className="hidden xl:inline-flex items-center justify-center gap-1.5 rounded-full bg-[#d52b1e] hover:bg-[#b03830] px-3 py-1.5 text-sm font-semibold text-white shadow-md shadow-[#d52b1e40] transition-colors whitespace-nowrap w-[140px] shrink-0">
-          <Icon name="play_circle" size={17} fill={1} className="text-white shrink-0" />
-          <span className="truncate">{tx.live}</span>
-          </Link>
 
             <ProfileDropdown user={user} tx={tx} onLogout={handleLogout} />
           </div>
