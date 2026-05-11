@@ -1,6 +1,7 @@
 import { io, Socket } from "socket.io-client";
 import api from "../lib/axios";
 import {API_BASE_URL} from "../config";
+import { evictAll } from "./streamService";
 export type NotificationType =
   | "info"
   | "success"
@@ -112,6 +113,11 @@ class NotificationService {
       const payload = normalise(data, "info");
       this.emit(payload);
     });
+      this.socket.on("force_logout", (_data: unknown) => {
+    evictAll();
+    this.disconnect();
+    window.location.reload();
+  });
   }
 
   // ── Disconnect ────────────────────────────────────────────────────────────
