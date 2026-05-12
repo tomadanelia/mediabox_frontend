@@ -57,6 +57,11 @@ class NotificationService {
   private emit(payload: NotificationPayload) {
     this.handlers.forEach((h) => h(payload));
   }
+  emitEvent(event: string, data?: any) {
+  if (this.socket?.connected) {
+    this.socket.emit(event, data);
+  }
+}
 
   // ── Connect ───────────────────────────────────────────────────────────────
   async connect() {
