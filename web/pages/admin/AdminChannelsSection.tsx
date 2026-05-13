@@ -572,6 +572,9 @@ export default function AdminChannelsSection({ channels, channelsLoading, fetchC
   const [activeOverrides, setActiveOverrides] = useState<Record<string, boolean>>({});
   const [publicOverrides, setPublicOverrides] = useState<Record<string, boolean>>({});
   const [sortAlpha, setSortAlpha] = useState(false);
+const [dragId, setDragId] = useState<string | null>(null);
+const [dragOverId, setDragOverId] = useState<string | null>(null);
+const [numberSaving, setNumberSaving] = useState<string | null>(null);
   const doSync = async () => {
     setSyncing(true); setSyncMsg(null); setSyncErr(null);
     try {
@@ -584,7 +587,22 @@ export default function AdminChannelsSection({ channels, channelsLoading, fetchC
       setTimeout(() => setSyncErr(null), 4000);
     } finally { setSyncing(false); }
   };
-
+  const handleDrop = async (targetChannel: Channel) => {
+  if (!dragId || dragId === targetChannel.uuid) {
+    setDragId(null); setDragOverId(null); return;
+  }
+  const dragged = channels.find(c => c.uuid === dragId);
+  if (!dragged) return;
+  setNumberSaving(dragId);
+  setDragId(null); setDragOverId(null);
+  try {
+    await api.patch(`/api/admin/channels/${dragged.uuid}/number`, { number: targetChannel.number });
+    await fetchChannels();
+  } catch (e: any) {
+    setSyncErr(e.response?.data?.message || "ნომრის შეცვლა ვერ მოხერხდა");
+    setTimeout(() => setSyncErr(null), 4000);
+  } finally { setNumberSaving(null); }
+};
 const filtered = channels
   .filter(c =>
     c.name.toLowerCase().includes(search.toLowerCase()) ||
@@ -649,135 +667,151 @@ const filtered = channels
             არხები ვერ მოიძებნა
           </div>
         ) : (
-          <table className="w-full text-left">
-            <thead className="bg-zinc-800/50 text-[0.6rem] uppercase tracking-widest text-zinc-500">
-              <tr>
-<th className="p-4">
-  <button
-    onClick={() => setSortAlpha(v => !v)}
-    className={`cursor-pointer flex items-center gap-1 text-[0.6rem] uppercase tracking-widest transition-colors ${
-      sortAlpha ? "text-violet-400" : "text-zinc-500 hover:text-zinc-300"
-    }`}
-    title="Sort alphabetically"
-  >
-    #
-    <svg width="8" height="8" viewBox="0 0 10 10" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M2 3l3-2 3 2M8 7l-3 2-3-2"/>
-    </svg>
-  </button>
-</th>                <th className="p-4">არხი</th>
-                <th className="p-4">პაკეტი</th>
-                <th className="p-4">მუშა</th>
-                <th className="p-4">საჯარო</th>
-                <th className="p-4">რედაქტირება</th>
-                <th className="p-4 w-16"></th>
-              </tr>
-            </thead>
-            <tbody>
-              {filtered.map((c, idx) => {
-                const isSelected = selected?.uuid === c.uuid;
-                return (
-                  <>
-                    <tr
-                      key={c.id}
-                      onClick={() => setSelected(isSelected ? null : c)}
-                      className={`border-t border-zinc-800 cursor-pointer transition-colors select-none ${
-                        isSelected
-                          ? "bg-violet-500/10 hover:bg-violet-500/15"
-                          : "hover:bg-zinc-800/30"
-                      }`}
-                    >
-                      <td className="p-4 font-mono text-[0.65rem] text-zinc-600 tabular-nums">
-                      {c.number}
-                      </td>
-                      <td className="p-4">
-                        <div className="flex items-center gap-3">
-                          <div className="w-8 h-8 rounded-lg bg-zinc-800 border border-zinc-700/50 flex items-center justify-center shrink-0 overflow-hidden">
-                            {c.logo
-                              ? <img src={c.logo} className="w-6 h-6 object-contain" onError={e => (e.currentTarget.style.display = "none")} />
-                              : <span className="text-xs text-zinc-600">📺</span>
-                            }
-                          </div>
-                          <span className="text-zinc-200 font-medium">{c.name}</span>
-                        </div>
-                      </td>
-                      <td className="p-4">
-                        {c.is_free ? (
-                          <span className="inline-block bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 px-2 py-0.5 rounded text-[0.65rem] font-medium">უფასო</span>
-                        ) : (
-                          <span className="inline-block bg-amber-500/10 text-amber-400 border border-amber-500/20 px-2 py-0.5 rounded text-[0.65rem] font-medium">ფასიანი</span>
-                        )}
-                      </td>
-                      <td className="p-4" onClick={e => e.stopPropagation()}>
-                        <div
-                          onClick={async () => {
-                            const current = c.uuid in activeOverrides ? activeOverrides[c.uuid] : (c.is_active !== false);
-                            const next = !current;
-                            setActiveOverrides(prev => ({ ...prev, [c.uuid]: next }));
-                            try {
-                              await api.patch(`/api/admin/channels/${c.uuid}/toggle-active`);
-                            } catch (e: any) {
-                              setActiveOverrides(prev => ({ ...prev, [c.uuid]: current }));
-                              console.error(e);
-                            }
-                          }}
-                          className={`relative w-9 h-5 rounded-full transition-colors cursor-pointer ${
-                            (c.uuid in activeOverrides ? activeOverrides[c.uuid] : c.is_active !== false)
-                              ? "bg-emerald-500" : "bg-zinc-700"
-                          }`}
-                        >
-                          <span className={`absolute top-0.5 w-4 h-4 rounded-full bg-white shadow transition-transform ${
-                            (c.uuid in activeOverrides ? activeOverrides[c.uuid] : c.is_active !== false)
-                              ? "translate-x-4" : "translate-x-0.5"
-                          }`} />
-                        </div>
-                      </td>
-                      <td className="p-4" onClick={e => e.stopPropagation()}>
-                        <div
-                          onClick={async () => {
-                            const current = c.uuid in publicOverrides ? publicOverrides[c.uuid] : (c.is_public !== false);
-                            const next = !current;
-                            setPublicOverrides(prev => ({ ...prev, [c.uuid]: next }));
-                            try {
-                              await api.patch(`/api/admin/channels/${c.uuid}/toggle-public`);
-                            } catch (e: any) {
-                              setPublicOverrides(prev => ({ ...prev, [c.uuid]: current }));
-                              console.error(e);
-                            }
-                          }}
-                          className={`relative w-9 h-5 rounded-full transition-colors cursor-pointer ${
-                            (c.uuid in publicOverrides ? publicOverrides[c.uuid] : c.is_public !== false)
-                              ? "bg-violet-500" : "bg-zinc-700"
-                          }`}
-                        >
-                          <span className={`absolute top-0.5 w-4 h-4 rounded-full bg-white shadow transition-transform ${
-                            (c.uuid in publicOverrides ? publicOverrides[c.uuid] : c.is_public !== false)
-                              ? "translate-x-4" : "translate-x-0.5"
-                          }`} />
-                        </div>
-                      </td>
-                      <td className="p-4">
-                        <button
-                          onClick={e => { e.stopPropagation(); setEditTarget(c); }}
-                          className="cursor-pointer flex items-center justify-center w-7 h-7 rounded-lg text-zinc-600 hover:text-violet-300 hover:bg-violet-500/10 transition-colors"
-                          title="Edit channel"
-                        >
-                          <IconEdit />
-                        </button>
-                      </td>
-                    </tr>
-                    {isSelected && (
-                      <tr key={`${c.id}-urls`} className="border-t border-zinc-800 bg-zinc-900/60">
-                        <td colSpan={7} className="px-4 pb-3">
-                          <ChannelUrlPanel channel={c} />
-                        </td>
-                      </tr>
-                    )}
-                  </>
-                );
-              })}
-            </tbody>
-          </table>
+         <div className="grid grid-cols-2 divide-x divide-zinc-800">
+  {[0, 1].map(col => {
+    const half = Math.ceil(filtered.length / 2);
+    const slice = filtered.slice(col * half, col * half + half);
+    return (
+      <div key={col}>
+        {/* Column header */}
+        <div className="grid grid-cols-[1.5rem_2rem_1fr_auto_auto_auto_auto] gap-x-2 items-center bg-zinc-800/50 px-3 py-2 text-[0.6rem] uppercase tracking-widest text-zinc-500 border-b border-zinc-800">
+          <span></span>
+          <button
+            onClick={() => setSortAlpha(v => !v)}
+            className={`cursor-pointer flex items-center gap-1 transition-colors ${sortAlpha ? "text-violet-400" : "text-zinc-500 hover:text-zinc-300"}`}
+            title="Sort alphabetically"
+          >
+            #
+            <svg width="7" height="7" viewBox="0 0 10 10" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M2 3l3-2 3 2M8 7l-3 2-3-2"/>
+            </svg>
+          </button>
+          <span>არხი</span>
+          <span>პაკ.</span>
+          <span>მუშა</span>
+          <span>საჯ.</span>
+          <span></span>
+        </div>
+
+        {slice.map((c) => {
+          const isSelected = selected?.uuid === c.uuid;
+          const isDragging = dragId === c.uuid;
+          const isDragOver = dragOverId === c.uuid;
+          return (
+            <div key={c.id}>
+              <div
+                onClick={() => setSelected(isSelected ? null : c)}
+                onDragOver={e => { e.preventDefault(); setDragOverId(c.uuid); }}
+                onDragLeave={e => { if (!e.currentTarget.contains(e.relatedTarget as Node)) setDragOverId(null); }}
+                onDrop={() => handleDrop(c)}
+                className={`grid grid-cols-[1.5rem_2rem_1fr_auto_auto_auto_auto] gap-x-2 items-center px-3 py-2 border-t cursor-pointer transition-all select-none
+                  ${isSelected ? "bg-violet-500/10 hover:bg-violet-500/15" : "hover:bg-zinc-800/30"}
+                  ${isDragging ? "opacity-30" : ""}
+                  ${isDragOver ? "border-t-violet-400 border-t-2 bg-violet-500/5" : "border-t-zinc-800"}
+                `}
+              >
+                {/* Drag handle */}
+                <div
+                  draggable
+                  onDragStart={e => { e.stopPropagation(); setDragId(c.uuid); }}
+                  onDragEnd={() => { setDragId(null); setDragOverId(null); }}
+                  onClick={e => e.stopPropagation()}
+                  className="flex items-center justify-center w-5 h-5 rounded text-zinc-700 hover:text-zinc-400 hover:bg-zinc-700/50 cursor-grab active:cursor-grabbing transition-colors"
+                  title="გათრევა ნომრის შესაცვლელად"
+                >
+                  <svg width="8" height="12" viewBox="0 0 8 12" fill="currentColor">
+                    <circle cx="2" cy="2" r="1.2"/><circle cx="6" cy="2" r="1.2"/>
+                    <circle cx="2" cy="6" r="1.2"/><circle cx="6" cy="6" r="1.2"/>
+                    <circle cx="2" cy="10" r="1.2"/><circle cx="6" cy="10" r="1.2"/>
+                  </svg>
+                </div>
+
+                {/* Number */}
+                <span className="font-mono text-[0.65rem] text-zinc-500 tabular-nums">
+                  {numberSaving === c.uuid ? <Spinner /> : (c.number ?? "—")}
+                </span>
+
+                {/* Name + logo */}
+                <div className="flex items-center gap-2 min-w-0">
+                  <div className="w-6 h-6 rounded bg-zinc-800 border border-zinc-700/50 flex items-center justify-center shrink-0 overflow-hidden">
+                    {c.logo
+                      ? <img src={c.logo} className="w-5 h-5 object-contain" onError={e => (e.currentTarget.style.display = "none")} />
+                      : <span className="text-[0.55rem] text-zinc-600">📺</span>
+                    }
+                  </div>
+                  <span className="text-zinc-200 font-medium text-xs truncate">{c.name}</span>
+                </div>
+
+                {/* Package */}
+                <div>
+                  {c.is_free
+                    ? <span className="bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 px-1.5 py-0.5 rounded text-[0.6rem]">უფასო</span>
+                    : <span className="bg-amber-500/10 text-amber-400 border border-amber-500/20 px-1.5 py-0.5 rounded text-[0.6rem]">ფასიანი</span>
+                  }
+                </div>
+
+                {/* Active toggle */}
+                <div onClick={e => e.stopPropagation()}>
+                  <div
+                    onClick={async () => {
+                      const current = c.uuid in activeOverrides ? activeOverrides[c.uuid] : (c.is_active !== false);
+                      const next = !current;
+                      setActiveOverrides(prev => ({ ...prev, [c.uuid]: next }));
+                      try { await api.patch(`/api/admin/channels/${c.uuid}/toggle-active`); }
+                      catch { setActiveOverrides(prev => ({ ...prev, [c.uuid]: current })); }
+                    }}
+                    className={`relative w-8 h-4 rounded-full transition-colors cursor-pointer ${
+                      (c.uuid in activeOverrides ? activeOverrides[c.uuid] : c.is_active !== false) ? "bg-emerald-500" : "bg-zinc-700"
+                    }`}
+                  >
+                    <span className={`absolute top-0.5 w-3 h-3 rounded-full bg-white shadow transition-transform ${
+                      (c.uuid in activeOverrides ? activeOverrides[c.uuid] : c.is_active !== false) ? "translate-x-4" : "translate-x-0.5"
+                    }`} />
+                  </div>
+                </div>
+
+                {/* Public toggle */}
+                <div onClick={e => e.stopPropagation()}>
+                  <div
+                    onClick={async () => {
+                      const current = c.uuid in publicOverrides ? publicOverrides[c.uuid] : (c.is_public !== false);
+                      const next = !current;
+                      setPublicOverrides(prev => ({ ...prev, [c.uuid]: next }));
+                      try { await api.patch(`/api/admin/channels/${c.uuid}/toggle-public`); }
+                      catch { setPublicOverrides(prev => ({ ...prev, [c.uuid]: current })); }
+                    }}
+                    className={`relative w-8 h-4 rounded-full transition-colors cursor-pointer ${
+                      (c.uuid in publicOverrides ? publicOverrides[c.uuid] : c.is_public !== false) ? "bg-violet-500" : "bg-zinc-700"
+                    }`}
+                  >
+                    <span className={`absolute top-0.5 w-3 h-3 rounded-full bg-white shadow transition-transform ${
+                      (c.uuid in publicOverrides ? publicOverrides[c.uuid] : c.is_public !== false) ? "translate-x-4" : "translate-x-0.5"
+                    }`} />
+                  </div>
+                </div>
+
+                {/* Edit */}
+                <button
+                  onClick={e => { e.stopPropagation(); setEditTarget(c); }}
+                  className="cursor-pointer flex items-center justify-center w-6 h-6 rounded text-zinc-600 hover:text-violet-300 hover:bg-violet-500/10 transition-colors"
+                >
+                  <IconEdit />
+                </button>
+              </div>
+
+              {/* Expanded URL panel — spans full width by breaking out of grid */}
+              {isSelected && (
+                <div className="border-t border-zinc-800 bg-zinc-900/60 px-4 pb-3">
+                  <ChannelUrlPanel channel={c} />
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
+    );
+  })}
+</div>
         )}
       </div>
 
