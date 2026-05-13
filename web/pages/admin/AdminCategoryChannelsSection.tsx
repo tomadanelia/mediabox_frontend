@@ -39,7 +39,7 @@ export default function AdminCategoryChannelsSection({
 }: Props) {
   const [channelSearch, setChannelSearch] = useState("");
   const [selectedChannelUuids, setSelectedChannelUuids] = useState<string[]>([]);
-
+  const [sortAlpha, setSortAlpha] = useState(false);
   // The category the admin is "viewing" — channels in this category are highlighted & grouped top
   const [activeCategoryId, setActiveCategoryId] = useState<string>("");
 
@@ -50,19 +50,24 @@ export default function AdminCategoryChannelsSection({
 
   const activeCategory = categories.find(c => c.id === activeCategoryId) ?? null;
 
-  // Split channels: those belonging to activeCategoryId come first (highlighted), rest after
   const sortedFilteredChannels = useMemo(() => {
-    const q = channelSearch.toLowerCase();
-    const filtered = channels.filter(c =>
-      c.name.toLowerCase().includes(q)
-    );
+  const q = channelSearch.toLowerCase();
+  const filtered = channels.filter(c => c.name.toLowerCase().includes(q));
 
-    if (!activeCategoryId) return filtered;
+  if (!activeCategoryId) {
+    return sortAlpha ? [...filtered].sort((a, b) => a.name.localeCompare(b.name)) : filtered;
+  }
 
-    const inCategory = filtered.filter(c => c.category_id === activeCategoryId);
-    const others = filtered.filter(c => c.category_id !== activeCategoryId);
-    return [...inCategory, ...others];
-  }, [channels, channelSearch, activeCategoryId]);
+  const inCategory = filtered.filter(c => c.category_id === activeCategoryId);
+  const others = filtered.filter(c => c.category_id !== activeCategoryId);
+
+  if (sortAlpha) {
+    inCategory.sort((a, b) => a.name.localeCompare(b.name));
+    others.sort((a, b) => a.name.localeCompare(b.name));
+  }
+
+  return [...inCategory, ...others];
+}, [channels, channelSearch, activeCategoryId, sortAlpha]);
 
   const inCategoryCount = activeCategoryId
     ? channels.filter(c => c.category_id === activeCategoryId).length
@@ -260,8 +265,23 @@ export default function AdminCategoryChannelsSection({
                     )}
                   </div>
                 </th>
-                <th className="p-4">არხი</th>
-                <th className="p-4">UUID</th>
+                  <th className="p-4">
+  <button
+    onClick={() => setSortAlpha(v => !v)}
+    className={`cursor-pointer flex items-center gap-1.5 uppercase tracking-widest text-[0.6rem] font-medium transition-colors ${
+      sortAlpha ? "text-violet-400" : "text-zinc-500 hover:text-zinc-300"
+    }`}
+  >
+    არხი
+    <svg
+      width="9" height="9" viewBox="0 0 10 12" fill="none"
+      stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"
+      className={`transition-opacity ${sortAlpha ? "opacity-100" : "opacity-40"}`}
+    >
+      <path d="M2 4l3-3 3 3M8 8l-3 3-3-3"/>
+    </svg>
+  </button>
+</th>                <th className="p-4">UUID</th>
                 <th className="p-4">ჟანრი</th>
               </tr>
             </thead>
