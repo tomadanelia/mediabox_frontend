@@ -571,7 +571,7 @@ export default function AdminChannelsSection({ channels, channelsLoading, fetchC
   const [confirm, setConfirm] = useState<{ message: string; onConfirm: () => void } | null>(null);
   const [activeOverrides, setActiveOverrides] = useState<Record<string, boolean>>({});
   const [publicOverrides, setPublicOverrides] = useState<Record<string, boolean>>({});
-
+  const [sortAlpha, setSortAlpha] = useState(false);
   const doSync = async () => {
     setSyncing(true); setSyncMsg(null); setSyncErr(null);
     try {
@@ -585,10 +585,12 @@ export default function AdminChannelsSection({ channels, channelsLoading, fetchC
     } finally { setSyncing(false); }
   };
 
-  const filtered = channels.filter(c =>
+const filtered = channels
+  .filter(c =>
     c.name.toLowerCase().includes(search.toLowerCase()) ||
     c.uuid.toLowerCase().includes(search.toLowerCase())
-  );
+  )
+  .sort((a, b) => sortAlpha ? a.name.localeCompare(b.name) : 0);
 
   return (
     <div className="space-y-4">
@@ -650,8 +652,20 @@ export default function AdminChannelsSection({ channels, channelsLoading, fetchC
           <table className="w-full text-left">
             <thead className="bg-zinc-800/50 text-[0.6rem] uppercase tracking-widest text-zinc-500">
               <tr>
-                <th className="p-4">#</th>
-                <th className="p-4">არხი</th>
+<th className="p-4">
+  <button
+    onClick={() => setSortAlpha(v => !v)}
+    className={`cursor-pointer flex items-center gap-1 text-[0.6rem] uppercase tracking-widest transition-colors ${
+      sortAlpha ? "text-violet-400" : "text-zinc-500 hover:text-zinc-300"
+    }`}
+    title="Sort alphabetically"
+  >
+    #
+    <svg width="8" height="8" viewBox="0 0 10 10" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M2 3l3-2 3 2M8 7l-3 2-3-2"/>
+    </svg>
+  </button>
+</th>                <th className="p-4">არხი</th>
                 <th className="p-4">პაკეტი</th>
                 <th className="p-4">მუშა</th>
                 <th className="p-4">საჯარო</th>
@@ -674,7 +688,7 @@ export default function AdminChannelsSection({ channels, channelsLoading, fetchC
                       }`}
                     >
                       <td className="p-4 font-mono text-[0.65rem] text-zinc-600 tabular-nums">
-                        {idx + 1}
+                      {c.number}
                       </td>
                       <td className="p-4">
                         <div className="flex items-center gap-3">
