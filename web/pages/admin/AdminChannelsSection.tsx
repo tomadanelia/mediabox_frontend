@@ -587,6 +587,49 @@ const [numberSaving, setNumberSaving] = useState<string | null>(null);
       setTimeout(() => setSyncErr(null), 4000);
     } finally { setSyncing(false); }
   };
+ const autoScrollRef = useRef<number | null>(null);
+const dragY = useRef<number>(0);
+
+useEffect(() => {
+  if (!dragId) {
+    if (autoScrollRef.current) {
+      cancelAnimationFrame(autoScrollRef.current);
+      autoScrollRef.current = null;
+    }
+    return;
+  }
+
+ 
+  const onPointerMove = (e: PointerEvent) => {
+  dragY.current = e.clientY;
+};
+
+  const scroll = () => {
+    const threshold = 80;
+    const speed = 14;
+    const y = dragY.current;
+
+    if (y < threshold) {
+      window.scrollBy(0, -speed * (1 - y / threshold));
+    } else if (y > window.innerHeight - threshold) {
+      window.scrollBy(0, speed * (1 - (window.innerHeight - y) / threshold));
+    }
+
+    autoScrollRef.current = requestAnimationFrame(scroll);
+  };
+
+  document.addEventListener("pointermove", onPointerMove);
+  autoScrollRef.current = requestAnimationFrame(scroll);
+
+  return () => {
+    document.removeEventListener("pointermove", onPointerMove);
+    if (autoScrollRef.current) {
+      cancelAnimationFrame(autoScrollRef.current);
+      autoScrollRef.current = null;
+    }
+  };
+}, [dragId]); // ← re-runs when drag starts/stops
+
   const handleDrop = async (targetChannel: Channel) => {
   if (!dragId || dragId === targetChannel.uuid) {
     setDragId(null); setDragOverId(null); return;
@@ -713,8 +756,15 @@ const filtered = channels
                 {/* Drag handle */}
                 <div
                   draggable
-                  onDragStart={e => { e.stopPropagation(); setDragId(c.uuid); }}
-                  onDragEnd={() => { setDragId(null); setDragOverId(null); }}
+                  onDragStart={e => {
+                  e.stopPropagation();
+                  const ghost = document.createElement("div");
+                  ghost.style.cssText = "position:fixed;top:-9999px;left:-9999px;width:1px;height:1px;opacity:0";
+                  document.body.appendChild(ghost);
+                  e.dataTransfer.setDragImage(ghost, 0, 0);
+                  setTimeout(() => document.body.removeChild(ghost), 0);
+                  setDragId(c.uuid);
+                  }}                  onDragEnd={() => { setDragId(null); setDragOverId(null); }}
                   onClick={e => e.stopPropagation()}
                   className="flex items-center justify-center w-5 h-5 rounded text-zinc-700 hover:text-zinc-400 hover:bg-zinc-700/50 cursor-grab active:cursor-grabbing transition-colors"
                   title="გათრევა ნომრის შესაცვლელად"
