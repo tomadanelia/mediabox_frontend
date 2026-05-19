@@ -12,6 +12,7 @@ interface Plan {
   duration_days: number;
   is_active: boolean | number;
   is_public: boolean;
+  location_scope: "ge" | "intl" | "all";
 }
 
 interface PlanChannel {
@@ -425,6 +426,7 @@ function PlanEditModal({
     duration_days: String(plan.duration_days),
     is_active: Boolean(plan.is_active),
     is_public: Boolean(plan.is_public),
+    location_scope: "ge" as "ge" | "intl" | "all",
   });
   const [saving, setSaving] = useState(false);
   const backdropRef = useRef<HTMLDivElement>(null);
@@ -491,6 +493,27 @@ function PlanEditModal({
               <label className="text-[0.65rem] text-zinc-500 uppercase tracking-widest block mb-1.5">ხანგრძლივობა (დღე)</label>
               <input type="number" min="1" className="w-full bg-zinc-800 border border-zinc-700 p-2.5 rounded-xl text-sm focus:outline-none focus:border-zinc-500 transition-colors" value={form.duration_days} onChange={e => setForm(f => ({ ...f, duration_days: e.target.value }))} />
             </div>
+            <div>
+  <p className="text-[0.65rem] text-zinc-500 uppercase tracking-widest mb-2">გეოგრაფია</p>
+  <div className="flex gap-2">
+    {(["ge", "intl", "all"] as const).map(scope => (
+      <button
+        key={scope}
+        type="button"
+        onClick={() => setForm(f => ({ ...f, location_scope: scope }))}
+        className={`flex-1 py-2 rounded-xl text-xs font-medium border transition-colors cursor-pointer
+          ${form.location_scope === scope
+            ? scope === "ge"   ? "bg-blue-500/20 border-blue-500/40 text-blue-300"
+            : scope === "intl" ? "bg-purple-500/20 border-purple-500/40 text-purple-300"
+            :                    "bg-zinc-600/40 border-zinc-500/40 text-zinc-200"
+            : "bg-zinc-800 border-zinc-700 text-zinc-500 hover:border-zinc-600"
+          }`}
+      >
+        {scope === "ge" ? "🇬🇪 საქართველო" : scope === "intl" ? "🌍 საერთაშორისო" : "🌐 ყველა"}
+      </button>
+    ))}
+  </div>
+</div>
           </div>
           <div className="flex flex-col gap-3">
             <label className="flex items-center gap-2.5 cursor-pointer select-none">
@@ -653,7 +676,7 @@ function PlanDeleteModal({
 function AddPlanForm({ onSaved, onCancel }: { onSaved: () => void; onCancel: () => void }) {
   const [form, setForm] = useState({
     name_en: "", name_ka: "", description_en: "", description_ka: "",
-    price: "", duration_days: "", is_active: true, is_public: true,
+    price: "", duration_days: "", is_active: true, is_public: true,location_scope: "ge" as "ge" | "intl" | "all",
   });
   const [saving, setSaving] = useState(false);
 
@@ -736,7 +759,19 @@ function PlanCard({
   onDelete: () => void;
 }) {
   const isActive = Boolean(plan.is_active);
-
+  const ScopeBadge = ({ scope }: { scope: "ge" | "intl" | "all" }) => {
+  const map = {
+    ge:   { label: "🇬🇪 GE",   cls: "bg-blue-500/15 text-blue-300 border-blue-500/25" },
+    intl: { label: "🌍 Intl",  cls: "bg-purple-500/15 text-purple-300 border-purple-500/25" },
+    all:  { label: "🌐 ყველა", cls: "bg-zinc-600/30 text-zinc-400 border-zinc-600/40" },
+  };
+  const { label, cls } = map[scope];
+  return (
+    <span className={`inline-flex items-center text-[0.58rem] font-semibold border px-1.5 py-0.5 rounded-md ${cls}`}>
+      {label}
+    </span>
+  );
+};
   return (
     <div className="group bg-zinc-900 border border-zinc-800 hover:border-zinc-700 transition-colors rounded-2xl p-4 flex items-start gap-4">
       {/* Icon */}
@@ -755,6 +790,7 @@ function PlanCard({
             ? <span className="inline-flex items-center gap-1 text-[0.6rem] bg-emerald-500/15 text-emerald-400 border border-emerald-500/25 px-1.5 py-0.5 rounded-md font-medium">აქტიური</span>
             : <span className="inline-flex items-center gap-1 text-[0.6rem] bg-zinc-700/50 text-zinc-500 border border-zinc-700 px-1.5 py-0.5 rounded-md font-medium">გათიშული</span>
           }
+          <ScopeBadge scope={plan.location_scope} />
           {!plan.is_public && (
             <span className="inline-flex items-center gap-1 text-[0.6rem] bg-amber-500/10 text-amber-500 border border-amber-500/20 px-1.5 py-0.5 rounded-md font-medium">პირადი</span>
           )}
@@ -817,7 +853,11 @@ export default function AdminPlansSection() {
   };
 
   useEffect(() => { fetchPlans(); }, []);
+  const [scopeFilter, setScopeFilter] = useState<"all" | "ge" | "intl">("all");
 
+  const visiblePlans = scopeFilter === "all"
+    ? plans
+    : plans.filter(p => p.location_scope === scopeFilter);
   return (
     <div className="space-y-5">
       {/* Header */}
@@ -833,7 +873,20 @@ export default function AdminPlansSection() {
           პაკეტის დამატება
         </button>
       </div>
-
+          {plans.length > 0 && (
+      <div className="flex gap-1 bg-zinc-900 border border-zinc-800 rounded-xl p-1 w-fit">
+        {([["all","🌐 ყველა"], ["ge","🇬🇪 საქართველო"], ["intl","🌍 საერთაშორისო"]] as const).map(([val, label]) => (
+          <button key={val} onClick={() => setScopeFilter(val)}
+            className={`cursor-pointer px-3 py-1.5 rounded-lg text-xs font-medium transition-colors
+              ${scopeFilter === val ? "bg-zinc-700 text-zinc-100" : "text-zinc-500 hover:text-zinc-300"}`}>
+            {label}
+            <span className="ml-1.5 text-[0.6rem] opacity-60">
+              {val === "all" ? plans.length : plans.filter(p => p.location_scope === val).length}
+            </span>
+          </button>
+        ))}
+      </div>
+    )}
       {showAdd && (
         <AddPlanForm
           onSaved={() => { fetchPlans(); setShowAdd(false); }}
@@ -854,7 +907,7 @@ export default function AdminPlansSection() {
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
-          {plans.map(plan => (
+          {visiblePlans.map(plan => (
             <PlanCard
               key={plan.id}
               plan={plan}
