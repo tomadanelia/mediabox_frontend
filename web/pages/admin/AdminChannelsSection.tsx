@@ -731,46 +731,42 @@ const filtered = channels
     return (
       <div key={col}>
         {/* Column header */}
-        <div className="grid grid-cols-[1.5rem_3.5rem_1fr_4.5rem_3rem_3rem_2rem] gap-x-2 items-center bg-zinc-800/50 px-3 py-2 text-[0.6rem] uppercase tracking-widest text-zinc-500 border-b border-zinc-800">
+       <div className="grid grid-cols-[1.5rem_3.5rem_1fr_4.5rem_3rem_3rem_2rem] gap-x-2 items-center bg-zinc-800/50 px-3 py-2 text-[0.6rem] uppercase tracking-widest text-zinc-500 border-b border-zinc-800">
+  
+          {/* Col 1: drag handle placeholder */}
+          <div />
+
+          {/* Col 2: number with sort */}
+          <div className="flex items-center gap-0.5">
+            <button onClick={() => { setSortField("number"); setSortDirection("desc"); }}
+              className={`cursor-pointer -ml-1 hover:text-zinc-300 transition-colors ${sortField === "number" && sortDirection === "desc" ? "text-violet-400" : "text-zinc-600"}`}>
+              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="M18 15l-6-6-6 6"/></svg>
+            </button>
+            <button onClick={() => { setSortField("number"); setSortDirection("asc"); }}
+              className={`cursor-pointer hover:text-zinc-300 transition-colors ${sortField === "number" && sortDirection === "asc" ? "text-violet-400" : "text-zinc-600"}`}>
+              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="M6 9l6 6 6-6"/></svg>
+            </button>
+          </div>
+
           <div className="flex items-center gap-1">
-            <div className="flex flex-row items-center gap-0.5">
-            <button
-              onClick={() => { setSortField("number"); setSortDirection("desc"); }}
-              className={`cursor-pointer hover:text-zinc-300 transition-colors ${sortField === "number" && sortDirection === "desc" ? "text-violet-400" : "text-zinc-600"}`}
-            >
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="M18 15l-6-6-6 6"/></svg>
-            </button>
-            <button
-              onClick={() => { setSortField("number"); setSortDirection("asc"); }}
-              className={`cursor-pointer hover:text-zinc-300 transition-colors ${sortField === "number" && sortDirection === "asc" ? "text-violet-400" : "text-zinc-600"}`}
-            >
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="M6 9l6 6 6-6"/></svg>
-            </button>
-            </div>
-          </div>
-          <div className="flex items-center gap-2">
             <span>არხი</span>
-            <div className="flex items-center gap-1">
-              <button
-                onClick={() => { setSortField("name"); setSortDirection("desc"); }}
-                className={`cursor-pointer hover:text-zinc-300 transition-colors ${sortField === "name" && sortDirection === "desc" ? "text-violet-400" : "text-zinc-600"}`}
-                title="Sort A-Z"
-              >
-                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M18 15l-6-6-6 6"/></svg>
-              </button>
-              <button
-                onClick={() => { setSortField("name"); setSortDirection("asc"); }}
-                className={`cursor-pointer hover:text-zinc-300 transition-colors ${sortField === "name" && sortDirection === "asc" ? "text-violet-400" : "text-zinc-600"}`}
-                title="Sort Z-A"
-              >
-                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M6 9l6 6 6-6"/></svg>
-              </button>
-            </div>
+            <button onClick={() => { setSortField("name"); setSortDirection("desc"); }}
+              className={`cursor-pointer hover:text-zinc-300 transition-colors ${sortField === "name" && sortDirection === "desc" ? "text-violet-400" : "text-zinc-600"}`}>
+              <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M18 15l-6-6-6 6"/></svg>
+            </button>
+            <button onClick={() => { setSortField("name"); setSortDirection("asc"); }}
+              className={`cursor-pointer hover:text-zinc-300 transition-colors ${sortField === "name" && sortDirection === "asc" ? "text-violet-400" : "text-zinc-600"}`}>
+              <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M6 9l6 6 6-6"/></svg>
+            </button>
           </div>
+
           <span>პაკ.</span>
+
           <span>მუშა</span>
+
           <span>საჯ.</span>
-          <span></span>
+
+          <div />
         </div>
 
         {slice.map((c) => {
