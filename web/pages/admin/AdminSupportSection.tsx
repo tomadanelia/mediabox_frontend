@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import api from "../../src/lib/axios";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -8,8 +8,8 @@ type TicketStatus = "pending" | "investigating" | "resolved" | "closed";
 
 interface TicketUser {
   id: string;
-  username: string | null; 
-  email: string | null;    
+  username: string | null; // Allow null values
+  email: string | null;    // Allow null values
   phone: string;
   numeric_id: number;
 }
@@ -99,27 +99,40 @@ function StatusDropdown({
 }) {
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  // Close when clicking outside the dropdown entirely
+  useEffect(() => {
+    if (!open) return;
+    const handler = (e: MouseEvent) => {
+      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
+        setOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [open]);
 
   const pick = async (next: TicketStatus) => {
-    if (next === current) { setOpen(false); return; }
-    setLoading(true);
     setOpen(false);
+    if (next === current) return;
+    setLoading(true);
     try {
       await api.patch(`/api/admin/support/tickets/${ticketId}/status`, { status: next });
       onUpdated(ticketId, next);
     } catch {
-      // silently fail — toast can be wired here
+      // silently fail — wire a toast here if needed
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="relative">
+    <div ref={containerRef} className="relative">
       <button
         onClick={() => setOpen((o) => !o)}
         disabled={loading}
-        className="flex items-center gap-2 cursor-pointer disabled:opacity-50 group"
+        className="flex items-center gap-2 cursor-pointer disabled:opacity-50"
         title="Change status"
       >
         <StatusPill status={current} />
@@ -131,25 +144,30 @@ function StatusDropdown({
       </button>
 
       {open && (
-        <>
-          <div className="fixed inset-0 z-10" onClick={() => setOpen(false)} />
-          <div className="absolute right-0 top-full mt-1.5 z-20 bg-card border border-border rounded-xl shadow-lg overflow-hidden w-44 py-1">
-            {ALL_STATUSES.map((s) => {
-              const sc = STATUS_CONFIG[s];
-              return (
-                <button
-                  key={s}
-                  onClick={() => pick(s)}
-                  className={`w-full flex items-center gap-2.5 px-3.5 py-2.5 text-sm text-left cursor-pointer transition-colors ${s === current ? "bg-muted/40 font-semibold text-foreground" : `text-muted-foreground ${sc.menu}`}`}
-                >
-                  <span className={`w-2 h-2 rounded-full ${sc.dot}`} />
-                  {sc.label}
-                  {s === current && <span className="ml-auto text-xs opacity-50">✓</span>}
-                </button>
-              );
-            })}
-          </div>
-        </>
+        <div className="absolute right-0 top-full mt-1.5 z-50 bg-card border border-border rounded-xl shadow-lg overflow-hidden w-44 py-1">
+          {ALL_STATUSES.map((s) => {
+            const sc = STATUS_CONFIG[s];
+            return (
+              <button
+                key={s}
+                onMouseDown={(e) => {
+                  // Use onMouseDown so the click registers before any blur/focus events
+                  e.preventDefault();
+                  pick(s);
+                }}
+                className={`w-full flex items-center gap-2.5 px-3.5 py-2.5 text-sm text-left cursor-pointer transition-colors ${
+                  s === current
+                    ? "bg-muted/40 font-semibold text-foreground"
+                    : `text-muted-foreground ${sc.menu}`
+                }`}
+              >
+                <span className={`w-2 h-2 rounded-full ${sc.dot}`} />
+                {sc.label}
+                {s === current && <span className="ml-auto text-xs opacity-50">✓</span>}
+              </button>
+            );
+          })}
+        </div>
       )}
     </div>
   );
@@ -268,24 +286,16 @@ function TicketRow({
           </div>
 
           {/* User info row */}
-        <div className="flex items-center gap-2 mt-2">
-        <div className="w-5 h-5 rounded-full bg-[var(--form-highlight-subtle)] border border-[var(--form-border)] flex items-center justify-center shrink-0">
-            <span className="text-[9px] font-bold text-[var(--form-highlight)]">
-            {initials(ticket.user.username)}
-            </span>
-        </div>
-        <span className="text-xs text-muted-foreground font-semibold">
-            {ticket.user.username || "Anonymous User"}
-        </span>
-        <span className="text-xs text-muted-foreground/40">·</span>
-        <span className="text-xs text-muted-foreground/60">
-            {ticket.user.email || ticket.user.phone || "No contact info"}
-        </span>
-        <span className="text-xs text-muted-foreground/40 hidden sm:inline">·</span>
-        <span className="text-xs text-muted-foreground/40 font-mono hidden sm:inline">
-            #{ticket.user.numeric_id}
-        </span>
-        </div>
+          <div className="flex items-center gap-2 mt-2">
+            <div className="w-5 h-5 rounded-full bg-[var(--form-highlight-subtle)] border border-[var(--form-border)] flex items-center justify-center shrink-0">
+              <span className="text-[9px] font-bold text-[var(--form-highlight)]">{initials(ticket.user.username)}</span>
+            </div>
+            <span className="text-xs text-muted-foreground font-semibold">{ticket.user.username}</span>
+            <span className="text-xs text-muted-foreground/40">·</span>
+            <span className="text-xs text-muted-foreground/60">{ticket.user.email}</span>
+            <span className="text-xs text-muted-foreground/40 hidden sm:inline">·</span>
+            <span className="text-xs text-muted-foreground/40 font-mono hidden sm:inline">#{ticket.user.numeric_id}</span>
+          </div>
         </div>
 
         {/* Expand toggle */}
