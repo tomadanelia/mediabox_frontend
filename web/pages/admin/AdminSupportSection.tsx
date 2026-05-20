@@ -8,8 +8,8 @@ type TicketStatus = "pending" | "investigating" | "resolved" | "closed";
 
 interface TicketUser {
   id: string;
-  username: string;
-  email: string;
+  username: string | null; 
+  email: string | null;    
   phone: string;
   numeric_id: number;
 }
@@ -70,10 +70,10 @@ function formatDate(iso: string) {
   });
 }
 
-function initials(name: string) {
+function initials(name: string | null) {
+  if (!name) return "??"; // Safe fallback string
   return name.slice(0, 2).toUpperCase();
 }
-
 // ─── Status Pill ─────────────────────────────────────────────────────────────
 
 function StatusPill({ status }: { status: TicketStatus }) {
@@ -268,16 +268,24 @@ function TicketRow({
           </div>
 
           {/* User info row */}
-          <div className="flex items-center gap-2 mt-2">
-            <div className="w-5 h-5 rounded-full bg-[var(--form-highlight-subtle)] border border-[var(--form-border)] flex items-center justify-center shrink-0">
-              <span className="text-[9px] font-bold text-[var(--form-highlight)]">{initials(ticket.user.username)}</span>
-            </div>
-            <span className="text-xs text-muted-foreground font-semibold">{ticket.user.username}</span>
-            <span className="text-xs text-muted-foreground/40">·</span>
-            <span className="text-xs text-muted-foreground/60">{ticket.user.email}</span>
-            <span className="text-xs text-muted-foreground/40 hidden sm:inline">·</span>
-            <span className="text-xs text-muted-foreground/40 font-mono hidden sm:inline">#{ticket.user.numeric_id}</span>
-          </div>
+        <div className="flex items-center gap-2 mt-2">
+        <div className="w-5 h-5 rounded-full bg-[var(--form-highlight-subtle)] border border-[var(--form-border)] flex items-center justify-center shrink-0">
+            <span className="text-[9px] font-bold text-[var(--form-highlight)]">
+            {initials(ticket.user.username)}
+            </span>
+        </div>
+        <span className="text-xs text-muted-foreground font-semibold">
+            {ticket.user.username || "Anonymous User"}
+        </span>
+        <span className="text-xs text-muted-foreground/40">·</span>
+        <span className="text-xs text-muted-foreground/60">
+            {ticket.user.email || ticket.user.phone || "No contact info"}
+        </span>
+        <span className="text-xs text-muted-foreground/40 hidden sm:inline">·</span>
+        <span className="text-xs text-muted-foreground/40 font-mono hidden sm:inline">
+            #{ticket.user.numeric_id}
+        </span>
+        </div>
         </div>
 
         {/* Expand toggle */}
