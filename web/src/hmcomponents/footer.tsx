@@ -43,6 +43,7 @@ const Footer = () => {
     { label: "Privacy Policy", href: "/privacy" },
     { label: "Our History", href: "/history" },
     { label: "What We Do", href: "/about#what-we-do" },
+    { label: "Support", href: "/support" }, // 👈 add here
   ];
 
   return (
@@ -120,6 +121,8 @@ const Footer = () => {
                   text: "123 Broadcast Ave, Media City",
                   href: "https://maps.google.com/?q=42.259697,42.672130",
                 },
+                  { label: "Support", href: "/support" },
+
               ].map(({ icon, text, href }) => (
                 <a
                   key={text}
