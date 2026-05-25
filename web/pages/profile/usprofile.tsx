@@ -120,10 +120,10 @@ const translations = {
       accountId: "ანგარიშის ID",
       noAccount: "ანგარიში არ არის.",
       interpayNote:
-        "ბალანსის შესავსებად დააკოპირე <strong>მომხმარებლის სახელი</strong> და გადადი Interpay-ს საიტზე. შეიყვანე სახელი მიმღების ველში და მიუთითე სასურველი თანხა.",
+        "შეავსე ბალანსი საქართველოს ბანკით",
       copyStep: "ანგარიშის ნომრის კოპირება",
       copiedStep: "კოპირებულია!",
-      interpayLink: "Interpay-ზე გადასვლა ↗",
+      interpayLink: "ბალანსის შევსება",
     },
     plans: {
       cardTitle: "აქტიური პაკეტები",
@@ -562,14 +562,6 @@ tableRow:  "border-border hover:bg-muted/40",
                     }}
                   />
                   <div className="flex flex-wrap gap-3">
-                    <button
-                      onClick={copyNumericId}
-                      className={`text-xs font-medium px-4 py-2 rounded-lg transition-all duration-200 cursor-pointer ${copiedUsername ? c.btnCopied : c.btnGhost}`}
-                    >
-                      {copiedUsername
-                        ? tx.overview.copiedStep
-                        : tx.overview.copyStep}
-                    </button>
                     <a
                       href="https://interpay.ge/ka"
                       target="_blank"
