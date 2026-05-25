@@ -46,6 +46,7 @@ class NotificationService {
   private socket: Socket | null = null;
   private handlers: Set<NotificationHandler> = new Set();
   private isDestroyed = false;
+  private isConnecting = false;
 
   // ── Subscribe / unsubscribe ───────────────────────────────────────────────
   subscribe(handler: NotificationHandler): () => void {
@@ -56,11 +57,17 @@ class NotificationService {
   private emit(payload: NotificationPayload) {
     this.handlers.forEach((h) => h(payload));
   }
+  emitEvent(event: string, data?: any) {
+  if (this.socket?.connected) {
+    this.socket.emit(event, data);
+  }
+}
 
   // ── Connect ───────────────────────────────────────────────────────────────
   async connect() {
-    if (this.socket?.connected) return;
+  if (this.socket?.connected || this.isConnecting) return;
     this.isDestroyed = false;
+    this.isConnecting = true;
 
     let token: string | null = null;
 
@@ -70,10 +77,10 @@ class NotificationService {
       if (!token) throw new Error("No socket_token in response");
     } catch (err) {
       console.warn("[NotificationService] Token fetch failed:", err);
+      this.isConnecting = false;
       return;
     }
 
-    // Socket.IO handshake — token sent as query param + auth header
     this.socket = io(SERVER_URL, {
       transports: ["websocket", "polling"],
       auth: { token },
@@ -85,6 +92,7 @@ class NotificationService {
     });
 
     this.socket.on("connect", () => {
+      this.isConnecting = false; 
       console.info("[NotificationService] Socket.IO connected ✓", this.socket?.id);
     });
 
@@ -93,6 +101,7 @@ class NotificationService {
     });
 
     this.socket.on("connect_error", (err) => {
+      this.isConnecting = false;
       console.warn("[NotificationService] Connection error:", err.message);
     });
 
@@ -109,10 +118,10 @@ class NotificationService {
       const payload = normalise(data, "info");
       this.emit(payload);
     });
-  this.socket.on("force_logout", (_data: unknown) => {
-  evictAll();
-  this.disconnect();
-  window.location.reload();
+      this.socket.on("force_logout", (_data: unknown) => {
+    evictAll();
+    this.disconnect();
+    window.location.reload();
   });
   }
 

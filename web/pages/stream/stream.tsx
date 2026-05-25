@@ -7,7 +7,7 @@ import VideoPlayer from '@/hmcomponents/videoplayer';
 import DataTableDemo from '@/components/shadcn-studio/data-table/data-table-11';
 import Timeline from '@/hmcomponents/timeline';
 import DataTableDemoCL from '@/components/shadcn-studio/data-table/data-table-c1';
-
+import notificationService from '@/services/NotificationService';
 import IconButtonCalendar from '@/components/shadcn-studio/button/custom/button-01';
 
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
@@ -442,7 +442,11 @@ export const Stream: React.FC = () => {
 
   const [favouriteIds, setFavouriteIds]       = useState<ReadonlySet<number>>(getFavourites());
   const [showFavouritesOnly, setShowFavouritesOnly] = useState(false);
-
+  useEffect(() => {
+  return () => {
+    notificationService.emitEvent('stream:stop');
+  };
+}, []);
   const favlist = useMemo(
     () => Array.from(favouriteIds).map(id => ({ id })),
     [favouriteIds]
@@ -638,6 +642,8 @@ export const Stream: React.FC = () => {
     goLive(selectedChannel.id);
     fetchPrograms(selectedChannel.id, today);
     setProgramDate(today);
+
+    notificationService.emitEvent('stream:start', { channelId: selectedChannel.id });
   }, [selectedChannel?.id]);
 
   useEffect(() => {

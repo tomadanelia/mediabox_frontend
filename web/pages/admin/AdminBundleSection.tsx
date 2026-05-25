@@ -60,7 +60,6 @@ interface AppModule {
   is_active: boolean;
 }
 
-// FIX: unified available-item type so id is always string and logo is optional
 interface AvailableItem {
   id: string;
   name: string;
@@ -68,7 +67,8 @@ interface AvailableItem {
 }
 type PlanReference = {
   id: string;
-  name_ka: string;
+  name_en?: string;
+  name_ka?: string;
 };
 type ConflictItem = {
   item_id: string;
@@ -186,6 +186,9 @@ const TypeBadge = ({ type }: { type: string }) => {
 /* ─────────────────────────────────────────
    BUNDLE ITEMS PANEL
 ───────────────────────────────────────── */
+/* ─────────────────────────────────────────
+   BUNDLE ITEMS PANEL
+───────────────────────────────────────── */
 function BundleItemsPanel({
   bundle,
   onItemsChanged,
@@ -201,12 +204,21 @@ function BundleItemsPanel({
   const [modules, setModules]     = useState<AppModule[]>([]);
   const [resourcesLoaded, setResourcesLoaded] = useState(false);
 
+  // Add modal state
   const [addOpen, setAddOpen]         = useState(false);
   const [addSearch, setAddSearch]     = useState("");
   const [selectedIds, setSelectedIds] = useState<Array<{ item_id: string; item_type: 1 | 2 | 3 }>>([]);
   const [adding, setAdding]           = useState(false);
   const [removing, setRemoving]       = useState<string | null>(null);
+  const [addError, setAddError]       = useState<{ message: string; plans?: PlanReference[] } | null>(null);
 
+  // Category filter (only for TV bundles)
+  const [categories, setCategories]     = useState<{ id: string; name_en: string; name_ka: string }[]>([]);
+  const [catsLoading, setCatsLoading]   = useState(false);
+  const [activeCatId, setActiveCatId]   = useState<string>("");
+  const [sortAlpha, setSortAlpha]       = useState(false);
+  // Add this state alongside the other panel states
+  const [panelError, setPanelError] = useState<string | null>(null);
   const typeForBundle: 1 | 2 | 3 = bundle.type === "tv" ? 1 : bundle.type === "radio" ? 2 : 3;
 
   const loadItems = async () => {
@@ -219,6 +231,7 @@ function BundleItemsPanel({
         radio_channels: Array.isArray(raw?.radio_channels) ? raw.radio_channels : [],
         modules:        Array.isArray(raw?.modules)        ? raw.modules        : [],
       });
+
     } catch {
       setItemsData({ channels: [], radio_channels: [], modules: [] });
     } finally { setLoading(false); }
@@ -241,6 +254,16 @@ function BundleItemsPanel({
     } catch { /**/ }
   };
 
+  const fetchCategories = async () => {
+    if (categories.length > 0) return;
+    setCatsLoading(true);
+    try {
+      const res = await api.get("/api/channels/categories");
+      setCategories(res.data);
+    } catch (e) { console.error(e); }
+    finally { setCatsLoading(false); }
+  };
+
   useEffect(() => { loadItems(); }, [bundle.id]);
 
   const removeItem = async (itemId: string, itemType: 1 | 2 | 3) => {
@@ -255,59 +278,74 @@ function BundleItemsPanel({
     } catch { /**/ }
     finally { setRemoving(null); }
   };
-/* ─────────────────────────────────────────
-   BUNDLE ITEMS PANEL  (addItems function only)
-───────────────────────────────────────── */
+  
 
-// Replace the existing `addItems` and related state inside BundleItemsPanel:
-
-const [addError, setAddError] = useState<{
-  message: string;
-  plans?: PlanReference[];
-} | null>(null);
-
-const addItems = async () => {
-  if (!selectedIds.length) return;
+  const addItems = async (): Promise<boolean> => {
+  if (!selectedIds.length) return false;
   setAdding(true);
   setAddError(null);
+  
+  let hasError = false;
 
   for (const { item_id, item_type } of selectedIds) {
     try {
       await api.post(`/api/admin/bundles/${bundle.id}/items`, { item_id, item_type });
     } catch (e: any) {
+      hasError = true;
       const data = e.response?.data as AddItemResponse | undefined;
-
-      if (
-        e.response?.status === 409 &&
-        data &&
-        "error_code" in data &&
-        (data.error_code === "ITEM_IN_FREE_PLAN" || data.error_code === "ITEM_IN_PAID_PLAN")
-      ) {
-        const planNames = data.plans.map(p => p.name_ka).join(", ");
-        const reason =
-          data.error_code === "ITEM_IN_FREE_PLAN"
-            ? `უფასო პაკეტშია (${planNames})`
-            : `ფასიან პაკეტშია (${planNames})`;
-
-        setAddError({ message: `ელემენტი "${item_id}" ვერ დაემატა — ${reason}` });
-        break;
+      
+      let reason = "მოხდა გაურკვეველი შეცდომა";
+      
+      if (data && 'error_code' in data) {
+        // Updated fallback: ka -> en -> id
+        const planNames = data.plans
+          ?.map(p => p.name_ka || p.name_en || "უცნობი პაკეტი")
+          .join(", ");
+        
+        if (data.error_code === "ITEM_IN_FREE_PLAN") {
+          reason = `ეს ელემენტი უკვე არის უფასო პაკეტში: ${planNames}`;
+        } else if (data.error_code === "ITEM_IN_PAID_PLAN") {
+          reason = `ეს ელემენტი უკვე არის ფასიან პაკეტში: ${planNames}`;
+        }
+      } else if (e.response?.status === 404) {
+        reason = "ელემენტი ვერ მოიძებნა";
       }
-      setAddError({ message: e.response?.data?.message ?? "დამატება ვერ მოხერხდა" });
-      break;
+
+      setAddError({ message: reason });
+      break; 
     }
   }
 
   setAdding(false);
-  await loadItems();
-  onItemsChanged();
+
+  if (!hasError) {
+    await loadItems();
+    onItemsChanged();
+    return true; 
+  }
+
+  return false;
 };
 
-  const openAdd = () => {
+
+
+  const openAddModal = () => {
     loadResources();
-    setAddError(null); 
-    setAddOpen(o => !o);
+    if (bundle.type === "tv") fetchCategories();
+    setAddError(null);
+    setAddSearch("");
+    setActiveCatId("");
+    setSortAlpha(false);
+    setSelectedIds([]);
+    setAddOpen(true);
   };
 
+  const closeAddModal = () => {
+    setAddOpen(false);
+    setSelectedIds([]);
+    setAddError(null);
+  };
+  
   const existingIds = new Set([
     ...itemsData.channels.map(c => c.id),
     ...itemsData.radio_channels.map(r => r.id),
@@ -316,11 +354,11 @@ const addItems = async () => {
 
   const totalItems = itemsData.channels.length + itemsData.radio_channels.length + itemsData.modules.length;
 
-  // FIX: build availableList as AvailableItem[] so id is always string and logo is always present (possibly undefined)
-  const availableList: AvailableItem[] = bundle.type === "tv"
+  // Available list with category info preserved for TV
+  const availableList: (AvailableItem & { category_id?: string })[] = bundle.type === "tv"
     ? channels
         .filter(c => !existingIds.has(c.uuid))
-        .map(c => ({ id: c.uuid, name: c.name, logo: c.logo }))
+        .map(c => ({ id: c.uuid, name: c.name, logo: c.logo, category_id: (c as any).category_id }))
     : bundle.type === "radio"
     ? radios
         .filter(r => !existingIds.has(String(r.id)))
@@ -329,11 +367,15 @@ const addItems = async () => {
         .filter(m => !existingIds.has(String(m.id)))
         .map(m => ({ id: String(m.id), name: m.name, logo: undefined }));
 
-  const filteredAvailable = availableList.filter(i =>
-    (i.name ?? "").toLowerCase().includes(addSearch.toLowerCase())
-  );
+  // Apply category filter + search + sort
+  const filteredAvailable = availableList
+    .filter(i => {
+      const matchesSearch = (i.name ?? "").toLowerCase().includes(addSearch.toLowerCase());
+      const matchesCat = !activeCatId || (i as any).category_id === activeCatId;
+      return matchesSearch && matchesCat;
+    })
+    .sort((a, b) => sortAlpha ? a.name.localeCompare(b.name, "ka") : 0);
 
-  // FIX: id is now always string
   const toggleSelect = (id: string) => {
     setSelectedIds(prev =>
       prev.some(x => x.item_id === id)
@@ -342,9 +384,17 @@ const addItems = async () => {
     );
   };
 
+  // Sort chips by number, nulls last
+  const sortedByNumber = (items: BundleItem[]) =>
+    [...items].sort((a, b) => {
+      if (a.number == null && b.number == null) return 0;
+      if (a.number == null) return 1;
+      if (b.number == null) return -1;
+      return a.number - b.number;
+    });
+
   const renderChip = (item: BundleItem, itemType: 1 | 2 | 3) => {
     const key = `${itemType}-${item.id}`;
-    // FIX: both icon_url and logo are now on BundleItem
     const img = item.icon_url ?? item.logo;
     return (
       <div
@@ -394,7 +444,7 @@ const addItems = async () => {
                   არხები · {itemsData.channels.length}
                 </p>
                 <div className="flex flex-wrap gap-2">
-                  {itemsData.channels.map(item => renderChip(item, 1))}
+                  {sortedByNumber(itemsData.channels).map(item => renderChip(item, 1))}
                 </div>
               </div>
             )}
@@ -404,7 +454,7 @@ const addItems = async () => {
                   რადიო · {itemsData.radio_channels.length}
                 </p>
                 <div className="flex flex-wrap gap-2">
-                  {itemsData.radio_channels.map(item => renderChip(item, 2))}
+                  {sortedByNumber(itemsData.radio_channels).map(item => renderChip(item, 2))}
                 </div>
               </div>
             )}
@@ -414,118 +464,248 @@ const addItems = async () => {
                   მოდულები · {itemsData.modules.length}
                 </p>
                 <div className="flex flex-wrap gap-2">
-                  {itemsData.modules.map(item => renderChip(item, 3))}
+                  {sortedByNumber(itemsData.modules).map(item => renderChip(item, 3))}
                 </div>
               </div>
             )}
           </div>
         )}
       </div>
-
-      {/* Add items section */}
+      {/* Panel-level error (shown after modal closes) */}
+{panelError && (
+  <div className="mx-0 mb-2 flex items-start gap-2 text-xs text-red-300 bg-red-500/10 border border-red-500/20 px-3 py-2 rounded-lg">
+    <span className="shrink-0 mt-px">⚠</span>
+    <span className="flex-1">{panelError}</span>
+    <button onClick={() => setPanelError(null)} className="cursor-pointer text-red-400 hover:text-red-200 transition-colors">✕</button>
+  </div>
+)}
+      {/* Add button */}
       <div className="px-4 pb-4">
         <button
-          onClick={openAdd}
-          className={`cursor-pointer flex items-center gap-1.5 text-xs font-medium transition-colors px-3 py-1.5 rounded-lg border ${
-            addOpen
-              ? "bg-violet-500/15 text-violet-300 border-violet-500/30"
-              : "text-zinc-400 border-zinc-800 hover:border-zinc-600 hover:text-zinc-200"
-          }`}
+          onClick={openAddModal}
+          className="cursor-pointer flex items-center gap-1.5 text-xs font-medium transition-colors px-3 py-1.5 rounded-lg border text-zinc-400 border-zinc-800 hover:border-zinc-600 hover:text-zinc-200"
         >
           <IconPlus />
           <span>ელემენტის დამატება</span>
-          <IconChevron open={addOpen} />
         </button>
+      </div>
 
-        {addOpen && (
-          <div className="mt-3 space-y-2">
-            <input
-              type="text"
-              placeholder="ძიება…"
-              value={addSearch}
-              onChange={e => setAddSearch(e.target.value)}
-              autoFocus
-              className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-1.5 text-xs focus:outline-none focus:border-zinc-500 transition-colors"
-            />
-
-            <div className="max-h-52 overflow-y-auto rounded-xl bg-zinc-900 border border-zinc-800 p-1.5">
-              {!resourcesLoaded ? (
-                <div className="flex items-center gap-2 text-zinc-500 text-xs p-3"><Spinner />Loading…</div>
-              ) : filteredAvailable.length === 0 ? (
-                <p className="text-zinc-600 text-xs p-3 text-center">ვერ მოიძებნა</p>
-              ) : filteredAvailable.map((item: AvailableItem) => {
-                const isSelected = selectedIds.some(x => x.item_id === item.id);
-                return (
-                  <div
-                    key={item.id}
-                    onClick={() => toggleSelect(item.id)}  // FIX: item.id is now always string
-                    className={`flex items-center gap-2.5 px-2.5 py-2 rounded-lg cursor-pointer transition-colors select-none ${
-                      isSelected
-                        ? "bg-violet-500/15 border border-violet-500/30"
-                        : "hover:bg-zinc-800 border border-transparent"
-                    }`}
-                  >
-                    <div className={`w-3.5 h-3.5 rounded border-2 flex items-center justify-center shrink-0 transition-colors ${
-                      isSelected ? "border-violet-500 bg-violet-500" : "border-zinc-600"
-                    }`}>
-                      {isSelected && (
-                        <svg width="8" height="8" viewBox="0 0 10 10" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                          <path d="M1.5 5l2.5 2.5 4.5-4.5"/>
-                        </svg>
-                      )}
-                    </div>
-                    {/* FIX: item.logo is now typed on AvailableItem, no icon_url fallback needed */}
-                    {item.logo && (
-                      <img src={item.logo} className="w-5 h-5 object-contain shrink-0 rounded" onError={e => (e.currentTarget.style.display = "none")} />
-                    )}
-                    <span className="text-zinc-300 text-xs truncate">{item.name}</span>
-                  </div>
-                );
-              })}
+      {/* ── ADD MODAL ── */}
+      {addOpen && (
+        <div
+          className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4"
+          onClick={e => { if (e.target === e.currentTarget) closeAddModal(); }}
+        >
+          <div className="bg-zinc-900 border border-zinc-800 rounded-2xl w-full max-w-2xl shadow-2xl flex flex-col overflow-hidden"
+            style={{ maxHeight: "85vh" }}
+          >
+            {/* Modal header */}
+            <div className="px-5 py-4 border-b border-zinc-800 flex items-center justify-between shrink-0">
+              <div>
+                <h3 className="font-semibold text-zinc-100 text-sm">ელემენტის დამატება</h3>
+                <p className="text-[0.65rem] text-zinc-500 mt-0.5">
+                  <span className="font-medium text-zinc-400">{bundle.name}</span> · {bundle.type.toUpperCase()}
+                </p>
+              </div>
+              <button
+                onClick={closeAddModal}
+                className="cursor-pointer w-8 h-8 flex items-center justify-center rounded-lg text-zinc-500 hover:text-zinc-200 hover:bg-zinc-800 transition-colors"
+              >✕</button>
             </div>
-            {addError && (
-  <div className="flex items-start gap-2 text-xs text-red-300 bg-red-500/10 border border-red-500/20 px-3 py-2 rounded-lg">
-    <span className="shrink-0 mt-px">⚠</span>
-    <span>{addError.message}</span>
-    <button
-      onClick={() => setAddError(null)}
-      className="cursor-pointer ml-auto text-red-400 hover:text-red-200 transition-colors"
-    >
-      ✕
-    </button>
-  </div>
-)}
-            <div className="flex items-center justify-between">
-              {selectedIds.length > 0 ? (
-                <span className="text-[0.65rem] text-zinc-500">{selectedIds.length} მონიშნული</span>
-              ) : (
-                <span />
+
+            {/* Search + sort toolbar */}
+            <div className="px-4 pt-3 pb-2 space-y-2 shrink-0">
+              <div className="flex items-center gap-2">
+                <div className="relative flex-1">
+                  <svg className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-600" width="12" height="12" viewBox="0 0 16 16" fill="none">
+                    <circle cx="6.5" cy="6.5" r="5" stroke="currentColor" strokeWidth="1.6"/>
+                    <path d="M10.5 10.5l3.5 3.5" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round"/>
+                  </svg>
+                  <input
+                    type="text"
+                    placeholder="ძიება…"
+                    value={addSearch}
+                    onChange={e => setAddSearch(e.target.value)}
+                    autoFocus
+                    className="w-full bg-zinc-800 border border-zinc-700 rounded-xl pl-8 pr-3 py-2 text-xs focus:outline-none focus:border-zinc-500 transition-colors"
+                  />
+                </div>
+                {/* Alpha sort toggle */}
+                <button
+                  onClick={() => setSortAlpha(v => !v)}
+                  title="ანბანური დალაგება"
+                  className={`cursor-pointer flex items-center gap-1.5 px-3 py-2 rounded-xl border text-xs font-medium transition-all shrink-0 ${
+                    sortAlpha
+                      ? "bg-violet-500/15 text-violet-300 border-violet-500/30"
+                      : "text-zinc-500 border-zinc-700 hover:border-zinc-500 hover:text-zinc-300"
+                  }`}
+                >
+                  <svg width="11" height="11" viewBox="0 0 12 14" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"
+                    className={sortAlpha ? "text-violet-400" : "text-zinc-600"}>
+                    <path d="M2 5l4-4 4 4M10 9l-4 4-4-4"/>
+                  </svg>
+                  A–Z
+                </button>
+              </div>
+
+              {/* Category pills — TV only */}
+              {bundle.type === "tv" && (
+                <div className="flex items-center gap-1.5 flex-wrap">
+                  {catsLoading ? (
+                    <div className="flex items-center gap-1.5 text-zinc-600 text-[0.65rem]"><Spinner />კატეგორიები…</div>
+                  ) : (
+                    <>
+                      <button
+                        onClick={() => setActiveCatId("")}
+                        className={`cursor-pointer px-2.5 py-1 rounded-lg border text-[0.65rem] font-medium transition-all ${
+                          !activeCatId
+                            ? "bg-zinc-200 text-zinc-900 border-zinc-200"
+                            : "text-zinc-500 border-zinc-700 hover:border-zinc-500 hover:text-zinc-300"
+                        }`}
+                      >
+                        ყველა
+                      </button>
+                      {categories.map(cat => (
+                        <button
+                          key={cat.id}
+                          onClick={() => setActiveCatId(prev => prev === cat.id ? "" : cat.id)}
+                          className={`cursor-pointer px-2.5 py-1 rounded-lg border text-[0.65rem] font-medium transition-all ${
+                            activeCatId === cat.id
+                              ? "bg-violet-600 text-white border-violet-500"
+                              : "text-zinc-500 border-zinc-700 hover:border-zinc-500 hover:text-zinc-300"
+                          }`}
+                        >
+                          {cat.name_en}
+                        </button>
+                      ))}
+                    </>
+                  )}
+                </div>
               )}
-              <div className="flex gap-2">
+            </div>
+
+            {/* Results count */}
+            <div className="px-5 pb-1 shrink-0">
+              <p className="text-[0.6rem] text-zinc-600">
+                {filteredAvailable.length} ელემენტი
+                {selectedIds.length > 0 && (
+                  <span className="ml-2 text-violet-400 font-medium">· {selectedIds.length} მონიშნული</span>
+                )}
+              </p>
+            </div>
+
+            {/* List */}
+            <div className="flex-1 overflow-y-auto px-3 pb-3 min-h-0">
+              {!resourcesLoaded ? (
+                <div className="flex items-center justify-center gap-2 text-zinc-500 text-xs py-12">
+                  <Spinner />Loading…
+                </div>
+              ) : filteredAvailable.length === 0 ? (
+                <div className="flex items-center justify-center py-12 text-zinc-600 text-xs">
+                  ვერ მოიძებნა
+                </div>
+              ) : (
+                <div className="grid grid-cols-2 gap-1.5">
+                  {filteredAvailable.map(item => {
+                    const isSelected = selectedIds.some(x => x.item_id === item.id);
+                    return (
+                      <div
+                        key={item.id}
+                        onClick={() => toggleSelect(item.id)}
+                        className={`flex items-center gap-2.5 px-3 py-2.5 rounded-xl cursor-pointer transition-all select-none border ${
+                          isSelected
+                            ? "bg-violet-500/15 border-violet-500/30 ring-1 ring-violet-500/20"
+                            : "bg-zinc-800/40 border-zinc-700/50 hover:bg-zinc-800 hover:border-zinc-600"
+                        }`}
+                      >
+                        <div className={`w-3.5 h-3.5 rounded border-2 flex items-center justify-center shrink-0 transition-colors ${
+                          isSelected ? "border-violet-500 bg-violet-500" : "border-zinc-600"
+                        }`}>
+                          {isSelected && (
+                            <svg width="8" height="8" viewBox="0 0 10 10" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                              <path d="M1.5 5l2.5 2.5 4.5-4.5"/>
+                            </svg>
+                          )}
+                        </div>
+                        {item.logo ? (
+                          <img src={item.logo} className="w-6 h-6 object-contain shrink-0 rounded bg-zinc-800"
+                            onError={e => (e.currentTarget.style.display = "none")} />
+                        ) : (
+                          <span className="text-zinc-600 text-sm shrink-0">
+                            {bundle.type === "tv" ? "📺" : bundle.type === "radio" ? "📻" : "⚙️"}
+                          </span>
+                        )}
+                        <span className={`text-xs truncate ${isSelected ? "text-violet-200" : "text-zinc-300"}`}>
+                          {item.name}
+                        </span>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+
+            {/* Error */}
+            {addError && (
+              <div className="mx-4 mb-2 flex items-start gap-2 text-xs text-red-300 bg-red-500/10 border border-red-500/20 px-3 py-2 rounded-lg shrink-0">
+                <span className="shrink-0 mt-px">⚠</span>
+                <span className="flex-1">{addError.message}</span>
+                <button onClick={() => setAddError(null)} className="cursor-pointer text-red-400 hover:text-red-200 transition-colors">✕</button>
+              </div>
+            )}
+
+            {/* Footer */}
+            <div className="px-4 py-3 border-t border-zinc-800 flex items-center justify-between shrink-0">
+              <div className="flex items-center gap-2">
                 {selectedIds.length > 0 && (
                   <button
                     onClick={() => setSelectedIds([])}
-                    className="cursor-pointer text-xs text-zinc-600 hover:text-zinc-400 transition-colors px-3 py-1.5"
+                    className="cursor-pointer text-xs text-zinc-500 hover:text-zinc-300 transition-colors px-2 py-1.5 rounded-lg hover:bg-zinc-800"
                   >
                     გასუფთავება
                   </button>
                 )}
+              </div>
+              <div className="flex items-center gap-2">
                 <button
-                  onClick={addItems}
-                  disabled={adding || selectedIds.length === 0}
-                  className="cursor-pointer flex items-center gap-1.5 bg-violet-600 hover:bg-violet-500 disabled:opacity-40 disabled:cursor-not-allowed text-white text-xs font-medium px-4 py-1.5 rounded-lg transition-colors"
+                  onClick={closeAddModal}
+                  className="cursor-pointer px-4 py-2 rounded-xl text-xs bg-zinc-800 hover:bg-zinc-700 text-zinc-300 transition-colors"
                 >
-                  {adding ? <><Spinner />დამატება…</> : <><IconCheck />{selectedIds.length > 0 ? `${selectedIds.length} ელემენტის დამატება` : "ელემენტის დამატება"}</>}
+                  გაუქმება
                 </button>
+                <button
+  onClick={async () => {
+    const success = await addItems();
+    if (success) {
+      closeAddModal();
+    }
+  }}
+  disabled={adding || selectedIds.length === 0}
+  className={`
+    flex items-center justify-center gap-2 px-6 py-2 rounded-xl text-xs font-semibold transition-all
+    ${selectedIds.length === 0 || adding 
+      ? "bg-zinc-800 text-zinc-500 cursor-not-allowed" 
+      : "bg-violet-600 text-white hover:bg-violet-500 active:scale-95 cursor-pointer shadow-lg shadow-violet-500/20"
+    }
+  `}
+>
+  {adding ? (
+    <>
+      <Spinner />
+      <span>ემატება...</span>
+    </>
+  ) : (
+    "დამატება"
+  )}
+</button>
               </div>
             </div>
           </div>
-        )}
-      </div>
+        </div>
+      )}
     </div>
   );
 }
-
 /* ─────────────────────────────────────────
    PLAN ATTACH PANEL
 ───────────────────────────────────────── */

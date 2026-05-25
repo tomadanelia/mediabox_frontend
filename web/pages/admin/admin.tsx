@@ -15,6 +15,7 @@ import AdminNotificationsSection from "./AdminNotificationSection";
 import { useNavigate } from "react-router-dom";
 import HomepageBgSettings from "./HomepageBgSettings";
 import TokenTtlSettings from "./TokenTtlSettings";
+import AdminSupportSection from "./AdminSupportSection";
 type AdminSection = "Overview" | "Users" | "Category-Channels" | "Categories" | "Plans" | "Plan-Channels"|"Bundles" |"Channels"|"Radios"|"Discounts"|"Notifications"| "Support" | "Settings";
 const adminSectionLabels: Record<AdminSection, string> = {
   "Overview": "მთავარი",
@@ -828,7 +829,7 @@ useEffect(() => {
 
   if (isLoading) {
     return (
-      <div className="flex h-screen items-center justify-center bg-zinc-950">
+      <div className="flex h-full items-center justify-center bg-zinc-950">
         <div className="flex items-center gap-2 text-zinc-500 text-sm">
           <IconSpinner />
           <span>Loading…</span>
@@ -842,13 +843,13 @@ useEffect(() => {
   }
 
   return (
-    <div className="flex h-screen bg-zinc-950 text-zinc-300 text-sm font-sans overflow-hidden">
+    <div className="flex h-full bg-zinc-950 text-zinc-300 text-sm font-sans overflow-hidden">
 
       {/* SIDEBAR */}
       <aside className="hidden lg:flex flex-col w-56 bg-zinc-900 border-r border-zinc-800 shrink-0">
         <div className="p-5 border-b border-zinc-800 font-bold text-zinc-100 tracking-tight">ადმინ პანელი</div>
         <nav className="p-3 flex flex-col gap-1">
-      {(["Overview",  "Channels","Categories","Category-Channels", "Plans", "Bundles","Radios", "Discounts","Notifications", "Users", "Settings"] as AdminSection[]).map(s => (
+      {(["Overview",  "Channels","Categories","Category-Channels", "Plans", "Bundles","Radios", "Discounts","Notifications", "Users", "Support", "Settings"] as AdminSection[]).map(s => (
         <button
           key={s}
           onClick={() => setSection(s)}
@@ -1155,6 +1156,8 @@ useEffect(() => {
           {section === "Discounts" && <AdminDiscountsSection plans={plans} />}
           {/* Notifications */}
           {section === "Notifications" && <AdminNotificationsSection />}
+          
+          {section === "Support" && <AdminSupportSection />}
           {/* ══════════════════════════════════════════
               USERS SECTION
           ══════════════════════════════════════════ */}

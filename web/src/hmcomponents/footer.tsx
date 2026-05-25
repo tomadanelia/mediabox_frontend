@@ -1,42 +1,4 @@
 const Footer = () => {
-  const columns = [
-    {
-      title: "About",
-      links: [
-        { label: "Our Story", href: "/about" },
-        { label: "შეხვედრა ჩვენთან", href: "/meet-us" },
-        { label: "კარიერა", href: "/careers" },
-        { label: "Press", href: "/press" },
-      ],
-    },
-    {
-      title: "Channels",
-      links: [
-        { label: "პირდაპირი ეთერი", href: "/channels/live" },
-        { label: "არხების გიდი", href: "/channels/guide" },
-        { label: "სპორტი", href: "/channels/sports" },
-        { label: "ახალი ამბები", href: "/channels/news" },
-      ],
-    },
-    {
-      title: "Radio",
-      links: [
-        { label: "სტრიმი", href: "/radio" },
-        { label: "სადგური", href: "/radio/stations" },
-        { label: "პოდკასტები", href: "/radio/podcasts" },
-        { label: "Top Charts", href: "/radio/charts" },
-      ],
-    },
-    {
-      title: "Support",
-      links: [
-        { label: "დახმარების ცენტრი", href: "/support" },
-        { label: "კონტაქტი", href: "/support/contact" },
-        { label: "ხშირად დასმული კითხვები", href: "/support/faq" },
-        { label: "ხარვეზი", href: "/support/report" },
-      ],
-    },
-  ];
 
   const socials = [
     {
@@ -77,93 +39,63 @@ const Footer = () => {
     },
   ];
 
-  const bottomLinks = [
+  const navLinks = [
     { label: "Privacy Policy", href: "/privacy" },
     { label: "Our History", href: "/history" },
     { label: "What We Do", href: "/about#what-we-do" },
+    { label: "Support", href: "/support" }, // 👈 add here
   ];
 
   return (
     <footer className="bg-background border-t border-gray-100 dark:border-white/5 text-gray-600 dark:text-gray-400 font-sans transition-colors duration-300 w-full overflow-x-hidden">
       <div className="max-w-7xl mx-auto px-4 sm:px-8 py-10">
-        <div className="grid grid-cols-12 gap-8">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-start">
 
-          {/* ── Brand + Nav (left 8 cols) ── */}
-          <div className="col-span-12 lg:col-span-8 grid grid-cols-12 gap-8">
-
-            {/* Brand */}
-            <div className="col-span-12 sm:col-span-4 flex flex-col gap-4">
-              <div className="flex items-center gap-2.5">
-                <span className="text-base font-bold text-gray-900 dark:text-white leading-none">
-                  Media<span className="text-red-500">Box</span>
-                </span>
-              </div>
-
-              <p className="text-xs text-gray-400 dark:text-gray-500 leading-relaxed">
-                Live TV channels & streaming radio — anytime, anywhere.
-              </p>
-
-              {/* Live badge */}
-              <div className="inline-flex items-center gap-1.5 bg-red-50 dark:bg-red-500/10 border border-red-100 dark:border-red-500/20 rounded-full px-2.5 py-1 w-fit">
-                <span className="relative flex h-1.5 w-1.5">
-                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75" />
-                  <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-red-500" />
-                </span>
-                <span className="text-[10px] text-red-500 dark:text-red-400 font-medium">Live Now</span>
-              </div>
-
-              {/* Socials */}
-              <div className="flex items-center gap-1.5">
-                {socials.map((s) => (
-                  <a
-                    key={s.label}
-                    href={s.href}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    aria-label={s.label}
-                    className="w-7 h-7 flex items-center justify-center rounded-full border border-gray-200 dark:border-white/10 bg-white dark:bg-white/5 text-gray-400 dark:text-gray-500 hover:bg-red-500 hover:border-red-500 hover:text-white dark:hover:bg-red-500 dark:hover:border-red-500 dark:hover:text-white transition-all duration-200"
-                  >
-                    {s.icon}
-                  </a>
-                ))}
-              </div>
+          {/* ── Left: Brand ── */}
+          <div className="flex flex-col gap-4">
+            <div className="flex items-center gap-2.5">
+              <span className="text-base font-bold text-gray-900 dark:text-white leading-none">
+                Media<span className="text-red-500">Box</span>
+              </span>
             </div>
 
-            {/* Nav columns */}
-            <div className="col-span-12 sm:col-span-8 grid grid-cols-4 gap-4">
-              {columns.map((col) => (
-                <div key={col.title}>
-                  <h4 className="text-[10px] font-bold text-gray-900 dark:text-gray-200 uppercase tracking-widest mb-3 flex items-center gap-1.5">
-                    <span className="w-1.5 h-1.5 rounded-full bg-red-500 flex-shrink-0" />
-                    {col.title}
-                  </h4>
-                  <ul className="space-y-2">
-                    {col.links.map(({ label, href }) => (
-                      <li key={label}>
-                        <a
-                          href={href}
-                          className="text-xs text-gray-400 dark:text-gray-500 hover:text-red-500 dark:hover:text-red-400 transition-colors duration-150"
-                        >
-                          {label}
-                        </a>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
+            <p className="text-xs text-gray-400 dark:text-gray-500 leading-relaxed">
+              Live TV channels & streaming radio — anytime, anywhere.
+            </p>
+
+            <div className="inline-flex items-center gap-1.5 bg-red-50 dark:bg-red-500/10 border border-red-100 dark:border-red-500/20 rounded-full px-2.5 py-1 w-fit">
+              <span className="relative flex h-1.5 w-1.5">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75" />
+                <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-red-500" />
+              </span>
+              <span className="text-[10px] text-red-500 dark:text-red-400 font-medium">Live Now</span>
+            </div>
+
+            <div className="flex items-center gap-1.5">
+              {socials.map((s) => (
+                <a
+                  key={s.label}
+                  href={s.href}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  aria-label={s.label}
+                  className="w-7 h-7 flex items-center justify-center rounded-full border border-gray-200 dark:border-white/10 bg-white dark:bg-white/5 text-gray-400 dark:text-gray-500 hover:bg-red-500 hover:border-red-500 hover:text-white dark:hover:bg-red-500 dark:hover:border-red-500 dark:hover:text-white transition-all duration-200"
+                >
+                  {s.icon}
+                </a>
               ))}
             </div>
-
           </div>
 
-          {/* ── Contact + Map (right 4 cols) ── */}
-          <div className="hidden lg:flex lg:col-span-4 flex-col gap-4">
-            <h4 className="text-[10px] font-bold text-gray-900 dark:text-gray-200 uppercase tracking-widest flex items-center gap-1.5">
-              <span className="w-1.5 h-1.5 rounded-full bg-red-500 flex-shrink-0" />
-              Contact
-            </h4>
+          {/* ── Right: Contact + Map side by side ── */}
+          <div className="flex flex-row gap-4 items-start">
 
             {/* Contact info */}
-            <div className="bg-gray-50 dark:bg-white/5 rounded-2xl border border-gray-100 dark:border-white/5 p-3.5 flex flex-col gap-2.5 text-xs text-gray-500 dark:text-gray-400">
+            <div className="flex flex-col gap-2.5 text-xs text-gray-500 dark:text-gray-400 flex-1">
+              <h4 className="text-[10px] font-bold text-gray-900 dark:text-gray-200 uppercase tracking-widest flex items-center gap-1.5">
+                <span className="w-1.5 h-1.5 rounded-full bg-red-500 flex-shrink-0" />
+                Contact
+              </h4>
               {[
                 {
                   icon: (
@@ -189,6 +121,8 @@ const Footer = () => {
                   text: "123 Broadcast Ave, Media City",
                   href: "https://maps.google.com/?q=42.259697,42.672130",
                 },
+                  { label: "Support", href: "/support" },
+
               ].map(({ icon, text, href }) => (
                 <a
                   key={text}
@@ -208,10 +142,10 @@ const Footer = () => {
             </div>
 
             {/* Map */}
-            <div className="relative rounded-2xl overflow-hidden border border-gray-100 dark:border-white/5" style={{ height: "120px" }}>
+            <div className="relative rounded-2xl overflow-hidden border border-gray-100 dark:border-white/5 flex-shrink-0" style={{ width: "160px", height: "120px" }}>
               <iframe
                 title="Office Location"
-                width="100%"
+                width="160"
                 height="120"
                 style={{ border: 0, display: "block", filter: "grayscale(80%) contrast(1.05) brightness(1.05)" }}
                 loading="lazy"
@@ -219,15 +153,13 @@ const Footer = () => {
                 referrerPolicy="no-referrer-when-downgrade"
                 src="https://maps.google.com/maps?q=42.259697,42.672130&z=16&output=embed"
               />
-              
-              {/* Our Office pill */}
               <div className="absolute top-2 left-2 bg-white/90 dark:bg-[#21262c]/90 backdrop-blur-sm text-gray-600 dark:text-gray-300 text-[9px] font-semibold px-2 py-0.5 rounded-full border border-gray-100 dark:border-white/10 flex items-center gap-1 z-10">
                 <span className="w-1 h-1 rounded-full bg-red-500 inline-block" />
                 Our Office
               </div>
             </div>
-          </div>
 
+          </div>
         </div>
       </div>
 
@@ -235,7 +167,7 @@ const Footer = () => {
       <div className="border-t border-gray-100 dark:border-white/5">
         <div className="max-w-7xl mx-auto px-4 sm:px-8 py-3 flex flex-col sm:flex-row items-center justify-between gap-2">
           <div className="flex items-center text-xs text-gray-400 dark:text-gray-500">
-            {bottomLinks.map(({ label, href }, i) => (
+            {navLinks.map(({ label, href }, i) => (
               <span key={label} className="flex items-center">
                 <a
                   href={href}
@@ -243,7 +175,7 @@ const Footer = () => {
                 >
                   {label}
                 </a>
-                {i < bottomLinks.length - 1 && <span className="text-gray-200 dark:text-white/10">·</span>}
+                {i < navLinks.length - 1 && <span className="text-gray-200 dark:text-white/10">·</span>}
               </span>
             ))}
           </div>

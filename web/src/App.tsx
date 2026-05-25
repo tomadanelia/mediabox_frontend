@@ -12,7 +12,6 @@ import AuthLog from "../pages/authmain/authlogpapa/mauthlog"
 import AuthVerify from "../pages/authmain/codeVerification"
 import AuthLoginVerify from "../pages/authmain/codeLoginVerification"
 import AdminDashboard from "../pages/admin/admin"
-import SupportPage from "../pages/support/support"
 import MeetUsPage from "../pages/meetus/meetUs"
 import type { UIStore } from "./store/ui-store"
 import useAuthStore from "./store/AuthStore"
@@ -24,7 +23,7 @@ import RadioPage from "../pages/radio/radioP"
 import api from "./lib/axios"
 import InvoicePage from "../pages/invoice/invoice"
 import NotificationsPage from "../pages/Notifications/notifications"
-
+import ReportPage from "../pages/report/reportPage"
 // ── Notifications ─────────────────────────────────────────────────────────────
 import notificationService from "./services/NotificationService"
 import { NotificationToastContainer } from "./hmcomponents/NotificationToast"
@@ -58,19 +57,31 @@ const App: React.FC = () => {
     fetchUser()
   }, [fetchUser])
 
-  useEffect(() => {
-  if (!user) return
- 
-  notificationService.connect()
-   const unsub = notificationService.subscribe(() => {
-    incrementUnread()
-  })
- 
-  return () => {
-    unsub()
-    notificationService.disconnect()
+ useEffect(() => {
+  if (!user) {
+    notificationService.disconnect();
+    return;
   }
-}, [user])
+  notificationService.connect();
+  
+  const unsub = notificationService.subscribe(() => {
+    incrementUnread();
+  });
+  
+  return () => { unsub(); }; 
+}, [user]);
+  useEffect(() => {
+    const initializeSession = async () => {
+      try {
+        await api.get("/sanctum/csrf-cookie");
+        const response = await api.get("/api/init-visitor");
+      } catch (error) {
+        console.error("Failed to initialize visitor session:", error);
+      }
+    };
+
+    initializeSession();
+  }, []);
    
   useEffect(() => {
   if (!user) {
@@ -105,9 +116,9 @@ const App: React.FC = () => {
           <Route path="/admin" element={<AdminDashboard />} />
           <Route path="/remote" element={<RemotePage />} />
           <Route path="/radio" element={<RadioPage />} />
-          <Route path="/support" element={<SupportPage />} />
           <Route path="/meetus" element={<MeetUsPage />} />
           <Route path="/notifications" element={<NotificationsPage />} />
+          <Route path="/support" element={<ReportPage />} />
           <Route path="/invoice" element={<InvoicePage/>}/>
           <Route path="/authentication">
             <Route path="login" element={<AuthLog />} />
