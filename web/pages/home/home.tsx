@@ -202,19 +202,11 @@ export default function LivePlayer() {
 const RED = "#e61c24";
 
 const s = {
-  /*
-   * scaleWrapper + root together simulate "75% browser zoom":
-   *   - scaleWrapper is always 100vw / 100vh in the browser's actual pixels
-   *   - root is scaled to 75% of that via CSS zoom (layout-friendly, no offset math needed)
-   *   - min-height: 133.33vh compensates so the root fills the viewport after zoom
-   */
   scaleWrapper: {
     width: "100%",
     overflowX: "hidden" as const,
   },
   root: {
-    // CSS zoom shrinks everything uniformly (including fonts, borders, radii)
-    // and unlike transform:scale it keeps document flow correct.
     zoom: 0.75,
     minHeight: "133.34vh",   // 100vh / 0.75
     background: "#050505",
@@ -227,7 +219,13 @@ const s = {
     position: "fixed" as const,
     inset: 0,
     zIndex: 0,
-    background: "#050505",
+    backgroundColor: "#050505",
+    backgroundImage: [
+      "linear-gradient(45deg, rgba(230,28,36,0.03) 25%, transparent 25%, transparent 75%, rgba(230,28,36,0.03) 75%, rgba(230,28,36,0.03))",
+      "linear-gradient(45deg, rgba(230,28,36,0.03) 25%, transparent 25%, transparent 75%, rgba(230,28,36,0.03) 75%, rgba(230,28,36,0.03))",
+    ].join(", "),
+    backgroundSize: "100px 100px",
+    backgroundPosition: "0 0, 50px 50px",
     overflow: "hidden",
   },
   glow: {
