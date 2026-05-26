@@ -54,11 +54,11 @@ const ROW2 = [
   { src: ch_pirveli,   alt: "1TV"            },
 ];
 
-function repeat(arr, times = 4) {
+function repeat(arr: { src: string; alt: string }[], times = 4) {
   return Array.from({ length: times }, () => arr).flat();
 }
 
-function MarqueeRow({ channels, direction }) {
+function MarqueeRow({ channels, direction }: { channels: { src: string; alt: string }[]; direction: "left" | "right" }) {
   return (
     <div style={s.marqueeTrack}>
       <div style={{
@@ -76,13 +76,13 @@ function MarqueeRow({ channels, direction }) {
 }
 
 export default function LivePlayer() {
+  const [streamUrl, setStreamUrl] = useState<string | null>(null);
+  const [error, setError]         = useState<string | null>(null);
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const hlsRef   = useRef<Hls | null>(null);
   const [playing, setPlaying]     = useState(true);
   const [progress, setProgress]   = useState(35);
-  const [streamUrl, setStreamUrl] = useState(null);
   const [loading, setLoading]     = useState(true);
-  const [error, setError]         = useState(null);
-  const videoRef = useRef(null);
-  const hlsRef   = useRef(null);
 
   useEffect(() => {
     api.get("/api/channels/22/stream")
@@ -99,12 +99,22 @@ export default function LivePlayer() {
       hls.loadSource(streamUrl);
       hls.attachMedia(videoRef.current);
       hls.on(Hls.Events.MANIFEST_PARSED, () => {
-        videoRef.current.play().catch(() => {});
+        // muted first to satisfy autoplay policy, then unmute
+        const v = videoRef.current;
+        if (!v) return;
+        v.muted = true;
+        v.play()
+          .then(() => { v.muted = false; setPlaying(true); })
+          .catch(() => {});
       });
       return () => { hls.destroy(); };
     } else if (videoRef.current.canPlayType("application/vnd.apple.mpegurl")) {
-      videoRef.current.src = streamUrl;
-      videoRef.current.play().catch(() => {});
+      const v = videoRef.current;
+      v.src = streamUrl;
+      v.muted = true;
+      v.play()
+        .then(() => { v.muted = false; setPlaying(true); })
+        .catch(() => {});
     }
   }, [streamUrl]);
 
@@ -115,82 +125,75 @@ export default function LivePlayer() {
     else          { v.pause(); setPlaying(false); }
   }
 
-  function handleProgressClick(e) {
+  function handleProgressClick(e: React.MouseEvent<HTMLDivElement>) {
     const rect = e.currentTarget.getBoundingClientRect();
     const pct = ((e.clientX - rect.left) / rect.width) * 100;
     setProgress(Math.round(Math.max(0, Math.min(100, pct))));
   }
 
   return (
-    <div style={s.root}>
+    /* ── Scale wrapper: makes the layout look like 75% browser zoom on all screens ── */
+    <div style={s.scaleWrapper}>
+      <div style={s.root}>
 
-      {/* Animated background */}
-      <div style={s.animBg} aria-hidden="true">
-        <div style={s.glow} />
-      </div>
-
-      {/* Glass player */}
-      <section style={s.playerSection}>
-        <div style={s.glassPlayer}>
-          <Link to="/tv" style={s.playerLink}>
-            <div style={s.videoContainer}>
-              {loading && (
-                <div style={s.videoPlaceholder}>
-                  <span style={s.placeholderText}>Loading stream…</span>
-                </div>
-              )}
-              {error && (
-                <div style={s.videoPlaceholder}>
-                  <span style={{ ...s.placeholderText, color: "#e61c24" }}>{error}</span>
-                </div>
-              )}
-              {!loading && !error && (
-                <video ref={videoRef} style={s.videoImg} autoPlay playsInline muted={false} />
-              )}
-              <div style={s.overlayTop}>
-                <div style={s.scoreBadge}>
-                  <span>LIVE</span>
-                  <span>0 – 1</span>
-                  <span style={{ color: "#ccc" }}>BW.</span>
-                </div>
-                <div style={s.liveIndicator}>
-                  <span style={s.liveDot} />
-                  LIVE
-                </div>
-              </div>
-              <div style={s.playerControls}>
-                <div style={s.progressBar} onClick={handleProgressClick}>
-                  <div style={{ ...s.progressFill, width: `${progress}%` }}>
-                    <div style={s.progressThumb} />
-                  </div>
-                </div>
-                <div style={s.controlButtons}>
-                  <div style={s.leftControls}>
-                    <button style={s.ctrlBtn} onClick={togglePlay} aria-label="Play/Pause">
-                      {playing ? "⏸" : "▶"}
-                    </button>
-                    <button style={s.ctrlBtn} aria-label="Rewind">↩</button>
-                    <button style={s.ctrlBtn} aria-label="Volume">🔊</button>
-                    <span style={s.timeDisplay}>0:00 / 13:35</span>
-                  </div>
-                  <div style={s.rightControls}>
-                    <button style={s.ctrlBtn} aria-label="Captions">CC</button>
-                    <button style={s.ctrlBtn} aria-label="Fullscreen">⛶</button>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </Link>
+        {/* Animated background */}
+        <div style={s.animBg} aria-hidden="true">
+          <div style={s.glow} />
         </div>
-      </section>
 
-      {/* Marquee — outside playerSection, direct child of root */}
-      <div style={s.marqueeSection} aria-hidden="true">
-        <MarqueeRow channels={ROW1} direction="left"  />
-        <MarqueeRow channels={ROW2} direction="right" />
+        {/* Glass player */}
+        <section style={s.playerSection}>
+          <div style={s.glassPlayer}>
+            <Link to="/tv" style={s.playerLink}>
+              <div style={s.videoContainer}>
+                {loading && (
+                  <div style={s.videoPlaceholder}>
+                    <span style={s.placeholderText}>Loading stream…</span>
+                  </div>
+                )}
+                {error && (
+                  <div style={s.videoPlaceholder}>
+                    <span style={{ ...s.placeholderText, color: "#e61c24" }}>{error}</span>
+                  </div>
+                )}
+                {!loading && !error && (
+                  <video ref={videoRef} style={s.videoImg} autoPlay playsInline />
+                )}
+
+                <div style={s.playerControls}>
+                  <div style={s.progressBar} onClick={handleProgressClick}>
+                    <div style={{ ...s.progressFill, width: `${progress}%` }}>
+                      <div style={s.progressThumb} />
+                    </div>
+                  </div>
+                  <div style={s.controlButtons}>
+                    <div style={s.leftControls}>
+                      <button style={s.ctrlBtn} onClick={togglePlay} aria-label="Play/Pause">
+                        {playing ? "⏸" : "▶"}
+                      </button>
+                      <button style={s.ctrlBtn} aria-label="Rewind">↩</button>
+                      <button style={s.ctrlBtn} aria-label="Volume">🔊</button>
+                      <span style={s.timeDisplay}>0:00 / 13:35</span>
+                    </div>
+                    <div style={s.rightControls}>
+                      <button style={s.ctrlBtn} aria-label="Captions">CC</button>
+                      <button style={s.ctrlBtn} aria-label="Fullscreen">⛶</button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </Link>
+          </div>
+        </section>
+
+        {/* Marquee — outside playerSection, direct child of root */}
+        <div style={s.marqueeSection} aria-hidden="true">
+          <MarqueeRow channels={ROW1} direction="left"  />
+          <MarqueeRow channels={ROW2} direction="right" />
+        </div>
+
+        <style>{css}</style>
       </div>
-
-      <style>{css}</style>
     </div>
   );
 }
@@ -199,31 +202,43 @@ export default function LivePlayer() {
 const RED = "#e61c24";
 
 const s = {
+  /*
+   * scaleWrapper + root together simulate "75% browser zoom":
+   *   - scaleWrapper is always 100vw / 100vh in the browser's actual pixels
+   *   - root is scaled to 75% of that via CSS zoom (layout-friendly, no offset math needed)
+   *   - min-height: 133.33vh compensates so the root fills the viewport after zoom
+   */
+  scaleWrapper: {
+    width: "100%",
+    overflowX: "hidden" as const,
+  },
   root: {
-    position: "relative",
-    minHeight: "100vh",
+    // CSS zoom shrinks everything uniformly (including fonts, borders, radii)
+    // and unlike transform:scale it keeps document flow correct.
+    zoom: 0.75,
+    minHeight: "133.34vh",   // 100vh / 0.75
     background: "#050505",
     color: "#fff",
-    overflowX: "hidden",
+    overflowX: "hidden" as const,
     paddingBottom: 60,
     fontFamily: "'Inter', sans-serif",
   },
   animBg: {
-    position: "fixed",
+    position: "fixed" as const,
     inset: 0,
     zIndex: 0,
     background: "#050505",
     overflow: "hidden",
   },
   glow: {
-    position: "absolute",
+    position: "absolute" as const,
     top: "-50%", left: "-50%",
     width: "200%", height: "200%",
     background: "radial-gradient(circle at center, rgba(230,28,36,0.15) 0%, transparent 40%)",
     animation: "moveGlow 15s infinite alternate ease-in-out",
   },
   playerSection: {
-    position: "relative",
+    position: "relative" as const,
     zIndex: 10,
     display: "flex",
     justifyContent: "center",
@@ -253,7 +268,7 @@ const s = {
     borderRadius: 14,
     boxShadow: "0 0 15px rgba(0,0,0,0.5)",
     overflow: "hidden",
-    position: "relative",
+    position: "relative" as const,
     width: "100%",
     aspectRatio: "16/9",
   },
@@ -267,63 +282,34 @@ const s = {
   },
   videoImg: {
     width: "100%", height: "100%",
-    objectFit: "cover",
+    objectFit: "cover" as const,
     opacity: 0.9,
     display: "block",
   },
-  overlayTop: {
-    position: "absolute",
-    top: 20, left: 20, right: 20,
-    display: "flex",
-    justifyContent: "space-between",
-    alignItems: "center",
-  },
-  scoreBadge: {
-    background: "rgba(0,0,0,0.5)",
-    backdropFilter: "blur(5px)",
-    padding: "6px 16px",
-    borderRadius: 4,
-    fontSize: 13, fontWeight: 600,
-    display: "flex", gap: 15,
-  },
-  liveIndicator: {
-    background: RED,
-    padding: "4px 12px",
-    borderRadius: 4,
-    fontSize: 12, fontWeight: 600,
-    display: "flex", alignItems: "center", gap: 6,
-  },
-  liveDot: {
-    display: "inline-block",
-    width: 6, height: 6,
-    background: "#fff",
-    borderRadius: "50%",
-    animation: "pulse 1.5s infinite",
-  },
   playerControls: {
-    position: "absolute",
+    position: "absolute" as const,
     bottom: 0, left: 0,
     width: "100%",
     padding: 20,
     background: "linear-gradient(to top, rgba(0,0,0,0.8), transparent)",
-    display: "flex", flexDirection: "column", gap: 15,
+    display: "flex", flexDirection: "column" as const, gap: 15,
   },
   progressBar: {
     width: "100%", height: 4,
     background: "rgba(255,255,255,0.2)",
     borderRadius: 2,
     cursor: "pointer",
-    position: "relative",
+    position: "relative" as const,
   },
   progressFill: {
     height: "100%",
     background: RED,
     borderRadius: 2,
-    position: "relative",
+    position: "relative" as const,
     transition: "width 0.1s",
   },
   progressThumb: {
-    position: "absolute",
+    position: "absolute" as const,
     right: -6, top: -4,
     width: 12, height: 12,
     background: "#fff",
@@ -342,11 +328,11 @@ const s = {
   },
   timeDisplay: { fontSize: 12, color: "#a0a0a0" },
   marqueeSection: {
-    position: "relative",
+    position: "relative" as const,
     zIndex: 10,
     width: "100%",
     display: "flex",
-    flexDirection: "column",
+    flexDirection: "column" as const,
     gap: 12,
     overflow: "hidden",
     maskImage: "linear-gradient(to right, transparent, black 6%, black 94%, transparent)",
@@ -375,15 +361,15 @@ const s = {
     alignItems: "center",
     justifyContent: "center",
     overflow: "hidden",
-    pointerEvents: "none",
-    userSelect: "none",
+    pointerEvents: "none" as const,
+    userSelect: "none" as const,
   },
   chImg: {
     width: "80%", height: "80%",
-    objectFit: "contain",
+    objectFit: "contain" as const,
     display: "block",
   },
-};
+} as const;
 
 const css = `
   @keyframes moveGlow {
