@@ -204,7 +204,7 @@ function ArchiveUrlRow({
           onKeyDown={e => { if (e.key === "Enter") save(); if (e.key === "Escape") cancel(); }}
           className="w-full bg-zinc-900 border border-zinc-700 rounded-md px-2 py-1 text-xs font-mono focus:outline-none focus:border-blue-500/60 transition-colors"
         />
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <div className="flex items-center gap-1">
             <span className="text-[0.6rem] text-zinc-600 shrink-0">ტიპი</span>
             <input
@@ -560,7 +560,40 @@ interface Props {
   channelsLoading: boolean;
   fetchChannels: () => Promise<void>;
 }
-
+function ChannelUrlModal({ channel, onClose }: { channel: Channel; onClose: () => void }) {
+  const backdropRef = useRef<HTMLDivElement>(null);
+  return (
+    <div
+      ref={backdropRef}
+      className="fixed inset-0 bg-black/75 z-50 flex items-center justify-center p-4"
+      onClick={e => { if (e.target === backdropRef.current) onClose(); }}
+    >
+      <div className="bg-zinc-900 border border-zinc-800 rounded-2xl w-full max-w-3xl shadow-2xl overflow-hidden flex flex-col max-h-[85vh]">
+        {/* Header */}
+        <div className="p-4 border-b border-zinc-800 flex items-center gap-3 shrink-0">
+          <div className="w-9 h-9 rounded-xl bg-zinc-800 border border-zinc-700/50 flex items-center justify-center shrink-0 overflow-hidden">
+            {channel.logo
+              ? <img src={channel.logo} className="w-6 h-6 object-contain" onError={e => (e.currentTarget.style.display = "none")} />
+              : <span className="text-base">📺</span>
+            }
+          </div>
+          <div className="flex-1 min-w-0">
+            <h3 className="font-bold text-zinc-100 leading-tight truncate">{channel.name}</h3>
+            <p className="text-[0.6rem] text-zinc-600 font-mono mt-0.5 truncate">{channel.uuid}</p>
+          </div>
+          <button
+            onClick={onClose}
+            className="cursor-pointer w-8 h-8 flex items-center justify-center rounded-lg text-zinc-500 hover:text-zinc-200 hover:bg-zinc-800 transition-colors"
+          >✕</button>
+        </div>
+        {/* Body */}
+        <div className="overflow-y-auto flex-1">
+          <ChannelUrlPanel channel={channel} />
+        </div>
+      </div>
+    </div>
+  );
+}
 export default function AdminChannelsSection({ channels, channelsLoading, fetchChannels }: Props) {
   const [search, setSearch] = useState("");
   const [editTarget, setEditTarget] = useState<Channel | null>(null);
@@ -776,7 +809,7 @@ const filtered = channels
           return (
             <div key={c.id}>
               <div
-                onClick={() => setSelected(isSelected ? null : c)}
+                onClick={() => setSelected(c)}
                 onDragOver={e => { e.preventDefault(); setDragOverId(c.uuid); }}
                 onDragLeave={e => { if (!e.currentTarget.contains(e.relatedTarget as Node)) setDragOverId(null); }}
                 onDrop={() => handleDrop(c)}
@@ -881,13 +914,6 @@ const filtered = channels
                   <IconEdit />
                 </button>
               </div>
-
-              {/* Expanded URL panel — spans full width by breaking out of grid */}
-              {isSelected && (
-                <div className="border-t border-zinc-800 bg-zinc-900/60 px-4 pb-3">
-                  <ChannelUrlPanel channel={c} />
-                </div>
-              )}
             </div>
           );
         })}
@@ -905,6 +931,12 @@ const filtered = channels
           onClose={() => setEditTarget(null)}
           onSaved={fetchChannels}
         />
+      )}
+        {selected && (
+      <ChannelUrlModal
+      channel={selected}
+      onClose={() => setSelected(null)}
+      />
       )}
       {confirm && (
         <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4">
