@@ -5,6 +5,7 @@ import useAuthStore from "../../src/store/AuthStore";
 import type { User } from "../../src/types/user";
 import EditProfileModal from "./EditModal";
 import TransactionsTab from "./transactionsTab";
+
 interface WatchedChannel {
   id: number | string;
   name?: string;
@@ -64,10 +65,18 @@ const translations = {
       accountId: "Account ID",
       noAccount: "No account linked.",
       interpayNote:
-        "To top up your balance, copy your <strong>username</strong> and visit the Interpay website. Enter the username in the recipient field and specify the desired amount.",
+        "To top up your balance, enter an amount below and you will be redirected to the secure payment page.",
       copyStep: "Copy Account Id",
       copiedStep: "Copied!",
       interpayLink: "Open Interpay ↗",
+      topupTitle: "Top Up Balance",
+      topupPlaceholder: "Amount",
+      topupPay: "Pay",
+      topupEnterAmount: "Enter an amount",
+      topupRedirecting: "Redirecting…",
+      topupErrorInvalid: "Enter a valid amount",
+      topupErrorFailed: "Could not get payment URL",
+      topupErrorGeneric: "Something went wrong. Try again.",
     },
     plans: {
       cardTitle: "Active Plans",
@@ -120,10 +129,18 @@ const translations = {
       accountId: "ანგარიშის ID",
       noAccount: "ანგარიში არ არის.",
       interpayNote:
-        "შეავსე ბალანსი საქართველოს ბანკით",
+        "შეიყვანეთ თანხა და გადამისამართდებით უსაფრთხო გადახდის გვერდზე.",
       copyStep: "ანგარიშის ნომრის კოპირება",
       copiedStep: "კოპირებულია!",
       interpayLink: "ბალანსის შევსება",
+      topupTitle: "ბალანსის შევსება",
+      topupPlaceholder: "თანხა",
+      topupPay: "გადახდა",
+      topupEnterAmount: "შეიყვანეთ თანხა",
+      topupRedirecting: "მიმდინარეობს…",
+      topupErrorInvalid: "მიუთითეთ სწორი თანხა",
+      topupErrorFailed: "გადამისამართება ვერ მოხდა",
+      topupErrorGeneric: "შეცდომა. სცადეთ თავიდან.",
     },
     plans: {
       cardTitle: "აქტიური პაკეტები",
@@ -170,7 +187,7 @@ export default function UserProfile() {
     faint: "text-muted-foreground/40",
     accent: "text-form-highlights",
     divider: "border-border",
-tabActive: "border-form-highlights text-foreground bg-form-highlight-subtle",
+    tabActive: "border-form-highlights text-foreground bg-form-highlight-subtle",
     tabInactive:
       "border-transparent text-muted-foreground hover:text-foreground",
     verifiedText: "text-emerald-500",
@@ -187,7 +204,7 @@ tabActive: "border-form-highlights text-foreground bg-form-highlight-subtle",
     expiringSoon: "text-red-400",
     expiringOk: "text-emerald-500",
     progressBg: "bg-background",
-tableRow:  "border-border hover:bg-muted/40",
+    tableRow: "border-border hover:bg-muted/40",
     logoBg: "bg-muted text-muted-foreground",
     removeBtn: "text-red-400/60 hover:text-red-400",
     rolePill: "bg-muted text-muted-foreground",
@@ -195,7 +212,7 @@ tableRow:  "border-border hover:bg-muted/40",
     spinnerColor: "border-form-highlights border-t-transparent",
     mobileTopbar: "bg-profile-sidebar-bg border-border",
     editBtn:
-  "border border-border text-muted-foreground hover:text-form-highlights hover:border-form-highlights bg-transparent",
+      "border border-border text-muted-foreground hover:text-form-highlights hover:border-form-highlights bg-transparent",
   };
 
   const [tab, setTab] = useState<Tab>("Overview");
@@ -211,6 +228,12 @@ tableRow:  "border-border hover:bg-muted/40",
   const [deletingId, setDeletingId] = useState<number | string | null>(null);
   const { user: storeUser, fetchUser, isLoading: authLoading } = useAuthStore();
   const [companyName, setCompanyName] = useState<string | null>(null);
+
+  // Top-up state
+  const [topupAmount, setTopupAmount] = useState("");
+  const [topupLoading, setTopupLoading] = useState(false);
+  const [topupError, setTopupError] = useState<string | null>(null);
+
   useEffect(() => {
     if (!storeUser) fetchUser();
   }, []);
@@ -221,6 +244,7 @@ tableRow:  "border-border hover:bg-muted/40",
       setLoading(false);
     }
   }, [storeUser]);
+
   useEffect(() => {
     if (allChannels.length === 0) {
       api
@@ -234,16 +258,18 @@ tableRow:  "border-border hover:bg-muted/40",
         .catch(() => {});
     }
   }, []);
+
   useEffect(() => {
-  api
-    .get("/api/user/company")
-    .then((res) => {
-      if (res.data?.has_company && res.data?.company_name) {
-        setCompanyName(res.data.company_name);
-      }
-    })
-    .catch(() => {});
-}, []);
+    api
+      .get("/api/user/company")
+      .then((res) => {
+        if (res.data?.has_company && res.data?.company_name) {
+          setCompanyName(res.data.company_name);
+        }
+      })
+      .catch(() => {});
+  }, []);
+
   useEffect(() => {
     api
       .get("/api/plans/my")
@@ -251,11 +277,11 @@ tableRow:  "border-border hover:bg-muted/40",
       .catch(() => setActivePlans([]));
   }, []);
 
-
   useEffect(() => {
     if (tab !== "Favourites") return;
     fetchFavourites();
   }, [tab]);
+
   /* ── Fetch favourites ── */
   const fetchFavourites = useCallback(() => {
     api
@@ -293,6 +319,34 @@ tableRow:  "border-border hover:bg-muted/40",
       setCopiedUsername(true);
       setTimeout(() => setCopiedUsername(false), 2000);
     });
+  };
+
+  /* ── Top-up handler ── */
+  const handleTopup = async () => {
+    const amount = parseFloat(topupAmount);
+    if (!amount || amount < 0.01) {
+      setTopupError(tx.overview.topupErrorInvalid);
+      return;
+    }
+    setTopupLoading(true);
+    setTopupError(null);
+    try {
+      const res = await api.post("/api/interpay/init", {
+        amount,
+        success_url: "https://tv-api.telecomm1.com/payment/success",
+        failure_url: "https://tv-api.telecomm1.com/payment/failure",
+      });
+      const redirectUrl = res.data?.redirect_url;
+      if (redirectUrl) {
+        window.open(redirectUrl, "_blank", "noopener,noreferrer");
+      } else {
+        setTopupError(tx.overview.topupErrorFailed);
+      }
+    } catch {
+      setTopupError(tx.overview.topupErrorGeneric);
+    } finally {
+      setTopupLoading(false);
+    }
   };
 
   /* ── Derived ── */
@@ -400,24 +454,25 @@ tableRow:  "border-border hover:bg-muted/40",
 
           <div className="flex items-center gap-2 mt-2">
             <div className="flex flex-col gap-0.5 mt-2">
-  <p className={`text-[0.55rem] uppercase tracking-widest ${c.sub}`}>
-    {tx.overview.accountId}
-  </p>
-  <p className={`text-xs font-mono font-semibold text-foreground border-l-2 border-form-highlights pl-2`}>
-    {user?.numeric_id ?? "—"}
-  </p>
-</div>
+              <p className={`text-[0.55rem] uppercase tracking-widest ${c.sub}`}>
+                {tx.overview.accountId}
+              </p>
+              <p className={`text-xs font-mono font-semibold text-foreground border-l-2 border-form-highlights pl-2`}>
+                {user?.numeric_id ?? "—"}
+              </p>
+            </div>
           </div>
+
           {companyName && (
-  <div className="flex flex-col gap-0.5 mt-2">
-    <p className={`text-[0.55rem] uppercase tracking-widest ${c.sub}`}>
-      {language === "Ge" ? "კომპანია" : "Company"}
-    </p>
-    <p className={`text-xs font-mono font-semibold text-foreground border-l-2 border-form-highlights pl-2`}>
-      {companyName}
-    </p>
-  </div>
-)}
+            <div className="flex flex-col gap-0.5 mt-2">
+              <p className={`text-[0.55rem] uppercase tracking-widest ${c.sub}`}>
+                {language === "Ge" ? "კომპანია" : "Company"}
+              </p>
+              <p className={`text-xs font-mono font-semibold text-foreground border-l-2 border-form-highlights pl-2`}>
+                {companyName}
+              </p>
+            </div>
+          )}
 
           <p className={`text-[0.65rem] mt-3 ${c.sub}`}>
             {tx.sidebar.memberSince}:{" "}
@@ -474,7 +529,7 @@ tableRow:  "border-border hover:bg-muted/40",
         )}
 
         {/* Nav */}
-        <div className={`border-t ${c.divider}  shrink-0`}>
+        <div className={`border-t ${c.divider} shrink-0`}>
           {(["Overview", "Transactions", "Favourites"] as Tab[]).map((t) => (
             <button
               key={t}
@@ -483,7 +538,7 @@ tableRow:  "border-border hover:bg-muted/40",
                 setSidebarOpen(false);
               }}
               className={`
-                w-full flex  items-center gap-3 px-6 py-3.5 text-sm font-medium
+                w-full flex items-center gap-3 px-6 py-3.5 text-sm font-medium
                 transition-all duration-150 cursor-pointer border-l-2
                 ${tab === t ? c.tabActive : c.tabInactive}
               `}
@@ -534,7 +589,7 @@ tableRow:  "border-border hover:bg-muted/40",
             <div className="flex flex-col min-h-full">
               {/* Balance hero */}
               <div
-                className={`${c.balanceBg} px-8 py-10  lg:px-14 lg:py-14 shrink-0`}
+                className={`${c.balanceBg} px-8 py-10 lg:px-14 lg:py-14 shrink-0`}
               >
                 <p
                   className={`text-[0.65rem] uppercase tracking-[0.2em] font-semibold ${c.sub} mb-3`}
@@ -553,24 +608,100 @@ tableRow:  "border-border hover:bg-muted/40",
                   </span>
                 </div>
 
-                {/* Interpay */}
-                <div className={`mt-8 border border-form-highlights  rounded-xl ${c.interpayBg} p-5`}>
+                {/* ── Top-up widget ── */}
+                <div className={`mt-8 border border-form-highlights rounded-xl ${c.interpayBg} p-5`}>
+                  <p className={`text-xs font-semibold ${c.heading} mb-1`}>
+                    {tx.overview.topupTitle}
+                  </p>
                   <p
                     className={`text-xs leading-relaxed ${c.sub} mb-4`}
-                    dangerouslySetInnerHTML={{
-                      __html: tx.overview.interpayNote,
-                    }}
+                    dangerouslySetInnerHTML={{ __html: tx.overview.interpayNote }}
                   />
-                  <div className="flex flex-wrap gap-3">
-                    <a
-                      href="https://interpay.ge/ka"
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className={`text-xs font-semibold px-4 py-2 rounded-lg transition-all duration-200 ${c.btnInterpay}`}
-                    >
-                      {tx.overview.interpayLink}
-                    </a>
+
+                  {/* Amount input + quick presets */}
+                  <div className="flex items-stretch gap-2 flex-wrap sm:flex-nowrap">
+                    {/* Input */}
+                    <div className="relative flex-1 min-w-0">
+                      <input
+                        type="number"
+                        min="0.01"
+                        step="0.01"
+                        placeholder={tx.overview.topupPlaceholder}
+                        value={topupAmount}
+                        onChange={(e) => {
+                          setTopupAmount(e.target.value);
+                          setTopupError(null);
+                        }}
+                        onKeyDown={(e) => e.key === "Enter" && handleTopup()}
+                        className={`
+                          w-full h-10 pl-3 pr-14 rounded-lg text-sm font-mono outline-none
+                          border transition-colors duration-150
+                          ${topupError
+                            ? "border-red-400/60 focus:border-red-400"
+                            : "border-border focus:border-form-highlights"}
+                          bg-transparent ${c.heading}
+                          [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none
+                        `}
+                        disabled={topupLoading}
+                      />
+                      <span
+                        className={`absolute right-3 top-1/2 -translate-y-1/2 text-xs font-semibold pointer-events-none ${c.sub}`}
+                      >
+                        GEL
+                      </span>
+                    </div>
+
+                    {/* Quick-select preset amounts */}
+                    <div className="flex gap-1.5 shrink-0">
+                      {[5, 10, 20, 50].map((preset) => (
+                        <button
+                          key={preset}
+                          onClick={() => {
+                            setTopupAmount(String(preset));
+                            setTopupError(null);
+                          }}
+                          disabled={topupLoading}
+                          className={`
+                            h-10 px-2.5 rounded-lg text-xs font-semibold border transition-all duration-150 cursor-pointer
+                            ${topupAmount === String(preset)
+                              ? "border-form-highlights text-form-highlights bg-form-highlights/10"
+                              : c.btnGhost}
+                            disabled:opacity-40
+                          `}
+                        >
+                          {preset}
+                        </button>
+                      ))}
+                    </div>
                   </div>
+
+                  {/* Inline error */}
+                  {topupError && (
+                    <p className="text-xs text-red-400 mt-2">{topupError}</p>
+                  )}
+
+                  {/* Pay button */}
+                  <button
+                    onClick={handleTopup}
+                    disabled={topupLoading || !topupAmount}
+                    className={`
+                      mt-3 w-full h-10 rounded-lg text-sm font-semibold transition-all duration-200 cursor-pointer
+                      flex items-center justify-center gap-2
+                      ${c.btnInterpay}
+                      disabled:opacity-50 disabled:cursor-not-allowed
+                    `}
+                  >
+                    {topupLoading ? (
+                      <>
+                        <span className="w-4 h-4 rounded-full border-2 border-white/30 border-t-white animate-spin" />
+                        {tx.overview.topupRedirecting}
+                      </>
+                    ) : topupAmount ? (
+                      `${tx.overview.topupPay} ${topupAmount} GEL`
+                    ) : (
+                      tx.overview.topupEnterAmount
+                    )}
+                  </button>
                 </div>
               </div>
 
@@ -682,17 +813,18 @@ tableRow:  "border-border hover:bg-muted/40",
               )}
             </div>
           )}
-        
+
           {tab === "Transactions" && (
-  <TransactionsTab
-    language={language}
-    isDark={isDark}
-    c={c}
-    companyName={companyName}
-    userFullName={user?.full_name}
-    userNumericId={user?.numeric_id}
-  />
-)}
+            <TransactionsTab
+              language={language}
+              isDark={isDark}
+              c={c}
+              companyName={companyName}
+              userFullName={user?.full_name}
+              userNumericId={user?.numeric_id}
+            />
+          )}
+
           {/* ════ FAVOURITES ════ */}
           {tab === "Favourites" && (
             <div className="px-8 py-8 lg:px-14 lg:py-10">
