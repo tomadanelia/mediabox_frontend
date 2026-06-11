@@ -28,6 +28,8 @@ import ReportPage from "../pages/report/reportPage"
 import notificationService from "./services/NotificationService"
 import { NotificationToastContainer } from "./hmcomponents/NotificationToast"
 import { useNotifications } from "./hooks/useNotifications"
+import PaymentSuccess from "../pages/payment/Success"
+import PaymentFailure from "../pages/payment/Failure"
 
 const App: React.FC = () => {
   const isDark = useUIStore((state: UIStore) => state.isDark)
@@ -120,6 +122,8 @@ const App: React.FC = () => {
           <Route path="/notifications" element={<NotificationsPage />} />
           <Route path="/support" element={<ReportPage />} />
           <Route path="/invoice" element={<InvoicePage/>}/>
+          <Route path="/payment/success" element={<PaymentSuccess />} />
+          <Route path="/payment/failure" element={<PaymentFailure />} />
           <Route path="/authentication">
             <Route path="login" element={<AuthLog />} />
             <Route path="register" element={<AuthReg />} />

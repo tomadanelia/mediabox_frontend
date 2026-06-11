@@ -5,6 +5,7 @@ import useAuthStore from "../../src/store/AuthStore";
 import type { User } from "../../src/types/user";
 import EditProfileModal from "./EditModal";
 import TransactionsTab from "./transactionsTab";
+import { API_BASE_URL } from '../../src/config';
 
 interface WatchedChannel {
   id: number | string;
@@ -223,8 +224,8 @@ export default function UserProfile() {
     try {
       const res = await api.post("/api/interpay/init", {
         amount,
-        success_url: "https://tv-api.telecomm1.com/profile",
-        failure_url: "https://tv-api.telecomm1.com/profile",
+        success_url: `${API_BASE_URL}/payment/success`,
+        failure_url: `${API_BASE_URL}/payment/failure`,
       });
       const redirectUrl = res.data?.redirect_url;
       if (redirectUrl) window.open(redirectUrl, "_blank", "noopener,noreferrer");

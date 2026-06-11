@@ -11,7 +11,7 @@ interface Transaction {
   status: "completed" | "failed" | "pending";
   payment_method: string;
   date: string;
-  metadata: string | {  // API returns it as a JSON string
+  metadata: string | {
     type?: string;
     quantity?: number;
     old_limit?: number;
@@ -36,7 +36,6 @@ interface TransactionPage {
 interface TransactionsTabProps {
   language: "En" | "Ge";
   isDark: boolean;
-  // colour tokens — passed in so this component stays in sync with the parent's `c` object
   c: {
     sub: string;
     faint: string;
@@ -51,12 +50,14 @@ interface TransactionsTabProps {
   userFullName?: string | null;
   userNumericId?: string | number | null;
 }
+
 function parseMeta(metadata: Transaction["metadata"]) {
   if (typeof metadata === "string") {
     try { return JSON.parse(metadata); } catch { return {}; }
   }
   return metadata ?? {};
 }
+
 const TYPE_LABELS = {
   En: {
     tv_limit_increase: "TV Device Limit Upgrade",
@@ -79,6 +80,7 @@ function resolveItemName(
   }
   return item_name;
 }
+
 const tx = {
   En: {
     cardTitle: "Transactions",
@@ -114,17 +116,21 @@ const tx = {
   },
 } as const;
 
-// Map a raw transaction → the InvoiceData shape the InvoicePage expects
+const GE_MONTHS = [
+  "იანვ", "თებ", "მარ", "აპრ", "მაი", "ივნ",
+  "ივლ", "აგვ", "სექ", "ოქტ", "ნოე", "დეკ",
+];
+
 function buildInvoiceData(
   t: Transaction,
   companyName?: string | null,
   userFullName?: string | null,
   userNumericId?: string | number | null,
-    language: "En" | "Ge" = "En", 
+  language: "En" | "Ge" = "En",
 ): InvoiceData {
-  const meta = parseMeta(t.metadata);  // ← parse here
+  const meta = parseMeta(t.metadata);
   const isTvLimit = meta?.type === "tv_limit_increase" || meta?.new_limit != null;
-  const resolvedName = resolveItemName(t.item_name, meta, language); // ← resolve here
+  const resolvedName = resolveItemName(t.item_name, meta, language);
   const previousBalance = meta?.previous_balance != null
     ? parseFloat(String(meta.previous_balance))
     : null;
@@ -135,7 +141,7 @@ function buildInvoiceData(
   const baseInvoice = {
     transaction_id: t.id,
     date: t.date,
-    item_name: resolvedName,  
+    item_name: resolvedName,
     amount: t.amount,
     currency: t.currency,
     company_name: companyName ?? undefined,
@@ -160,7 +166,6 @@ function buildInvoiceData(
   } as PlanPurchaseInvoiceData;
 }
 
-// Icon for transaction type
 function TxIcon({ meta }: { meta: ReturnType<typeof parseMeta> }) {
   const isTv = meta?.type === "tv_limit_increase";
   return (
@@ -169,35 +174,13 @@ function TxIcon({ meta }: { meta: ReturnType<typeof parseMeta> }) {
         ${isTv ? "bg-amber-500/10 text-amber-400" : "bg-form-highlights/10 text-form-highlights"}`}
     >
       {isTv ? (
-        <svg
-          className="w-4 h-4"
-          fill="none"
-          stroke="currentColor"
-          viewBox="0 0 24 24"
-        >
-          <rect
-            x="2"
-            y="3"
-            width="20"
-            height="14"
-            rx="2"
-            strokeWidth="1.8"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          />
+        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <rect x="2" y="3" width="20" height="14" rx="2" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
           <path d="M8 21h8M12 17v4" strokeWidth="1.8" strokeLinecap="round" />
         </svg>
       ) : (
-        <svg
-          className="w-4 h-4"
-          fill="none"
-          stroke="currentColor"
-          viewBox="0 0 24 24"
-        >
-          <path
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            strokeWidth={1.8}
+        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8}
             d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"
           />
         </svg>
@@ -206,32 +189,15 @@ function TxIcon({ meta }: { meta: ReturnType<typeof parseMeta> }) {
   );
 }
 
-// Status pill
-function StatusPill({
-  status,
-  label,
-}: {
-  status: Transaction["status"];
-  label: string;
-}) {
+function StatusPill({ status, label }: { status: Transaction["status"]; label: string }) {
   const cfg = {
     completed: "bg-emerald-500/10 text-emerald-400 border-emerald-500/20",
     failed: "bg-red-500/10 text-red-400 border-red-500/20",
     pending: "bg-amber-500/10 text-amber-400 border-amber-500/20",
   };
   return (
-    <span
-      className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full border text-[0.6rem] font-semibold uppercase tracking-wide ${cfg[status]}`}
-    >
-      <span
-        className={`w-1 h-1 rounded-full ${
-          status === "completed"
-            ? "bg-emerald-400"
-            : status === "failed"
-              ? "bg-red-400"
-              : "bg-amber-400"
-        }`}
-      />
+    <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full border text-[0.6rem] font-semibold uppercase tracking-wide ${cfg[status]}`}>
+      <span className={`w-1 h-1 rounded-full ${status === "completed" ? "bg-emerald-400" : status === "failed" ? "bg-red-400" : "bg-amber-400"}`} />
       {label}
     </span>
   );
@@ -252,79 +218,79 @@ export default function TransactionsTab({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(false);
 
-  const fetchPage = useCallback(
-    async (p: number) => {
-      setLoading(true);
-      setError(false);
-      try {
-        const res = await api.get(`/api/user/transactions?page=${p}`);
-        setData(res.data);
-        setPage(p);
-      } catch {
-        setError(true);
-      } finally {
-        setLoading(false);
-      }
-    },
-    []
-  );
+  const fetchPage = useCallback(async (p: number) => {
+    setLoading(true);
+    setError(false);
+    try {
+      const res = await api.get(`/api/user/transactions?page=${p}`);
+      setData(res.data);
+      setPage(p);
+    } catch {
+      setError(true);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
 
   useEffect(() => {
     fetchPage(1);
   }, [fetchPage]);
 
-const handleRowClick = (transaction: Transaction) => {
- const invoiceData = buildInvoiceData(transaction, companyName, userFullName, userNumericId, language);
-  navigate("/invoice", { state: { invoiceData } });
-};
+  const handleRowClick = (transaction: Transaction) => {
+    const invoiceData = buildInvoiceData(transaction, companyName, userFullName, userNumericId, language);
+    navigate("/invoice", { state: { invoiceData } });
+  };
 
   const fmtDate = (raw: string) => {
     try {
-      return new Date(raw).toLocaleString(
-        language === "En" ? "en-US" : "ka-GE",
-        { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" }
-      );
+      const d = new Date(raw);
+      if (language === "Ge") {
+        const month = GE_MONTHS[d.getMonth()];
+        const day = d.getDate();
+        const hours = String(d.getHours()).padStart(2, "0");
+        const minutes = String(d.getMinutes()).padStart(2, "0");
+        return `${day} ${month}, ${hours}:${minutes}`;
+      }
+      return d.toLocaleString("en-US", {
+        month: "short", day: "numeric", hour: "2-digit", minute: "2-digit",
+      });
     } catch {
       return raw;
     }
+  };
+
+  const fmtAmount = (txn: Transaction) => {
+    const num = parseFloat(txn.amount).toFixed(2);
+    const symbol = txn.currency === "GEL" ? "₾" : txn.currency;
+    const isCreditCard = txn.payment_method === "credit card";
+    return { sign: isCreditCard ? "+" : "-", num, symbol, isCreditCard };
   };
 
   return (
     <div className="px-8 py-8 lg:px-14 lg:py-10">
       {/* Header row */}
       <div className="flex items-center justify-between mb-6">
-        <p
-          className={`text-[0.65rem] uppercase tracking-[0.2em] font-semibold ${c.sub}`}
-        >
+        <p className={`text-[0.65rem] uppercase tracking-[0.2em] font-semibold ${c.sub}`}>
           {t.cardTitle}
         </p>
         {data && data.total > 0 && (
-          <span className={`text-[0.65rem] ${c.sub}`}>
-            {t.total(data.total)}
-          </span>
+          <span className={`text-[0.65rem] ${c.sub}`}>{t.total(data.total)}</span>
         )}
       </div>
 
       {/* Loading */}
       {loading && (
         <div className="flex items-center gap-3 py-10">
-          <div
-            className={`w-5 h-5 rounded-full border-2 animate-spin border-form-highlights border-t-transparent`}
-          />
+          <div className="w-5 h-5 rounded-full border-2 animate-spin border-form-highlights border-t-transparent" />
           <span className={`text-sm ${c.sub}`}>{t.loading}</span>
         </div>
       )}
 
       {/* Error */}
       {!loading && error && (
-        <button
-          onClick={() => fetchPage(page)}
-          className={`flex items-center gap-3 py-6 text-left group`}
-        >
+        <button onClick={() => fetchPage(page)} className="flex items-center gap-3 py-6 text-left group">
           <span className={`text-2xl ${c.faint}`}>⚠</span>
-          <span
-            className={`text-sm ${c.sub} group-hover:text-foreground transition-colors`}
-          >
+          <span className={`text-sm ${c.sub} group-hover:text-foreground transition-colors`}>
             {t.errorRetry}
           </span>
         </button>
@@ -342,89 +308,68 @@ const handleRowClick = (transaction: Transaction) => {
       {!loading && !error && data && data.data.length > 0 && (
         <>
           {/* Column headers */}
-          <div
-            className={`hidden sm:flex items-center gap-4 pb-3 border-b ${c.divider}`}
-          >
+          <div className={`hidden sm:flex items-center gap-4 pb-3 border-b ${c.divider}`}>
             <span className="w-9 shrink-0" />
-            <span
-              className={`flex-1 text-[0.6rem] uppercase tracking-widest font-semibold ${c.sub}`}
-            >
+            <span className={`flex-1 text-[0.6rem] uppercase tracking-widest font-semibold ${c.sub}`}>
               {t.item}
             </span>
-            <span
-              className={`text-[0.6rem] uppercase tracking-widest font-semibold ${c.sub} w-28 text-right hidden md:block`}
-            >
+            <span className={`text-[0.6rem] uppercase tracking-widest font-semibold ${c.sub} w-28 text-right hidden md:block`}>
               {t.date}
             </span>
-            <span
-              className={`text-[0.6rem] uppercase tracking-widest font-semibold ${c.sub} w-20 text-right`}
-            >
+            <span className={`text-[0.6rem] uppercase tracking-widest font-semibold ${c.sub} w-20 text-right`}>
               {t.amount}
             </span>
-            <span
-              className={`text-[0.6rem] uppercase tracking-widest font-semibold ${c.sub} w-20 text-right`}
-            >
+            <span className={`text-[0.6rem] uppercase tracking-widest font-semibold ${c.sub} w-20 text-right`}>
               {t.status.completed.split("").join("")}
             </span>
           </div>
 
           <div className="flex flex-col">
             {data.data.map((txn) => {
-  const meta = parseMeta(txn.metadata);
-  const displayName = resolveItemName(txn.item_name, meta, language);
+              const meta = parseMeta(txn.metadata);
+              const displayName = resolveItemName(txn.item_name, meta, language);
+              const { sign, num, symbol, isCreditCard } = fmtAmount(txn);
 
-  return (
-              <button
-                key={txn.id}
-                onClick={() => handleRowClick(txn)}
-                className={`flex items-center gap-4 py-4 border-b text-left w-full cursor-pointer transition-colors duration-150 ${c.tableRow} group`}
-              >
-                {/* Icon */}
-                <TxIcon meta={meta} />
+              return (
+                <button
+                  key={txn.id}
+                  onClick={() => handleRowClick(txn)}
+                  className={`flex items-center gap-4 py-4 border-b text-left w-full cursor-pointer transition-colors duration-150 ${c.tableRow} group`}
+                >
+                  <TxIcon meta={meta} />
 
-                {/* Name + mobile date */}
-                <div className="flex-1 min-w-0">
-                  <p
-                    className={`text-sm font-medium truncate ${c.heading} group-hover:text-form-highlights transition-colors`}
-                  >
-                    {displayName}
-                  </p>
-                  <p className={`text-xs font-mono mt-0.5 md:hidden ${c.sub}`}>
+                  <div className="flex-1 min-w-0">
+                    <p className={`text-sm font-medium truncate ${c.heading} group-hover:text-form-highlights transition-colors`}>
+                      {displayName}
+                    </p>
+                    <p className={`text-xs font-mono mt-0.5 md:hidden ${c.sub}`}>
+                      {fmtDate(txn.date)}
+                    </p>
+                  </div>
+
+                  <span className={`text-xs font-mono ${c.sub} w-28 text-right shrink-0 hidden md:block`}>
                     {fmtDate(txn.date)}
-                  </p>
-                </div>
-
-                {/* Desktop date */}
-                <span
-                  className={`text-xs font-mono ${c.sub} w-28 text-right shrink-0 hidden md:block`}
-                >
-                  {fmtDate(txn.date)}
-                </span>
-
-                {/* Amount */}
-                <span
-                  className={`text-sm font-bold tabular-nums w-20 text-right shrink-0 ${
-                    txn.status === "failed"
-                      ? "text-red-400"
-                      : "text-foreground"
-                  }`}
-                >
-                  -{parseFloat(txn.amount).toFixed(2)}{" "}
-                  <span className="text-form-highlights text-xs">
-                    {txn.currency === "GEL" ? "₾" : txn.currency}
                   </span>
-                </span>
 
-                {/* Status */}
-                <div className="w-20 flex justify-end shrink-0">
-                  <StatusPill
-                    status={txn.status}
-                    label={t.status[txn.status]}
-                  />
-                </div>
-              </button>
-               );
-})}
+                  <span
+                    className={`text-sm font-bold tabular-nums w-20 text-right shrink-0 ${
+                      txn.status === "failed"
+                        ? "text-red-400"
+                        : isCreditCard
+                          ? "text-emerald-400"
+                          : "text-foreground"
+                    }`}
+                  >
+                    {sign}{num}{" "}
+                    <span className="text-form-highlights text-xs">{symbol}</span>
+                  </span>
+
+                  <div className="w-20 flex justify-end shrink-0">
+                    <StatusPill status={txn.status} label={t.status[txn.status]} />
+                  </div>
+                </button>
+              );
+            })}
           </div>
 
           {/* Pagination */}
@@ -438,18 +383,8 @@ const handleRowClick = (transaction: Transaction) => {
                   border-border text-muted-foreground hover:text-foreground hover:border-form-highlights
                   disabled:hover:text-muted-foreground disabled:hover:border-border`}
               >
-                <svg
-                  className="w-3.5 h-3.5"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M15 19l-7-7 7-7"
-                  />
+                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
                 </svg>
                 {t.prev}
               </button>
@@ -467,18 +402,8 @@ const handleRowClick = (transaction: Transaction) => {
                   disabled:hover:text-muted-foreground disabled:hover:border-border`}
               >
                 {t.next}
-                <svg
-                  className="w-3.5 h-3.5"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M9 5l7 7-7 7"
-                  />
+                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
                 </svg>
               </button>
             </div>
