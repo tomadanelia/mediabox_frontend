@@ -2,6 +2,8 @@ import { useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import api from "../../src/lib/axios";
 import useUIStore from "../../src/store/ui-store";
+import { API_BASE_URL } from '../../src/config';
+
 
 // ─── Translations ─────────────────────────────────────────────────────────────
 
@@ -135,8 +137,8 @@ export default function PaymentFailure() {
       }
       const res = await api.post("/api/interpay/init", {
         amount,
-        success_url: "https://tv-api.telecomm1.com/payment/success",
-        failure_url: "https://tv-api.telecomm1.com/payment/failure",
+        success_url: `${API_BASE_URL}/payment/success`,
+        failure_url: `${API_BASE_URL}/payment/failure`,
       });
       const redirectUrl = res.data?.redirect_url;
       if (redirectUrl) {
