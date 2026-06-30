@@ -113,14 +113,29 @@ interface ProfileDropdownProps {
   tx: Translation
   onLogout: () => void
 }
+import { createPortal } from "react-dom"
+
 const ProfileDropdown = ({ user, tx, onLogout }: ProfileDropdownProps) => {
   const [open, setOpen] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
+  const btnRef = useRef<HTMLButtonElement>(null)
+  const closeTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const isGuest = !user?.numeric_id
+
+  const cancelClose = () => {
+    if (closeTimer.current) clearTimeout(closeTimer.current)
+  }
+  const scheduleClose = () => {
+    cancelClose()
+    closeTimer.current = setTimeout(() => setOpen(false), 150)
+  }
 
   useEffect(() => {
     const handler = (e: MouseEvent) => {
-      if (ref.current && !ref.current.contains(e.target as Node)) {
+      if (
+        ref.current && !ref.current.contains(e.target as Node) &&
+        !(e.target as HTMLElement)?.closest("[data-hover-bridge]")
+      ) {
         setOpen(false)
       }
     }
@@ -128,34 +143,33 @@ const ProfileDropdown = ({ user, tx, onLogout }: ProfileDropdownProps) => {
     return () => document.removeEventListener("mousedown", handler)
   }, [])
 
-  const menuItems = [
-    { icon: "manage_accounts", label: tx.profile, to: "/profile" },
-  ]
+  const menuItems = [{ icon: "manage_accounts", label: tx.profile, to: "/profile" }]
+
+  // Compute bridge rect from button position
+  const rect = btnRef.current?.getBoundingClientRect()
 
   return (
-    <div
-      ref={ref}
-      className="relative"
-      onMouseEnter={() => setOpen(true)}
-      onMouseLeave={() => setOpen(false)}
-    >
-      {/* BUTTON */}
-      <button
-        onClick={() => setOpen(prev => !prev)}
-        className="flex items-center cursor-pointer gap-1 rounded-full p-1 hover:bg-black/5 dark:hover:bg-white/10 transition-colors focus:outline-none"
-      >
-        <Avatar src={user?.avatar_url} name={user?.full_name} />
-        <Icon
-          name="expand_more"
-          size={16}
-          className={`text-zinc-400 transition-transform duration-200 hidden sm:block ${
-            open ? "rotate-180" : ""
-          }`}
-        />
-      </button>
+    <>
+      <div ref={ref} className="relative">
+        {/* BUTTON */}
+        <button
+          ref={btnRef}
+          onClick={() => setOpen(prev => !prev)}
+          onMouseEnter={() => { cancelClose(); setOpen(true) }}
+          onMouseLeave={scheduleClose}
+          className="flex items-center cursor-pointer gap-1 rounded-full p-1 hover:bg-black/5 dark:hover:bg-white/10 transition-colors focus:outline-none"
+        >
+          <Avatar src={user?.avatar_url} name={user?.full_name} />
+          <Icon
+            name="expand_more"
+            size={16}
+            className={`text-zinc-400 transition-transform duration-200 hidden sm:block ${open ? "rotate-180" : ""}`}
+          />
+        </button>
 
-      {/* DROPDOWN */}
-      <div
+          <div
+           onMouseEnter={cancelClose}
+           onMouseLeave={scheduleClose}
         className={`absolute cursor-pointer right-0 top-[calc(100%+2px)] w-52 z-50
           bg-white dark:bg-zinc-900
           border border-black/10 dark:border-white/10
@@ -233,8 +247,28 @@ const ProfileDropdown = ({ user, tx, onLogout }: ProfileDropdownProps) => {
             </div>
           </>
         )}
+        </div>
       </div>
-    </div>
+
+
+      {/* Separate, portal-rendered hover bridge — outside the button/dropdown DOM tree entirely */}
+      {open && rect && createPortal(
+        <div
+          data-hover-bridge
+          onMouseEnter={() => { cancelClose(); setOpen(true) }}
+          onMouseLeave={scheduleClose}
+          style={{
+            position: "fixed",
+            top: rect.bottom,
+            left: rect.right - 208, // 208px = w-52, aligns to right edge like the dropdown
+            width: 260,             // a bit wider than the dropdown for forgiving diagonal movement
+            height: 240,             // covers the vertical gap
+            zIndex: 45,
+          }}
+        />,
+        document.body
+      )}
+    </>
   )
 }
 
