@@ -4,10 +4,12 @@ import { requestDownload } from '../../src/services/downloadService';
 import type { DownloadResult } from '../../src/services/downloadService';
 import { getArchiveUrl, probeRewindableHours } from '@/services/streamService';
 import useUIStore from '../../src/store/ui-store'; 
+import { TicketX } from 'lucide-react';
 
 // 2. Define your translations mapping
 const translations = {
   Ge: {
+    rewatch: "თავიდან ყურება",
     title: "კლიპის ჩამოტვირთვა",
     startTime: "საწყისი დრო",
     endTime: "საბოლოო დრო",
@@ -38,6 +40,7 @@ const translations = {
     maxClipLength: "მაქსიმალური კლიპის სიგრძეა",
   },
   En: {
+    rewatch: "Rewatch Clip",
     title: "Download Clip",
     startTime: "Start Time",
     endTime: "End Time",
@@ -495,68 +498,135 @@ const HlsThumbnail: React.FC<{ src: string }> = ({ src }) => {
 };
 
 // ─── Clip Preview Player ──────────────────────────────────────────────────────
+// ─── Clip Preview Player ──────────────────────────────────────────────────────
 
 interface ClipPreviewProps {
   channelId:    string | undefined;
-  timestamp:    number;
+  timestamp:    number;     // start time
   archiveReady: boolean;
+  duration:     number;     // NEW: pass clip duration
 }
 
-const ClipPreview: React.FC<ClipPreviewProps> = ({ channelId, timestamp, archiveReady }) => {
+const ClipPreview: React.FC<ClipPreviewProps> = ({ 
+  channelId, 
+  timestamp, 
+  archiveReady,
+  duration 
+}) => {
   const videoRef                  = useRef<HTMLVideoElement>(null);
   const hlsRef                    = useRef<Hls | null>(null);
   const [streamUrl, setStreamUrl] = useState<string | null>(null);
-  const [paused,    setPaused]    = useState(false);
+  const [isEnded,   setIsEnded]   = useState(false);
+  const [isPlaying, setIsPlaying] = useState(false);
+  const language= useUIStore(state => state.language);
+  const t= translations[language];
 
-  // Fetch the archive stream URL when timestamp or channel changes
+  // Fetch archive HLS URL
   useEffect(() => {
-    if (!channelId || !archiveReady) { setStreamUrl(null); return; }
+    if (!channelId || !archiveReady) {
+      setStreamUrl(null);
+      return;
+    }
     getArchiveUrl(channelId, timestamp)
       .then(r => setStreamUrl(r.url))
       .catch(() => setStreamUrl(null));
   }, [channelId, timestamp, archiveReady]);
 
-  // Attach HLS to the video element whenever the stream URL changes
+  // Setup HLS + limit playback to selected duration
+  const startWallClockRef = useRef<number | null>(null);
+
+  // Setup HLS + limit playback to selected duration
   useEffect(() => {
     const vid = videoRef.current;
-    if (!vid) return;
+    if (!vid || !streamUrl) return;
 
-    // Tear down previous instance
     hlsRef.current?.destroy();
     hlsRef.current = null;
+    startWallClockRef.current = null;
+    setIsEnded(false);
+    setIsPlaying(false);
 
-    if (!streamUrl) { vid.src = ''; return; }
+    const handlePlaying = () => {
+      if (startWallClockRef.current === null) {
+        startWallClockRef.current = Date.now();
+      }
+    };
 
-    setPaused(false);
+    const handleTimeUpdate = () => {
+      if (startWallClockRef.current === null) return;
+      const elapsed = (Date.now() - startWallClockRef.current) / 1000;
+      if (elapsed >= duration) {
+        vid.pause();
+        setIsEnded(true);
+        setIsPlaying(false);
+      }
+    };
+
+    const handleEnded = () => {
+      setIsEnded(true);
+      setIsPlaying(false);
+    };
+
+    const handlePlay  = () => setIsPlaying(true);
+    const handlePause = () => setIsPlaying(false);
 
     if (vid.canPlayType('application/vnd.apple.mpegurl')) {
-      // Native HLS (Safari)
       vid.src = streamUrl;
-      vid.play().catch(() => {});
     } else if (Hls.isSupported()) {
-      const hls = new Hls({ startPosition: 0, maxBufferLength: 10 });
+      const hls = new Hls({
+        startPosition: 0,
+        maxBufferLength: 10,
+      });
       hlsRef.current = hls;
       hls.loadSource(streamUrl);
       hls.attachMedia(vid);
+
       hls.on(Hls.Events.MANIFEST_PARSED, () => {
         vid.play().catch(() => {});
       });
     }
 
-    return () => { hlsRef.current?.destroy(); hlsRef.current = null; };
-  }, [streamUrl]);
+    vid.addEventListener('playing', handlePlaying);
+    vid.addEventListener('timeupdate', handleTimeUpdate);
+    vid.addEventListener('ended', handleEnded);
+    vid.addEventListener('play', handlePlay);
+    vid.addEventListener('pause', handlePause);
 
-  // Sync play/pause imperatively
-  useEffect(() => {
+    return () => {
+      vid.removeEventListener('playing', handlePlaying);
+      vid.removeEventListener('timeupdate', handleTimeUpdate);
+      vid.removeEventListener('ended', handleEnded);
+      vid.removeEventListener('play', handlePlay);
+      vid.removeEventListener('pause', handlePause);
+      hlsRef.current?.destroy();
+      hlsRef.current = null;
+    };
+  }, [streamUrl, timestamp, duration]);
+
+  const togglePlay = () => {
     const vid = videoRef.current;
     if (!vid) return;
-    if (paused) { vid.pause(); }
-    else        { vid.play().catch(() => {}); }
-  }, [paused]);
 
-  useEffect(() => () => { hlsRef.current?.destroy(); }, []);
+    if (isEnded) {
+      vid.currentTime = 0;
+      setIsEnded(false);
+    }
 
-  const togglePause = () => setPaused(p => !p);
+    if (vid.paused) {
+      vid.play().catch(() => {});
+    } else {
+      vid.pause();
+    }
+  };
+
+ const rewatch = () => {
+    if (!channelId) return;
+    setIsEnded(false);
+    setStreamUrl(null);
+    getArchiveUrl(channelId, timestamp)
+      .then(r => setStreamUrl(r.url))
+      .catch(() => setStreamUrl(null));
+  };
 
   return (
     <div
@@ -568,53 +638,49 @@ const ClipPreview: React.FC<ClipPreviewProps> = ({ channelId, timestamp, archive
           <video
             ref={videoRef}
             muted
-            loop
             playsInline
             className="w-full h-full object-cover"
-            onPlay={() => setPaused(false)}
-            onPause={() => setPaused(true)}
           />
 
-          {/* Click-to-pause overlay */}
+          {/* Play/Pause Overlay */}
           <button
-            onClick={togglePause}
+            onClick={togglePlay}
             className="absolute inset-0 w-full h-full flex items-center justify-center cursor-pointer bg-transparent"
             style={{ WebkitTapHighlightColor: 'transparent' }}
-            aria-label={paused ? 'Play' : 'Pause'}
           >
-            <div className={`flex items-center justify-center w-10 h-10 rounded-full
-              bg-black/60 border border-white/15 backdrop-blur-sm
-              transition-opacity duration-150
-              ${paused ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}`}>
-              <span
-                className="material-symbols-outlined text-white"
-                style={{ fontSize: '22px', fontVariationSettings: "'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 24" }}
-              >
-                {paused ? 'play_arrow' : 'pause'}
+            <div className={`flex items-center justify-center w-12 h-12 rounded-full
+              bg-black/70 border border-white/20 backdrop-blur-md transition-all
+              ${isEnded || !isPlaying ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}`}>
+              <span className="material-symbols-outlined text-white" style={{ fontSize: '28px' }}>
+                {isEnded ? 'replay' : isPlaying ? 'pause' : 'play_arrow'}
               </span>
             </div>
           </button>
+
+          {/* Rewatch Button when ended */}
+          {isEnded && (
+            <button
+              onClick={rewatch}
+              className="absolute bottom-4 left-1/2 -translate-x-1/2 px-6 py-2 rounded-full
+                bg-red-600 hover:bg-red-500 text-white text-sm font-medium flex items-center gap-2
+                shadow-lg cursor-pointer transition-all active:scale-95"
+            >
+              <span className="material-symbols-outlined" style={{ fontSize: '18px' }}>replay</span>
+              <p>{t.rewatch}</p>
+            </button>
+          )}
 
           {/* Timestamp badge */}
           <div className="absolute bottom-2 left-2 px-2 py-0.5 rounded-md bg-black/70 border border-zinc-700/60 pointer-events-none">
             <span className="text-[10px] font-mono text-zinc-400">{formatTime(timestamp)}</span>
           </div>
-
-          {paused && (
-            <div className="absolute top-2 right-2 px-2 py-0.5 rounded-md bg-black/70 border border-zinc-700/60 pointer-events-none">
-              <span className="text-[10px] font-mono text-zinc-400 uppercase tracking-wider">{translations.En.paused}</span>
-            </div>
-          )}
         </>
       ) : (
         <div className="absolute inset-0 flex flex-col items-center justify-center gap-2">
-          <span
-            className="material-symbols-outlined text-zinc-800"
-            style={{ fontSize: '28px', fontVariationSettings: "'FILL' 0, 'wght' 300, 'GRAD' 0, 'opsz' 24" }}
-          >
+          <span className="material-symbols-outlined text-zinc-800" style={{ fontSize: '28px' }}>
             movie
           </span>
-          <span className="text-[10px] text-zinc-700 tracking-wide">{translations.En.loadingPreview}</span>
+          <span className="text-[10px] text-zinc-700 tracking-wide">Loading preview…</span>
         </div>
       )}
     </div>
@@ -741,6 +807,7 @@ export const DownloadPopup: React.FC<DownloadPopupProps> = ({
               channelId={archiveReady ? channelId : undefined}
               timestamp={previewTs}
               archiveReady={archiveReady}
+              duration={clipDuration}
             />
 
             <div className="px-6">
