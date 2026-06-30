@@ -172,17 +172,16 @@ const ChannelScheduleCL = ({
   // Earliest unix second that is within the archive rewind window
   const archiveStartSec = nowSec - rewindableHours * 3600
 
-  const activeSec =
-    mode === 'archive' && archiveTimestamp !== null ? archiveTimestamp : nowSec
+ 
+  const activeSec = archiveTimestamp ?? Math.floor(Date.now() / 1000);
 
-  // The program at the current seek position (or live now in live mode)
   const activeUID = useMemo(() => {
-    if (!sorted.length) return null
-    const match = sorted.find(p => activeSec >= p.START_TIME && activeSec < p.END_TIME)
-    if (match) return match.UID
-    if (activeSec <= sorted[0].START_TIME) return sorted[0].UID
-    return null
-  }, [sorted, activeSec])
+    if (!sorted.length) return null;
+    const match = sorted.find(p => activeSec >= p.START_TIME && activeSec < p.END_TIME);
+    if (match) return match.UID;
+    if (activeSec <= sorted[0].START_TIME) return sorted[0].UID;
+    return null;
+  }, [sorted, activeSec]);
 
   // The program actually on air right now on live TV — always wall-clock based
   const liveUID = useMemo(() => {
@@ -206,26 +205,13 @@ const ChannelScheduleCL = ({
 
     return match ? startOfDayKey(match.START_TIME) : null
   }, [sorted])
-
-  // ── Auto-scroll: when archiveTimestamp changes, center the active program ──
   useEffect(() => {
-    if (!listRef.current || !sorted.length) return
+  if (!listRef.current || !sorted.length || activeUID === null) return;
 
-    if (activeUID !== null && programRefs.current[activeUID]) {
-      scrollToCenter(listRef.current, programRefs.current[activeUID]!)
-      return
-    }
-
-    const targetSec = mode === 'archive' && archiveTimestamp !== null ? archiveTimestamp : nowSec
-    const key = dividerKeyForTimestamp(targetSec)
-    if (!key) return
-    const divider = dividerRefs.current[key]
-    if (divider) {
-      const offset = divider.offsetTop - 60
-      listRef.current.scrollTo({ top: Math.max(0, offset), behavior: 'smooth' })
-    }
-  }, [archiveTimestamp, mode, sorted, activeUID])
-
+  if (programRefs.current[activeUID]) {
+    scrollToCenter(listRef.current, programRefs.current[activeUID]!);
+  }
+}, [activeUID, sorted.length]);
   // ── Auto-scroll to live program on initial load ────────────────────────────
   const didInitialScroll = useRef(false)
   useEffect(() => {

@@ -24,6 +24,7 @@ type VideoPlayerProps = {
   isLoading?: boolean;
   onRewind: (timestamp: number) => void;
   onGoLive: () => void;
+  onTimeUpdate?: (absoluteUnix: number) => void;
   onChannelSelect?: (channel: Channel) => void;
   currentChannelId?: string;
   rewindableDays?: number;
@@ -78,7 +79,7 @@ const Btn = ({
 
 const VideoPlayer: React.FC<VideoPlayerProps> = ({
   streamUrl, mode, archiveTimestamp, isLoading = false,
-  onRewind, onGoLive, onChannelSelect, currentChannelId,
+  onRewind, onGoLive, onTimeUpdate, onChannelSelect, currentChannelId,
   rewindableDays, channels = [], programs = [], nextDayPrograms = [],
 }) => {
   const videoRef        = useRef<HTMLVideoElement | null>(null);
@@ -94,7 +95,7 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
   const seekbarRef                      = useRef<HTMLDivElement | null>(null);
   const [hoverProgress,  setHoverProgress]  = useState<number | null>(null);
   const [hoverTimestamp, setHoverTimestamp] = useState<number>(0);
-
+  
   // ── User-intended audio state — never corrupted by autoplay fallback ──────
   const mutedIntentRef  = useRef(false);
   const volumeIntentRef = useRef(1);
@@ -104,6 +105,8 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
   const archiveTsRef = useRef(archiveTimestamp);
   const onRewindRef  = useRef(onRewind);
   const onGoLiveRef  = useRef(onGoLive);
+  const onTimeUpdateRef = useRef(onTimeUpdate);   
+  onTimeUpdateRef.current  = onTimeUpdate;        
   modeRef.current      = mode;
   archiveTsRef.current = archiveTimestamp;
   onRewindRef.current  = onRewind;
@@ -244,7 +247,12 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
     const video = videoRef.current;
     if (!video) return;
 
-    const onTimeUpdate   = () => setCurrentTime(video.currentTime);
+    const onTimeUpdate = () => {
+      setCurrentTime(video.currentTime);
+      if (modeRef.current === 'archive' && archiveTsRef.current !== null) {
+        onTimeUpdateRef.current?.(archiveTsRef.current + Math.floor(video.currentTime));
+      }
+    };
     const onPlay         = () => setIsPlaying(true);
     const onPause        = () => setIsPlaying(false);
     const onWaiting      = () => setIsBuffering(true);
@@ -427,21 +435,19 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
             <CometRing />
           </div>
         )}
-
-        {/* Fullscreen channel list */}
-       {isFullscreen && showChannels && (
-  <FullScreenList
-    onClose={() => setShowChannels(false)}
-    onSelect={(ev) => {
-      onChannelSelect?.(ev.channel);
-      if (ev.mode === 'archive' && ev.timestamp !== undefined) onRewind(ev.timestamp);
-    }}
-    currentChannelId={currentChannelId}
-    rewindableDays={rewindableDays}
-    mode={mode}
-    archiveTimestamp={archiveTimestamp}
-  />
-        )}
+        {isFullscreen && showChannels && (
+        <FullScreenList
+          onClose={() => setShowChannels(false)}
+          onSelect={(ev) => {
+            onChannelSelect?.(ev.channel);
+            if (ev.mode === 'archive' && ev.timestamp !== undefined) onRewind(ev.timestamp);
+          }}
+          currentChannelId={currentChannelId}
+          rewindableDays={rewindableDays}
+          mode={mode}
+          archiveTimestamp={watchingUnix} // <-- Changed from archiveTimestamp to watchingUnix
+        />
+      )}
 
         {/* Controls */}
         <div className={`absolute inset-0 z-10 pointer-events-none transition-opacity duration-200 ${showControls ? 'opacity-100' : 'opacity-0'}`}>

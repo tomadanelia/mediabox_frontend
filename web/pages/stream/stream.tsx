@@ -1,8 +1,8 @@
 'use client'
 
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
+import { useNavigate, useParams } from 'react-router-dom';
 
-import { API_BASE_URL } from '@/config';
 import VideoPlayer from '@/hmcomponents/videoplayer';
 import DataTableDemo from '@/components/shadcn-studio/data-table/data-table-11';
 import Timeline from '@/hmcomponents/timeline';
@@ -11,7 +11,6 @@ import notificationService from '@/services/NotificationService';
 import IconButtonCalendar from '@/components/shadcn-studio/button/custom/button-01';
 
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
-import ChannelCalendar from '@/hmcomponents/calendar';
 import MobileCalendar from '@/hmcomponents/mobilecalendar';
 import { ChevronLeft, ChevronRight, CalendarDays } from 'lucide-react';
 
@@ -31,7 +30,6 @@ import {
   subscribeFavourites,
 } from '../../src/services/favouritesService';
 import { useIsMobile } from '@/hooks/useIsMobile';
-import { useNavigate, useParams } from 'react-router-dom';
 
 export type Channel = {
   id: string;
@@ -79,41 +77,6 @@ function toApiDate(date: Date = new Date()): string {
   return `${y}/${m}/${d}`;
 }
 
-function formatTime(unixSec: number): string {
-  const d = new Date(unixSec * 1000);
-  return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-}
-
-// ─── Hook: detect portrait orientation ───────────────────────────────────────
-
-function useIsPortrait(): boolean {
-  const [isPortrait, setIsPortrait] = useState(
-    () => typeof window !== 'undefined' && window.innerHeight > window.innerWidth
-  );
-  useEffect(() => {
-    const mq = window.matchMedia('(orientation: portrait)');
-    const handler = (e: MediaQueryListEvent) => setIsPortrait(e.matches);
-    mq.addEventListener('change', handler);
-    setIsPortrait(mq.matches);
-    return () => mq.removeEventListener('change', handler);
-  }, []);
-  return isPortrait;
-}
-
-// ─── Hook: stable layout (prevents Z Fold / fullscreen / rotation flicker) ───
-
-/**
- * Returns true if the device should use the mobile-portrait layout.
- *
- * The value is LOCKED while:
- *   - the browser is in fullscreen (document.fullscreenElement is set)
- *   - a brief stabilization window after orientation change (prevents
- *     Z Fold / any foldable from flickering between layouts mid-rotation)
- *
- * This prevents the Z Fold issue where browser chrome hiding/showing,
- * entering fullscreen, or rotating kicks the user out of fullscreen
- * by triggering a layout mode switch.
- */
 function useStableLayout(): boolean {
   const classify = () => {
     const w = window.innerWidth;
@@ -421,6 +384,9 @@ export const Stream: React.FC = () => {
   const [archiveTimestamp, setArchiveTimestamp] = useState<number | null>(null);
   const [isStreamLoading, setIsStreamLoading]   = useState(false);
 
+  // Dynamic seek-bar tracking state
+  const [currentPlaybackUnix, setCurrentPlaybackUnix] = useState<number | null>(null);
+
   const [programs, setPrograms]             = useState<ProgramItem[]>([]);
   const [nextDayPrograms, setNextDayPrograms] = useState<ProgramItem[]>([]);
   const [programDate, setProgramDate]       = useState(toApiDate());
@@ -442,11 +408,12 @@ export const Stream: React.FC = () => {
 
   const [favouriteIds, setFavouriteIds]       = useState<ReadonlySet<number>>(getFavourites());
   const [showFavouritesOnly, setShowFavouritesOnly] = useState(false);
-  useEffect(() => {
-  return () => {
-    notificationService.emitEvent('stream:stop');
-  };
-}, []);
+  const currentActiveUnix = useMemo(() => {
+    if (mode === 'archive') {
+      return currentPlaybackUnix ?? archiveTimestamp ?? liveUnixSec;
+    }
+    return liveUnixSec; 
+  }, [mode, currentPlaybackUnix, archiveTimestamp, liveUnixSec]);
   const favlist = useMemo(
     () => Array.from(favouriteIds).map(id => ({ id })),
     [favouriteIds]
@@ -509,16 +476,25 @@ export const Stream: React.FC = () => {
     fetchFavourites().catch((err: unknown) =>
       console.error('Failed to fetch favourites:', err)
     );
-    return subscribeFavourites((ids: ReadonlySet<number>) => setFavouriteIds(ids));
+    const unsubscribe = subscribeFavourites((ids: ReadonlySet<number>) => setFavouriteIds(ids));
+    return () => {
+      unsubscribe();
+      notificationService.emitEvent('stream:stop');
+    };
   }, []);
 
   const markFavorite   = useCallback((channelId: number) => { markFavourite(channelId);   }, []);
   const unmarkFavorite = useCallback((channelId: number) => { unmarkFavourite(channelId); }, []);
 
+  const handleTimeUpdate = useCallback((absoluteUnix: number) => {
+    setCurrentPlaybackUnix(absoluteUnix);
+  }, []);
+
   // ─── Stream helpers ───────────────────────────────────────────────────────
 
   const goLive = useCallback(async (channelId: string) => {
     setIsStreamLoading(true);
+    setCurrentPlaybackUnix(null);
     try {
       const { url } = await getLiveUrl(channelId);
       setStreamUrl(url);
@@ -538,6 +514,7 @@ export const Stream: React.FC = () => {
     setIsStreamLoading(true);
     setMode('archive');
     setArchiveTimestamp(safeTs);
+    setCurrentPlaybackUnix(safeTs);
 
     try {
       const { url, rewindableHours: hours } = await getArchiveUrl(channelId, safeTs);
@@ -683,26 +660,26 @@ export const Stream: React.FC = () => {
     setIsCalendarVisible(v => !v);
   };
 
-const handleCalendarDateSelect = async (date: Date) => {
-  if (!selectedChannel) return;
+  const handleCalendarDateSelect = async (date: Date) => {
+    if (!selectedChannel) return;
 
-  const midnight = Math.floor(date.getTime() / 1000);
-  const dateStr  = toApiDate(date);
+    const midnight = Math.floor(date.getTime() / 1000);
+    const dateStr  = toApiDate(date);
 
-  const { programs: dayPrograms } = await getProgramsForTimeline(selectedChannel.id, dateStr);
+    const { programs: dayPrograms } = await getProgramsForTimeline(selectedChannel.id, dateStr);
 
-  const firstOnDay = dayPrograms
-    .filter(p => p.START_TIME >= midnight)
-    .sort((a, b) => a.START_TIME - b.START_TIME)[0];
+    const firstOnDay = dayPrograms
+      .filter(p => p.START_TIME >= midnight)
+      .sort((a, b) => a.START_TIME - b.START_TIME)[0];
 
-  const unixTs = firstOnDay ? firstOnDay.START_TIME : midnight;
+    const unixTs = firstOnDay ? firstOnDay.START_TIME : midnight;
 
-  goArchive(selectedChannel.id, unixTs);
+    goArchive(selectedChannel.id, unixTs);
 
-  setPrograms(dayPrograms);
-  setProgramDate(dateStr);
-  setIsCalendarVisible(false);
-};
+    setPrograms(dayPrograms);
+    setProgramDate(dateStr);
+    setIsCalendarVisible(false);
+  };
 
   // ─── Filtered channels ────────────────────────────────────────────────────
 
@@ -774,6 +751,7 @@ const handleCalendarDateSelect = async (date: Date) => {
             isLoading={isStreamLoading}
             onRewind={handleRewind}
             onGoLive={handleGoLive}
+            onTimeUpdate={handleTimeUpdate}
             onChannelSelect={handleChannelSelect}
             currentChannelId={selectedChannel?.id}
             rewindableDays={rewindableDays}
@@ -796,7 +774,7 @@ const handleCalendarDateSelect = async (date: Date) => {
               {selectedChannel?.name}
             </p>
             {(() => {
-              const now = mode === 'live' ? liveUnixSec : (archiveTimestamp ?? liveUnixSec);
+              const now = mode === 'live' ? liveUnixSec : (currentPlaybackUnix ?? archiveTimestamp ?? liveUnixSec);
               const cur = programs.find(p => p.START_TIME <= now && p.END_TIME > now);
               return cur
                 ? <p className="text-[10px] text-black/40 dark:text-white/35 truncate">{cur.TITLE}</p>
@@ -857,10 +835,10 @@ const handleCalendarDateSelect = async (date: Date) => {
               <ProgramsList
                 programs={programs}
                 mode={mode}
-                archiveTimestamp={archiveTimestamp}
+                archiveTimestamp={currentActiveUnix}
                 onProgramSelect={handleProgramSelect}
                 liveUnixSec={liveUnixSec}
-              />
+                />
             </div>
           )}
         </div>
@@ -941,6 +919,7 @@ const handleCalendarDateSelect = async (date: Date) => {
               isLoading={isStreamLoading}
               onRewind={handleRewind}
               onGoLive={handleGoLive}
+              onTimeUpdate={handleTimeUpdate}
               onChannelSelect={handleChannelSelect}
               currentChannelId={selectedChannel?.id}
               rewindableDays={rewindableDays}
@@ -950,23 +929,22 @@ const handleCalendarDateSelect = async (date: Date) => {
             <FavouriteButton channelId={selectedChannel?.id} />
             <DownloadButton
               channelId={selectedChannel?.id}
-              currentTimestamp={archiveTimestamp}
+              currentTimestamp={currentPlaybackUnix ?? archiveTimestamp}
               oldestTimestamp={Math.floor(Date.now() / 1000) - rewindableHours * 3600}
             />
             <button
-    className='flex items-center gap-1.5 px-3 h-8 rounded-lg
-    text-black/40 dark:text-white/35
-    hover:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-500/10
-    transition-all duration-150 cursor-pointer'
-  >
-    <span className="material-symbols-outlined text-[20px]">
-      share
-    </span>
-
-    <span className="text-xs font-medium">
-      Share
-    </span>
-  </button>
+              className='flex items-center gap-1.5 px-3 h-8 rounded-lg
+              text-black/40 dark:text-white/35
+              hover:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-500/10
+              transition-all duration-150 cursor-pointer'
+            >
+              <span className="material-symbols-outlined text-[20px]">
+                share
+              </span>
+              <span className="text-xs font-medium">
+                Share
+              </span>
+            </button>
           </div>
 
           {!isMobile && (
@@ -1099,13 +1077,13 @@ const handleCalendarDateSelect = async (date: Date) => {
 
           <div className="flex-1 overflow-y-auto relative">
             <DataTableDemoCL
-              channelId={selectedChannel?.id}
-              timeProgramm={programs}
-              mode={mode}
-              archiveTimestamp={archiveTimestamp}
-              onProgramSelect={handleProgramSelect}
-              iconOnly={isMobile && !rightExpanded}
-            />
+            channelId={selectedChannel?.id}
+            timeProgramm={programs}
+            mode={mode}
+            archiveTimestamp={currentActiveUnix}
+            onProgramSelect={handleProgramSelect}
+            iconOnly={isMobile && !rightExpanded}
+          />
           </div>
         </div>
 
@@ -1121,7 +1099,7 @@ const handleCalendarDateSelect = async (date: Date) => {
                 timeProgramm={programs}
                 nextDayPrograms={nextDayPrograms}
                 liveUnixSec={liveUnixSec}
-                currentUnixSec={archiveTimestamp}
+                currentUnixSec={currentActiveUnix}
                 onSelectTime={handleRewind}
               />
             </div>
