@@ -1,11 +1,9 @@
-// ChannelScroller.tsx  — only ChannelCard changes; ChannelScroller wrapper is unchanged
 import React, { useEffect, useRef, useState } from "react"
 import { Link } from "react-router-dom"
-import Hls from "hls.js"
 import { Lock } from "lucide-react"
-import api from "../../../src/lib/axios"
 import useUIStore from "@/store/ui-store"
 import type { Channel } from "../../../src/types/channel"
+import { probeRewindableHours, getPreviewUrl } from "../../../src/services/streamService" // adjust import path if needed
 
 const PALETTE = [
   "rgba(59,130,246,0.85)",
@@ -22,73 +20,21 @@ const translations = {
   Ge: { subscriptionLabel: "საჭიროა პაკეტის შეძენა", locked: "დაბლოკილია" },
 }
 
-// ── all the unchanged logic below (extractStreamUrl, captureFrame, grabThumbnail, fetchThumb) ──
-
-function extractStreamUrl(data: unknown): string | null {
-  if (!data) return null
-  if (typeof data === "string") {
-    const s = data.trim()
-    if (s.startsWith("<") || s.length > 2048) return null
-    return s
-  }
-  if (typeof data === "object") {
-    const obj = data as Record<string, unknown>
-    for (const key of ["url","streamUrl","stream_url","hlsUrl","hls_url","src","source","link","stream"]) {
-      if (typeof obj[key] === "string") return extractStreamUrl(obj[key])
-    }
-    if (obj["data"] && typeof obj["data"] === "object") return extractStreamUrl(obj["data"])
-  }
-  return null
-}
-
-function captureFrame(video: HTMLVideoElement): string {
-  const canvas = document.createElement("canvas")
-  canvas.width = video.videoWidth || 640
-  canvas.height = video.videoHeight || 360
-  canvas.getContext("2d")!.drawImage(video, 0, 0, canvas.width, canvas.height)
-  return canvas.toDataURL("image/jpeg", 0.82)
-}
-
-type GrabResult =
-  | { ok: true; dataUrl: string }
-  | { ok: false; reason: "no-hls" | "timeout" | "hls-error" | "tainted" | "no-video-data" }
-
-async function grabThumbnail(streamUrl: string): Promise<GrabResult> {
-  if (!Hls.isSupported()) return { ok: false, reason: "no-hls" }
-  return new Promise((resolve) => {
-    const video = document.createElement("video")
-    video.muted = true; video.playsInline = true; video.autoplay = true
-    Object.assign(video.style, { position:"fixed", top:"-9999px", left:"-9999px", width:"320px", height:"180px", opacity:"0", pointerEvents:"none" })
-    document.body.appendChild(video)
-    const hls = new Hls({ maxBufferLength:4, maxMaxBufferLength:4, maxBufferSize:0, startLevel:0, autoStartLoad:true, fragLoadingMaxRetry:1, manifestLoadingMaxRetry:1, levelLoadingMaxRetry:1 })
-    let settled = false
-    const finish = (r: GrabResult) => {
-      if (settled) return; settled = true
-      hls.stopLoad(); hls.detachMedia(); hls.destroy(); video.remove(); resolve(r)
-    }
-    const timeout = setTimeout(() => finish({ ok: false, reason: "timeout" }), 20_000)
-    const onTimeUpdate = () => {
-      if (video.videoWidth === 0 || video.readyState < 2) return
-      clearTimeout(timeout); video.pause()
-      try { finish({ ok: true, dataUrl: captureFrame(video) }) }
-      catch { finish({ ok: false, reason: "tainted" }) }
-    }
-    video.addEventListener("timeupdate", onTimeUpdate)
-    hls.on(Hls.Events.ERROR, (_, d) => { if (d.fatal) { clearTimeout(timeout); finish({ ok: false, reason: "hls-error" }) } })
-    hls.loadSource(streamUrl); hls.attachMedia(video)
-    hls.on(Hls.Events.MANIFEST_PARSED, () => { video.play().catch(() => {}) })
-  })
-}
+// ─── Preview fetching — now delegates to streamService's archive cache ─────
+// Instead of opening an HLS stream and grabbing a video frame manually,
+// we warm the archive cache (probeRewindableHours) and ask streamService
+// for a ready-made preview mp4 URL at a recent timestamp. Zero extra
+// network calls beyond the probe itself, and it's reused if the archive
+// cache is already warm from elsewhere (e.g. the player).
 
 type ThumbState = undefined | "loading" | "failed" | "locked" | string
 
-async function fetchThumb(channelId: string): Promise<ThumbState> {
+async function fetchPreviewUrl(channelId: string): Promise<ThumbState> {
   try {
-    const res = await api.get(`/api/channels/${channelId}/stream`)
-    const streamUrl = extractStreamUrl(res.data)
-    if (!streamUrl) return "failed"
-    const result = await grabThumbnail(streamUrl)
-    return result.ok ? result.dataUrl : "failed"
+    await probeRewindableHours(channelId) // warms archiveCache[channelId]
+    const ts = Math.floor(Date.now() / 1000) - 30 // a bit in the past so it's already recorded
+    const url = getPreviewUrl(channelId, ts)
+    return url ?? "failed"
   } catch (err: unknown) {
     if (err && typeof err === "object" && "response" in err && (err as { response?: { status?: number } }).response?.status === 403) {
       return "locked"
@@ -114,7 +60,7 @@ export const ChannelCard: React.FC<{ channel: Channel; index: number }> = ({ cha
       (entries) => {
         if (entries[0].isIntersecting && !started.current) {
           started.current = true; observer.disconnect()
-          setThumb("loading"); fetchThumb(channel.id).then(setThumb)
+          setThumb("loading"); fetchPreviewUrl(channel.id).then(setThumb)
         }
       },
       { rootMargin: "0px 100px 0px 0px", threshold: 0.1 }
@@ -149,11 +95,14 @@ export const ChannelCard: React.FC<{ channel: Channel; index: number }> = ({ cha
         {/* Top shimmer edge */}
         <div className="pm-card-edge" aria-hidden="true" />
 
-        {/* Captured frame */}
+        {/* Live preview (looping mp4 from archive cache) */}
         {hasImage && (
-          <img
+          <video
             src={thumb as string}
-            alt={`${channel.name} preview`}
+            autoPlay
+            muted
+            loop
+            playsInline
             className="absolute inset-0 h-full w-full object-cover opacity-80 transition-all duration-500 group-hover:scale-110 group-hover:opacity-90"
           />
         )}
