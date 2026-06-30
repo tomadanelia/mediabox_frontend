@@ -98,6 +98,38 @@ function buildArchiveUrl(entry: ArchiveEntry, timestamp: number): string {
   return `${entry.prefix}${timestamp}${entry.suffix}`;
 }
 
+/**
+ * Splits the token query string + CDN base out of a cached ArchiveEntry,
+ * the same way getPreviewUrl() does internally. Shared by getPreviewUrl()
+ * and buildArchiveStreamUrlByDatePath() so both date-path URL builders stay
+ * in sync instead of duplicating this parsing twice.
+ */
+function extractTokenAndBase(entry: ArchiveEntry): { tokenQS: string; base: string } | null {
+  const tokenMatch = entry.suffix.match(/\?(.*)/);
+  if (!tokenMatch) return null;
+  const tokenQS = tokenMatch[1];
+
+  const prefixMatch = entry.prefix.match(/^(https:\/\/[^/]+\/tv\/[^/]+)\//);
+  if (!prefixMatch) return null;
+  const base = prefixMatch[1];
+
+  return { tokenQS, base };
+}
+
+/** Converts a unix timestamp into the zero-padded UTC path segments used in CDN URLs. */
+function timestampToDatePathSegments(timestamp: number) {
+  const d = new Date(timestamp * 1000);
+  const pad = (n: number) => String(n).padStart(2, '0');
+  return {
+    yyyy: d.getUTCFullYear(),
+    mm:   pad(d.getUTCMonth() + 1),
+    dd:   pad(d.getUTCDate()),
+    hh:   pad(d.getUTCHours()),
+    min:  pad(d.getUTCMinutes()),
+    sec:  pad(d.getUTCSeconds()),
+  };
+}
+
 // ─── Cache stores (module-level singletons) ───────────────────────────────────
 
 const liveCache: Record<string, LiveEntry> = {};
@@ -253,29 +285,75 @@ export function evictAll(): void {
 export function getPreviewUrl(channelId: string | undefined, timestamp: number): string | null {
   if (!channelId) return null;
   const cached = archiveCache[channelId];
+  if (!cached) return null;
 
-  // Extract the token query string from the suffix: ".m3u8?token=abc123..."
-  const tokenMatch = cached.suffix.match(/\?(.*)/);
-  if (!tokenMatch) return null;
-  const tokenQS = tokenMatch[1]; // e.g. "token=abc123-..."
+  const parts = extractTokenAndBase(cached);
+  if (!parts) return null;
+  const { tokenQS, base } = parts;
 
-  // Convert unix timestamp to path segments
-  const d = new Date(timestamp * 1000);
-  const pad = (n: number) => String(n).padStart(2, '0');
-  const yyyy = d.getUTCFullYear();
-  const mm   = pad(d.getUTCMonth() + 1);
-  const dd   = pad(d.getUTCDate());
-  const hh   = pad(d.getUTCHours());
-  const min  = pad(d.getUTCMinutes());
-  const sec  = pad(d.getUTCSeconds());
-
-  // Extract base CDN host + channel path from prefix
-  // prefix looks like: "https://cdn.streamer.mediabox.ge/tv/meore_arkhi/video-timeshift_abs-"
-  const prefixMatch = cached.prefix.match(/^(https:\/\/[^/]+\/tv\/[^/]+)\//);
-  if (!prefixMatch) return null;
-  const base = prefixMatch[1]; // "https://cdn.streamer.mediabox.ge/tv/meore_arkhi"
+  const { yyyy, mm, dd, hh, min, sec } = timestampToDatePathSegments(timestamp);
 
   return `${base}/${yyyy}/${mm}/${dd}/${hh}/${min}/${sec}-preview.mp4?${tokenQS}`;
+}
+
+/**
+ * Builds a playable HLS (.m3u8) archive stream URL for an arbitrary
+ * timestamp, using the SAME date-path convention as getPreviewUrl() —
+ * {cdnBase}/{YYYY}/{MM}/{DD}/{HH}/{mm}/{ss}.m3u8?{tokenQS} — instead of the
+ * epoch-swap "video-timeshift_abs-{timestamp}.m3u8" pattern that
+ * buildArchiveStreamUrl()/getArchiveUrl() produce.
+ *
+ * Why this exists: the timeshift_abs epoch-swap URL is what the backend
+ * hands back from /api/channels/{id}/archive, and it's correct, but it's
+ * also the ONLY shape getArchiveUrl()/buildArchiveStreamUrl() know how to
+ * produce. This sibling helper gives callers a second, independent way to
+ * point the player at a specific moment via the same date-path layout the
+ * CDN already uses for preview thumbnails — useful for verifying playback
+ * at a timestamp without trusting the epoch-swap path, or as a fallback if
+ * the timeshift_abs URL isn't behaving as expected for a given stream.
+ *
+ * Like buildArchiveStreamUrl(), this is fully synchronous and zero network
+ * cost — it just reuses the cached token from the most recent getArchiveUrl()
+ * call for this channel. Returns null if that cache isn't warm yet; callers
+ * should fall back to getArchiveUrl() in that case (e.g. on first load).
+ */
+export function buildArchiveStreamUrlByDatePath(
+  channelId: string | undefined,
+  timestamp: number
+): string | null {
+  if (!channelId) return null;
+  const cached = archiveCache[channelId];
+  if (!cached) return null;
+
+  const parts = extractTokenAndBase(cached);
+  if (!parts) return null;
+  const { tokenQS, base } = parts;
+
+  const { yyyy, mm, dd, hh, min, sec } = timestampToDatePathSegments(timestamp);
+
+  return `${base}/${yyyy}/${mm}/${dd}/${hh}/${min}/${sec}.m3u8?${tokenQS}`;
+}
+
+/**
+ * Synchronously swaps a new timestamp into the already-cached archive
+ * stream URL (prefix + timestamp + suffix), reusing the same token.
+ *
+ * Zero network cost, no async round-trip — same pattern as getPreviewUrl().
+ * Use this for fast scrubbing/dragging (e.g. live clip preview while the
+ * user moves the trim selection) instead of calling getArchiveUrl() again,
+ * which performs a cache-staleness check and can trigger a refetch.
+ *
+ * Returns null if the archive cache isn't warm yet for this channel —
+ * caller should fall back to getArchiveUrl() in that case (e.g. on first load).
+ */
+export function buildArchiveStreamUrl(
+  channelId: string | undefined,
+  timestamp: number
+): string | null {
+  if (!channelId) return null;
+  const cached = archiveCache[channelId];
+  if (!cached) return null;
+  return buildArchiveUrl(cached, timestamp);
 }
 
 /**
@@ -300,4 +378,76 @@ export function buildArchiveDownloadUrl(
   const base = prefixMatch[1];
 
   return `${base}/archive-${startTs}-${durationSec}.mp4?${tokenQS}`;
+}
+
+
+
+// ── Add to streamService.ts ─────────────────────────────────────────────────
+//
+// getArchiveUrl() already does the real work of resolving a stream URL for
+// an arbitrary timestamp — that part isn't new. What's missing is a way for
+// a caller that fires one of these per UI tick (e.g. every settled drag
+// position on a trim/scrub control) to do so WITHOUT having to manually
+// track "is a previous call for this same logical session still in flight,
+// and if so, throw its result away when a newer one starts."
+//
+// Without that, a caller has two bad options:
+//   1. Don't fire a new request until the previous one resolves — visible
+//      lag, and you can still race two callers calling this independently.
+//   2. Fire on every tick and let whichever promise resolves LAST win —
+//      that's a classic out-of-order race: if the request for an earlier
+//      timestamp happens to resolve after the request for a later one
+//      (slow network, retried request, anything), the UI ends up showing
+//      the wrong moment, or — if the caller also tears down/destroys a
+//      player instance per call — can leave the player attached to a
+//      half-destroyed instance with no live request left to ever resolve
+//      it. That's the open-ended "request races" version of the original
+//      loadSource() bug, just one layer up at the fetch level instead of
+//      the HLS-attach level.
+//
+// archiveUrlSequenced() fixes this with a simple monotonic ticket per
+// channel: every call increments a counter and stamps its own ticket. When
+// the request resolves, the result carries `current: boolean` — true only
+// if no newer call for that channel has started since this one did. Callers
+// drop the result if `current` is false instead of trying to coordinate
+// AbortControllers or cancellation themselves.
+
+type SequencedArchiveResult = ArchiveResult & {
+  /**
+   * False if a newer archiveUrlSequenced() call for the same channelId was
+   * started before this one resolved — i.e. this result is stale and the
+   * caller should ignore it rather than apply it to UI state.
+   */
+  current: boolean;
+};
+
+const archiveRequestTicket: Record<string, number> = {};
+
+/**
+ * Same as getArchiveUrl(), but safe to call once per UI tick (e.g. once per
+ * settled drag position) without manually cancelling previous in-flight
+ * calls. Each call for a given channelId gets a ticket; only the result
+ * from the LATEST ticket for that channel comes back marked `current: true`
+ * — every earlier in-flight call resolves with `current: false` once a
+ * newer one has started, regardless of network ordering.
+ *
+ * Callers should check `.current` before acting on the result:
+ *
+ *   const r = await archiveUrlSequenced(channelId, ts);
+ *   if (!r.current) return;   // a newer request has since superseded this one
+ *   attachStream(r.url);
+ */
+export async function archiveUrlSequenced(
+  channelId: string,
+  timestamp: number
+): Promise<SequencedArchiveResult> {
+  const ticket = (archiveRequestTicket[channelId] ?? 0) + 1;
+  archiveRequestTicket[channelId] = ticket;
+
+  const result = await getArchiveUrl(channelId, timestamp);
+
+  return {
+    ...result,
+    current: archiveRequestTicket[channelId] === ticket,
+  };
 }

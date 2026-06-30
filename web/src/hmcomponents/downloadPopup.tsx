@@ -2,80 +2,7 @@ import Hls from 'hls.js';
 import { useState, useRef, useCallback, useEffect } from 'react';
 import { requestDownload } from '../../src/services/downloadService';
 import type { DownloadResult } from '../../src/services/downloadService';
-import { getArchiveUrl, probeRewindableHours } from '@/services/streamService';
-import useUIStore from '../../src/store/ui-store'; 
-import { TicketX } from 'lucide-react';
-
-// 2. Define your translations mapping
-const translations = {
-  Ge: {
-    rewatch: "თავიდან ყურება",
-    title: "კლიპის ჩამოტვირთვა",
-    startTime: "საწყისი დრო",
-    endTime: "საბოლოო დრო",
-    duration: "ხანგრძლივობა",
-    cancel: "გაუქმება",
-    download: "ჩამოტვირთვა",
-    maxLimitWarning: "მაქსიმალური ხანგრძლივობაა 20 წუთი",
-    preparing: "მზადდება ჩამოსატვირთად...",
-    errorTitle: "შეცდომა",
-    errorRange: "გთხოვთ აირჩიოთ სწორი დროის შუალედი",
-    successMessage: "ჩამოტვირთვა დაიწყო წარმატებით",
-    start: "დასაწყისი",
-    end: "დასასრული",
-    preparingClip: "მზადდება კლიპი...",
-    notAvailableYet: "ჯერ არ არის ხელმისაწვდომი",
-    downloadComingSoon: "ჩამოტვირთვა მალე გამოჩნდება — შეინახეთ არქივის კლიპები",
-    trimToMoment: "ჩასწორება ზუსტ მომენტამდე",
-    hdQuality: "HD ხარისხის ექსპორტი",
-    upTo3Min: "3 წუთამდე",
-    gotIt: "კარგი",
-    downloadFailed: "ჩამოტვირთვა ვერ მოხერხდა",
-    tryAgain: "კიდევ სცადე",
-    clipQueued: "კლიპი რიგშია",
-    beingPrepared: "მზადდება — გაცნობებთ როცა მზად იქნება",
-    done: "ჩამოტვირთვა დასრულდა",
-    paused: "Paused",
-    loadingPreview: "Loading preview…",
-    maxClipLength: "მაქსიმალური კლიპის სიგრძეა",
-  },
-  En: {
-    rewatch: "Rewatch Clip",
-    title: "Download Clip",
-    startTime: "Start Time",
-    endTime: "End Time",
-    duration: "Duration",
-    cancel: "Cancel",
-    download: "Download",
-    maxLimitWarning: "Maximum clip duration is 20 minutes",
-    preparing: "Preparing download...",
-    errorTitle: "Error",
-    errorRange: "Please select a valid time range",
-    successMessage: "Download started successfully",
-    start: "Start",
-    end: "End",
-    preparingClip: "Preparing clip…",
-    notAvailableYet: "Not Available Yet",
-    downloadComingSoon: "Download is coming soon — trim and save archive clips.",
-    trimToMoment: "Trim to exact moment",
-    hdQuality: "HD quality export",
-    upTo3Min: "Up to 3 minutes",
-    gotIt: "Got it",
-    downloadFailed: "Download Failed",
-    tryAgain: "Try again",
-    clipQueued: "Clip Queued",
-    beingPrepared: "Being prepared — we'll notify you when ready.",
-    done: "Done",
-    paused: "Paused",
-    loadingPreview: "Loading preview…",
-    maxClipLength: "Max clip length is",
-  }
-}
-function zoomIdxForDuration(sec: number): number {
-  const needed = sec * 3;
-  const idx = ZOOM_LEVELS.slice().reverse().findIndex(z => z >= needed);
-  return idx !== -1 ? ZOOM_LEVELS.length - 1 - idx : ZOOM_LEVELS.length - 1;
-}
+import { getArchiveUrl, getPreviewUrl, probeRewindableHours } from '@/services/streamService';
 function formatDuration(seconds: number): string {
   const m = Math.floor(seconds / 60);
   const s = Math.floor(seconds % 60);
@@ -115,6 +42,9 @@ const ZOOM_LEVELS = [
   60 * 60 * 2,  60 * 60,      60 * 30,
   60 * 10,      60 * 5,       60 * 2, 60,
 ];
+
+// Index into ZOOM_LEVELS for the default starting zoom — 10 minutes.
+const DEFAULT_ZOOM_IDX = ZOOM_LEVELS.indexOf(60 * 10);
 
 interface DownloadPopupProps {
   channelId:        string | undefined;
@@ -177,7 +107,7 @@ const TimeField: React.FC<TimeFieldProps> = ({ label, value, min, max, align, on
           onClick={startEdit}
           title="Click to edit"
           className="text-[11px] font-mono text-zinc-400 hover:text-zinc-200
-            hover:bg-zinc-800/80 rounded px-1 py-0.5 transition-all text-left cursor-pointer"
+            hover:bg-zinc-800/80 rounded px-1 py-0.5 transition-all text-left"
         >
           {formatTime(value)}
         </button>
@@ -243,7 +173,12 @@ const TrimStrip: React.FC<TrimStripProps> = ({
     const rect = ref.current?.getBoundingClientRect();
     if (!rect) return live.current.viewStart;
     const pct = Math.max(0, Math.min(1, (clientX - rect.left) / rect.width));
-    return live.current.viewStart + pct * (live.current.viewEnd - live.current.viewStart);
+    // Always return a whole second. This value flows directly into
+    // start/end state and from there into archive stream URLs
+    // (.../video-timeshift_abs-{timestamp}.m3u8) — a fractional timestamp
+    // here produces a malformed URL the CDN 404s on (manifestLoadError),
+    // which is what was actually breaking playback after the first scrub.
+    return Math.round(live.current.viewStart + pct * (live.current.viewEnd - live.current.viewStart));
   };
 
   const runFrame = useCallback(() => {
@@ -356,7 +291,7 @@ const TrimStrip: React.FC<TrimStripProps> = ({
   return (
     <div
       ref={ref}
-      className="relative w-full select-none cursor-pointer"
+      className="relative w-full select-none"
       style={{ height: '64px' }}
       onPointerDown={onPointerDown}
       onPointerMove={onPointerMove}
@@ -438,21 +373,44 @@ const TrimStrip: React.FC<TrimStripProps> = ({
   );
 };
 
-// Stable thumbnail tile — only remounts when channelId or timestamp changes
+// Stable thumbnail tile — only remounts when channelId or timestamp changes.
+// Uses the single-frame preview mp4 (getPreviewUrl) instead of spinning up
+// an HLS.js instance per tile — much cheaper for 8 tiles rendered at once.
 const FrameTile: React.FC<{ channelId: string | undefined; timestamp: number }> = ({
   channelId, timestamp,
 }) => {
-  const [archiveUrl, setArchiveUrl] = useState<string | null>(null);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!channelId) return;
-    getArchiveUrl(channelId, timestamp).then(r => setArchiveUrl(r.url)).catch(() => {});
+    if (!channelId) { setPreviewUrl(null); return; }
+
+    // Synchronous cache-backed lookup first — zero network cost if warm.
+    const cached = getPreviewUrl(channelId, timestamp);
+    if (cached) { setPreviewUrl(cached); return; }
+
+    // Cache not warm yet for this channel — warm it once via a single
+    // archive fetch, then derive the preview URL from the cached token.
+    let cancelled = false;
+    setPreviewUrl(null);
+    getArchiveUrl(channelId, timestamp).then(() => {
+      if (cancelled) return;
+      setPreviewUrl(getPreviewUrl(channelId, timestamp));
+    }).catch(() => {});
+
+    return () => { cancelled = true; };
   }, [channelId, timestamp]);
 
   return (
     <div className="flex-1 h-full border-r border-white/[0.04] last:border-r-0 overflow-hidden bg-zinc-900">
-      {archiveUrl ? (
-        <HlsThumbnail src={archiveUrl} />
+      {previewUrl ? (
+        <video
+          key={previewUrl}
+          src={previewUrl}
+          muted
+          playsInline
+          preload="metadata"
+          className="w-full h-full object-cover pointer-events-none"
+        />
       ) : (
         <div className="w-full h-full flex items-center justify-center">
           <span className="material-symbols-outlined text-zinc-800" style={{ fontSize: '13px' }}>image</span>
@@ -462,171 +420,152 @@ const FrameTile: React.FC<{ channelId: string | undefined; timestamp: number }> 
   );
 };
 
-// Renders the first frame of an HLS stream as a thumbnail
-const HlsThumbnail: React.FC<{ src: string }> = ({ src }) => {
-  const vidRef = useRef<HTMLVideoElement>(null);
-
-  useEffect(() => {
-    const vid = vidRef.current;
-    if (!vid || !src) return;
-
-    let hls: Hls | null = null;
-
-    const attach = () => {
-      if (vid.canPlayType('application/vnd.apple.mpegurl')) {
-        vid.src = src;
-      } else if (Hls.isSupported()) {
-        hls = new Hls({ maxBufferLength: 2, startPosition: 0 });
-        hls.loadSource(src);
-        hls.attachMedia(vid);
-      }
-    };
-
-    attach();
-    return () => { hls?.destroy(); };
-  }, [src]);
-
-  return (
-    <video
-      ref={vidRef}
-      muted
-      playsInline
-      preload="metadata"
-      className="w-full h-full object-cover pointer-events-none"
-    />
-  );
-};
-
-// ─── Clip Preview Player ──────────────────────────────────────────────────────
 // ─── Clip Preview Player ──────────────────────────────────────────────────────
 
 interface ClipPreviewProps {
   channelId:    string | undefined;
-  timestamp:    number;     // start time
+  timestamp:    number;
   archiveReady: boolean;
-  duration:     number;     // NEW: pass clip duration
 }
 
-const ClipPreview: React.FC<ClipPreviewProps> = ({ 
-  channelId, 
-  timestamp, 
-  archiveReady,
-  duration 
-}) => {
+const ClipPreview: React.FC<ClipPreviewProps> = ({ channelId, timestamp, archiveReady }) => {
   const videoRef                  = useRef<HTMLVideoElement>(null);
   const hlsRef                    = useRef<Hls | null>(null);
   const [streamUrl, setStreamUrl] = useState<string | null>(null);
-  const [isEnded,   setIsEnded]   = useState(false);
-  const [isPlaying, setIsPlaying] = useState(false);
-  const language= useUIStore(state => state.language);
-  const t= translations[language];
+  const [paused,    setPaused]    = useState(false);
 
-  // Fetch archive HLS URL
+  // Resolve the stream URL for the current (debounced) timestamp.
+  //
+  // This mirrors Stream.tsx's goArchive(): a plain awaited getArchiveUrl()
+  // call, nothing more. Earlier versions of this component tried to be
+  // clever here — a synchronous fast-path via buildArchiveStreamUrl(),
+  // ticket-based race handling via archiveUrlSequenced(), a separate
+  // date-path URL builder — and each of those layers introduced its own
+  // bug (white screen from a missing export, black flashes from premature
+  // buffer clearing, stale frames from instance reuse). The main player
+  // (VideoPlayer.tsx) does none of that: it just awaits getArchiveUrl()
+  // on demand and lets a depended-on `streamUrl` state value drive the HLS
+  // effect below. previewTs is already debounced 300ms upstream, so the
+  // call frequency here is naturally low — no extra machinery needed.
   useEffect(() => {
     if (!channelId || !archiveReady) {
+      console.log('🟡 [ClipPreview] skip resolve — no channelId/archiveReady', { channelId, archiveReady });
       setStreamUrl(null);
       return;
     }
+
+    console.log('🔵 [ClipPreview] resolving archive url', { channelId, timestamp, clock: new Date(timestamp * 1000).toISOString() });
+
+    let cancelled = false;
     getArchiveUrl(channelId, timestamp)
-      .then(r => setStreamUrl(r.url))
-      .catch(() => setStreamUrl(null));
+      .then(r => {
+        if (cancelled) { console.log('⚪ [ClipPreview] resolve resolved but cancelled', { timestamp, url: r.url }); return; }
+        console.log('🟢 [ClipPreview] resolved url', { timestamp, url: r.url });
+        setStreamUrl(r.url);
+      })
+      .catch(err => {
+        if (cancelled) return;
+        console.error('🔴 [ClipPreview] getArchiveUrl failed', { timestamp, err });
+        setStreamUrl(null);
+      });
+    return () => { cancelled = true; };
   }, [channelId, timestamp, archiveReady]);
 
-  // Setup HLS + limit playback to selected duration
-  const startWallClockRef = useRef<number | null>(null);
-
-  // Setup HLS + limit playback to selected duration
+  // Attach/update HLS — mirrors VideoPlayer.tsx's main player effect
+  // exactly: always destroy the previous Hls instance and build a fresh
+  // one on every streamUrl change, loadSource + attachMedia together, play
+  // once MANIFEST_PARSED fires. No instance reuse, no preload-then-swap,
+  // no pending-url bookkeeping — that complexity was the source of the
+  // black-screen/frozen-frame bugs, and the main player works correctly
+  // without any of it.
   useEffect(() => {
     const vid = videoRef.current;
-    if (!vid || !streamUrl) return;
+    console.log('🔵 [ClipPreview] HLS effect run', { streamUrl, hasVid: !!vid });
 
-    hlsRef.current?.destroy();
-    hlsRef.current = null;
-    startWallClockRef.current = null;
-    setIsEnded(false);
-    setIsPlaying(false);
-
-    const handlePlaying = () => {
-      if (startWallClockRef.current === null) {
-        startWallClockRef.current = Date.now();
+    if (!vid || !streamUrl) {
+      if (hlsRef.current) {
+        console.log('🟡 [ClipPreview] tearing down (no streamUrl/vid)');
+        hlsRef.current.detachMedia();
+        hlsRef.current.destroy();
       }
-    };
+      hlsRef.current = null;
+      if (vid) { vid.removeAttribute('src'); vid.load(); }
+      return;
+    }
 
-    const handleTimeUpdate = () => {
-      if (startWallClockRef.current === null) return;
-      const elapsed = (Date.now() - startWallClockRef.current) / 1000;
-      if (elapsed >= duration) {
-        vid.pause();
-        setIsEnded(true);
-        setIsPlaying(false);
-      }
-    };
+    // Detach BEFORE destroy, and do it synchronously up front rather than
+    // relying on the previous effect run's cleanup closure. hls.js's
+    // destroy() can leave the <video> element in a state where a brand
+    // new instance's attachMedia() on the same tick silently fails to
+    // bind — explicitly detaching first avoids that race.
+    if (hlsRef.current) {
+      console.log('🟡 [ClipPreview] detaching+destroying previous hls instance before creating new one');
+      hlsRef.current.detachMedia();
+      hlsRef.current.destroy();
+      hlsRef.current = null;
+    }
 
-    const handleEnded = () => {
-      setIsEnded(true);
-      setIsPlaying(false);
-    };
+    let stale = false;
 
-    const handlePlay  = () => setIsPlaying(true);
-    const handlePause = () => setIsPlaying(false);
-
-    if (vid.canPlayType('application/vnd.apple.mpegurl')) {
-      vid.src = streamUrl;
-    } else if (Hls.isSupported()) {
-      const hls = new Hls({
-        startPosition: 0,
-        maxBufferLength: 10,
-      });
+    if (Hls.isSupported()) {
+      console.log('🔵 [ClipPreview] creating new Hls instance', { streamUrl });
+      const hls = new Hls({ startPosition: 0, maxBufferLength: 10 });
       hlsRef.current = hls;
-      hls.loadSource(streamUrl);
       hls.attachMedia(vid);
 
-      hls.on(Hls.Events.MANIFEST_PARSED, () => {
-        vid.play().catch(() => {});
+      hls.on(Hls.Events.MEDIA_ATTACHED, () => {
+        console.log('🟢 [ClipPreview] MEDIA_ATTACHED', { streamUrl, stale });
+        if (stale) return;
+        hls.loadSource(streamUrl);
       });
+      hls.on(Hls.Events.MANIFEST_PARSED, () => {
+        console.log('🟢 [ClipPreview] MANIFEST_PARSED — calling play()', { streamUrl, stale });
+        if (stale) return;
+        setPaused(false);
+        vid.play()
+          .then(() => console.log('🟢 [ClipPreview] play() resolved', { streamUrl }))
+          .catch(err => console.warn('🔴 [ClipPreview] play() rejected', { streamUrl, err }));
+      });
+      hls.on(Hls.Events.ERROR, (_evt, data) => {
+        console.error('🔴 [ClipPreview] HLS ERROR', { streamUrl, fatal: data.fatal, type: data.type, details: data.details });
+      });
+    } else if (vid.canPlayType('application/vnd.apple.mpegurl')) {
+      console.log('🔵 [ClipPreview] using native HLS (Safari)', { streamUrl });
+      vid.src = streamUrl;
+      vid.onloadedmetadata = () => {
+        console.log('🟢 [ClipPreview] native loadedmetadata — calling play()', { streamUrl, stale });
+        if (stale) return;
+        setPaused(false);
+        vid.play()
+          .then(() => console.log('🟢 [ClipPreview] native play() resolved', { streamUrl }))
+          .catch(err => console.warn('🔴 [ClipPreview] native play() rejected', { streamUrl, err }));
+      };
+    } else {
+      console.warn('🔴 [ClipPreview] neither hls.js nor native HLS supported');
     }
-
-    vid.addEventListener('playing', handlePlaying);
-    vid.addEventListener('timeupdate', handleTimeUpdate);
-    vid.addEventListener('ended', handleEnded);
-    vid.addEventListener('play', handlePlay);
-    vid.addEventListener('pause', handlePause);
 
     return () => {
-      vid.removeEventListener('playing', handlePlaying);
-      vid.removeEventListener('timeupdate', handleTimeUpdate);
-      vid.removeEventListener('ended', handleEnded);
-      vid.removeEventListener('play', handlePlay);
-      vid.removeEventListener('pause', handlePause);
-      hlsRef.current?.destroy();
-      hlsRef.current = null;
+      console.log('🟡 [ClipPreview] effect cleanup — marking stale + tearing down', { streamUrl });
+      stale = true;
+      if (hlsRef.current) {
+        hlsRef.current.detachMedia();
+        hlsRef.current.destroy();
+        hlsRef.current = null;
+      }
     };
-  }, [streamUrl, timestamp, duration]);
+  }, [streamUrl]);
 
-  const togglePlay = () => {
+  // Sync play/pause imperatively
+  useEffect(() => {
     const vid = videoRef.current;
     if (!vid) return;
+    if (paused) { vid.pause(); }
+    else        { vid.play().catch(() => {}); }
+  }, [paused]);
 
-    if (isEnded) {
-      vid.currentTime = 0;
-      setIsEnded(false);
-    }
+  useEffect(() => () => { hlsRef.current?.destroy(); }, []);
 
-    if (vid.paused) {
-      vid.play().catch(() => {});
-    } else {
-      vid.pause();
-    }
-  };
-
- const rewatch = () => {
-    if (!channelId) return;
-    setIsEnded(false);
-    setStreamUrl(null);
-    getArchiveUrl(channelId, timestamp)
-      .then(r => setStreamUrl(r.url))
-      .catch(() => setStreamUrl(null));
-  };
+  const togglePause = () => setPaused(p => !p);
 
   return (
     <div
@@ -638,46 +577,50 @@ const ClipPreview: React.FC<ClipPreviewProps> = ({
           <video
             ref={videoRef}
             muted
+            loop
             playsInline
             className="w-full h-full object-cover"
+            onPlay={() => setPaused(false)}
+            onPause={() => setPaused(true)}
           />
 
-          {/* Play/Pause Overlay */}
+          {/* Click-to-pause overlay */}
           <button
-            onClick={togglePlay}
+            onClick={togglePause}
             className="absolute inset-0 w-full h-full flex items-center justify-center cursor-pointer bg-transparent"
             style={{ WebkitTapHighlightColor: 'transparent' }}
+            aria-label={paused ? 'Play' : 'Pause'}
           >
-            <div className={`flex items-center justify-center w-12 h-12 rounded-full
-              bg-black/70 border border-white/20 backdrop-blur-md transition-all
-              ${isEnded || !isPlaying ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}`}>
-              <span className="material-symbols-outlined text-white" style={{ fontSize: '28px' }}>
-                {isEnded ? 'replay' : isPlaying ? 'pause' : 'play_arrow'}
+            <div className={`flex items-center justify-center w-10 h-10 rounded-full
+              bg-black/60 border border-white/15 backdrop-blur-sm
+              transition-opacity duration-150
+              ${paused ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}`}>
+              <span
+                className="material-symbols-outlined text-white"
+                style={{ fontSize: '22px', fontVariationSettings: "'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 24" }}
+              >
+                {paused ? 'play_arrow' : 'pause'}
               </span>
             </div>
           </button>
-
-          {/* Rewatch Button when ended */}
-          {isEnded && (
-            <button
-              onClick={rewatch}
-              className="absolute bottom-4 left-1/2 -translate-x-1/2 px-6 py-2 rounded-full
-                bg-red-600 hover:bg-red-500 text-white text-sm font-medium flex items-center gap-2
-                shadow-lg cursor-pointer transition-all active:scale-95"
-            >
-              <span className="material-symbols-outlined" style={{ fontSize: '18px' }}>replay</span>
-              <p>{t.rewatch}</p>
-            </button>
-          )}
 
           {/* Timestamp badge */}
           <div className="absolute bottom-2 left-2 px-2 py-0.5 rounded-md bg-black/70 border border-zinc-700/60 pointer-events-none">
             <span className="text-[10px] font-mono text-zinc-400">{formatTime(timestamp)}</span>
           </div>
+
+          {paused && (
+            <div className="absolute top-2 right-2 px-2 py-0.5 rounded-md bg-black/70 border border-zinc-700/60 pointer-events-none">
+              <span className="text-[10px] font-mono text-zinc-400 uppercase tracking-wider">Paused</span>
+            </div>
+          )}
         </>
       ) : (
         <div className="absolute inset-0 flex flex-col items-center justify-center gap-2">
-          <span className="material-symbols-outlined text-zinc-800" style={{ fontSize: '28px' }}>
+          <span
+            className="material-symbols-outlined text-zinc-800"
+            style={{ fontSize: '28px', fontVariationSettings: "'FILL' 0, 'wght' 300, 'GRAD' 0, 'opsz' 24" }}
+          >
             movie
           </span>
           <span className="text-[10px] text-zinc-700 tracking-wide">Loading preview…</span>
@@ -686,7 +629,6 @@ const ClipPreview: React.FC<ClipPreviewProps> = ({
     </div>
   );
 };
-
 // ─── Main popup ───────────────────────────────────────────────────────────────
 
 export const DownloadPopup: React.FC<DownloadPopupProps> = ({
@@ -695,11 +637,10 @@ export const DownloadPopup: React.FC<DownloadPopupProps> = ({
   const nowRef = useRef(Math.floor(Date.now() / 1000));
   const now    = nowRef.current;
   const center = currentTimestamp ?? now - 60;
-  const language = useUIStore((state) => state.language);
-  const t = translations[language];
+
   const [start,      setStart]      = useState(() => Math.max(oldestTimestamp, center - DEFAULT_CLIP_SEC / 2));
   const [end,        setEnd]        = useState(() => Math.min(now,             center + DEFAULT_CLIP_SEC / 2));
-  const [zoomIdx,    setZoomIdx]    = useState(() => zoomIdxForDuration(DEFAULT_CLIP_SEC));
+  const [zoomIdx,    setZoomIdx]    = useState(DEFAULT_ZOOM_IDX);
   const [viewCenter, setViewCenter] = useState(center);
 
   const viewWindow = ZOOM_LEVELS[zoomIdx];
@@ -708,8 +649,14 @@ export const DownloadPopup: React.FC<DownloadPopupProps> = ({
   const viewEnd    = Math.min(now, viewStart + viewWindow);
 
   const handleChange = useCallback((ns: number, ne: number, viewShift = 0) => {
-    setStart(ns);
-    setEnd(ne);
+    // Defense in depth: round here too, since this is the one chokepoint
+    // every drag-driven start/end update flows through. clientXToSec()
+    // already rounds, but body-drag math (totalDxSec etc.) does its own
+    // arithmetic before calling this, so rounding again here guarantees
+    // start/end — and therefore every archive URL built from them — are
+    // always whole seconds.
+    setStart(Math.round(ns));
+    setEnd(Math.round(ne));
     if (viewShift !== 0) {
       setViewCenter(c => {
         const half = viewWindow / 2;
@@ -758,11 +705,15 @@ export const DownloadPopup: React.FC<DownloadPopupProps> = ({
   }, [channelId]);
 
   // Debounced preview timestamp — only updates after user stops dragging
-  const [previewTs,         setPreviewTs]         = useState(start);
+  const [previewTs,         setPreviewTs]         = useState(Math.round(start));
   const previewDebounceRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   useEffect(() => {
     clearTimeout(previewDebounceRef.current);
-    previewDebounceRef.current = setTimeout(() => setPreviewTs(start), 300);
+    previewDebounceRef.current = setTimeout(() => {
+      const rounded = Math.round(start);
+      console.log('🔵 [DownloadPopup] previewTs settled', { start, rounded, clock: new Date(rounded * 1000).toISOString() });
+      setPreviewTs(rounded);
+    }, 300);
     return () => clearTimeout(previewDebounceRef.current);
   }, [start]);
 
@@ -788,13 +739,11 @@ export const DownloadPopup: React.FC<DownloadPopupProps> = ({
               style={{ fontSize: '18px', fontVariationSettings: "'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 24" }}>
               download
             </span>
-            <span className="text-sm font-semibold text-zinc-300 tracking-wide">{t.title}</span>
+            <span className="text-sm font-semibold text-zinc-300 tracking-wide">გადმოწერე კლიპი</span>
           </div>
-          <button 
-            onClick={onClose}
+          <button onClick={onClose}
             className="w-7 h-7 flex items-center justify-center rounded-lg
-              text-zinc-700 hover:text-zinc-400 hover:bg-zinc-800 transition-all cursor-pointer"
-          >
+              text-zinc-700 hover:text-zinc-400 hover:bg-zinc-800 transition-all">
             <span className="material-symbols-outlined" style={{ fontSize: '17px' }}>close</span>
           </button>
         </div>
@@ -807,7 +756,6 @@ export const DownloadPopup: React.FC<DownloadPopupProps> = ({
               channelId={archiveReady ? channelId : undefined}
               timestamp={previewTs}
               archiveReady={archiveReady}
-              duration={clipDuration}
             />
 
             <div className="px-6">
@@ -822,25 +770,21 @@ export const DownloadPopup: React.FC<DownloadPopupProps> = ({
 
             {/* Zoom + time row */}
             <div className="flex items-center gap-2">
-              <button 
-                onClick={() => zoom(-1)}
+              <button onClick={() => zoom(-1)}
                 disabled={zoomIdx === 0}
                 className="w-7 h-7 flex items-center justify-center rounded-lg
                   bg-zinc-900 border border-zinc-800 text-zinc-500
                   hover:text-zinc-300 hover:bg-zinc-800
-                  disabled:opacity-25 disabled:cursor-not-allowed transition-all cursor-pointer"
-              >
+                  disabled:opacity-25 disabled:cursor-not-allowed transition-all">
                 <span className="material-symbols-outlined" style={{ fontSize: '16px' }}>remove</span>
               </button>
               <span className="text-[10px] font-mono text-zinc-700 w-8 text-center">{zoomLabel}</span>
-              <button 
-                onClick={() => zoom(1)}
+              <button onClick={() => zoom(1)}
                 disabled={zoomIdx === ZOOM_LEVELS.length - 1}
                 className="w-7 h-7 flex items-center justify-center rounded-lg
                   bg-zinc-900 border border-zinc-800 text-zinc-500
                   hover:text-zinc-300 hover:bg-zinc-800
-                  disabled:opacity-25 disabled:cursor-not-allowed transition-all cursor-pointer"
-              >
+                  disabled:opacity-25 disabled:cursor-not-allowed transition-all">
                 <span className="material-symbols-outlined" style={{ fontSize: '16px' }}>add</span>
               </button>
 
@@ -848,7 +792,7 @@ export const DownloadPopup: React.FC<DownloadPopupProps> = ({
 
               <div className="flex items-center gap-3">
                 <TimeField
-                  label={t.start}
+                  label="Start"
                   value={start}
                   min={oldestTimestamp}
                   max={end - 1}
@@ -865,7 +809,7 @@ export const DownloadPopup: React.FC<DownloadPopupProps> = ({
                   {formatDuration(clipDuration)}
                 </div>
                 <TimeField
-                  label={t.end}
+                  label="End"
                   value={end}
                   min={start + 1}
                   max={now}
@@ -882,45 +826,42 @@ export const DownloadPopup: React.FC<DownloadPopupProps> = ({
             {overMax && (
               <div className="flex items-center gap-2 px-3 py-2 rounded-xl bg-red-500/6 border border-red-500/18">
                 <span className="material-symbols-outlined text-red-500" style={{ fontSize: '14px' }}>warning</span>
-                <span className="text-xs text-red-500/80">{t.maxClipLength} {formatDuration(MAX_CLIP_SEC)}</span>
+                <span className="text-xs text-red-500/80">Max clip length is {formatDuration(MAX_CLIP_SEC)}</span>
               </div>
             )}
 
             {/* Presets */}
             <div className="flex gap-2">
-              {[{ label: '30s', sec: 30 }, { label: '1m', sec: 60 }, { label: '2m', sec: 120 }, { label: '3m', sec: 180 }].map(p => (
-                <button 
-                  key={p.label}
+              {[{ label: '30 წამი', sec: 30 }, { label: '1 წუთი', sec: 60 }, { label: '2 წუთი', sec: 120 }, { label: '3 წუთი', sec: 180 }].map(p => (
+                <button key={p.label}
                   onClick={() => {
                     const s = Math.max(oldestTimestamp, center - p.sec / 2);
                     const e = Math.min(now, s + p.sec);
                     setStart(s); setEnd(e);
                     setViewCenter((s + e) / 2);
-                    setZoomIdx(zoomIdxForDuration(p.sec));
+                    const needed = p.sec * 3;
+                    const idx = ZOOM_LEVELS.slice().reverse().findIndex(z => z >= needed);
+                    if (idx !== -1) setZoomIdx(ZOOM_LEVELS.length - 1 - idx);
                   }}
                   className="flex-1 py-1.5 rounded-lg text-[11px] font-medium
                     bg-zinc-900 hover:bg-zinc-800 text-zinc-600 hover:text-zinc-400
-                    border border-zinc-800 hover:border-zinc-700 transition-all duration-150 cursor-pointer"
-                >
+                    border border-zinc-800 hover:border-zinc-700 transition-all duration-150">
                   {p.label}
                 </button>
               ))}
             </div>
 
-            <button 
-              onClick={handleDownload} 
-              disabled={overMax || !channelId}
+            <button onClick={handleDownload} disabled={overMax || !channelId}
               className="w-full h-10 rounded-xl text-sm font-semibold
                 flex items-center justify-center gap-2
                 bg-red-600 hover:bg-red-500 active:bg-red-700
                 disabled:bg-zinc-800 disabled:text-zinc-700 disabled:cursor-not-allowed
-                text-white transition-all duration-150 cursor-pointer"
-            >
+                text-white transition-all duration-150">
               <span className="material-symbols-outlined"
                 style={{ fontSize: '17px', fontVariationSettings: "'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 24" }}>
                 download
               </span>
-              {t.download} {formatDuration(clipDuration)}
+              გადმოწერა {formatDuration(clipDuration)}
             </button>
           </div>
         )}
@@ -929,7 +870,7 @@ export const DownloadPopup: React.FC<DownloadPopupProps> = ({
         {phase === 'loading' && (
           <div className="px-5 py-14 flex flex-col items-center gap-4">
             <div className="w-10 h-10 rounded-full border-2 border-zinc-800 border-t-red-600 animate-spin" />
-            <p className="text-xs text-zinc-600">{t.preparingClip}</p>
+            <p className="text-xs text-zinc-600">Preparing clip…</p>
           </div>
         )}
 
@@ -945,17 +886,13 @@ export const DownloadPopup: React.FC<DownloadPopupProps> = ({
               </span>
             </div>
             <div className="flex flex-col gap-1.5">
-              <p className="text-sm font-semibold text-zinc-300">{t.notAvailableYet}</p>
+              <p className="text-sm font-semibold text-zinc-300">Not Available Yet</p>
               <p className="text-xs text-zinc-600 max-w-[230px] leading-relaxed">
-                {t.downloadComingSoon}
+                Download is coming soon — trim and save archive clips.
               </p>
             </div>
             <div className="w-full flex flex-col gap-1.5">
-              {[
-                { icon: 'cut', label: t.trimToMoment }, 
-                { icon: 'hd', label: t.hdQuality }, 
-                { icon: 'schedule', label: t.upTo3Min }
-              ].map(f => (
+              {[{ icon: 'cut', label: 'Trim to exact moment' }, { icon: 'hd', label: 'HD quality export' }, { icon: 'schedule', label: 'Up to 3 minutes' }].map(f => (
                 <div key={f.icon} className="flex items-center gap-3 px-3 py-2.5 rounded-xl bg-zinc-900 border border-zinc-800/80">
                   <span className="material-symbols-outlined text-zinc-700"
                     style={{ fontSize: '15px', fontVariationSettings: "'FILL' 0, 'wght' 300, 'GRAD' 0, 'opsz' 24" }}>{f.icon}</span>
@@ -964,13 +901,11 @@ export const DownloadPopup: React.FC<DownloadPopupProps> = ({
                 </div>
               ))}
             </div>
-            <button 
-              onClick={onClose}
+            <button onClick={onClose}
               className="w-full h-9 rounded-xl text-sm font-medium
                 bg-zinc-900 hover:bg-zinc-800 text-zinc-600 hover:text-zinc-400
-                border border-zinc-800 hover:border-zinc-700 transition-all duration-150 cursor-pointer"
-            >
-              {t.gotIt}
+                border border-zinc-800 hover:border-zinc-700 transition-all duration-150">
+              Got it
             </button>
           </div>
         )}
@@ -983,16 +918,14 @@ export const DownloadPopup: React.FC<DownloadPopupProps> = ({
                 style={{ fontSize: '24px', fontVariationSettings: "'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 24" }}>error</span>
             </div>
             <div className="flex flex-col gap-1">
-              <p className="text-sm font-semibold text-zinc-300">{t.downloadFailed}</p>
+              <p className="text-sm font-semibold text-zinc-300">Download Failed</p>
               <p className="text-xs text-zinc-600">{errorMsg}</p>
             </div>
-            <button 
-              onClick={() => setPhase('trim')}
+            <button onClick={() => setPhase('trim')}
               className="w-full h-9 rounded-xl text-sm font-medium
                 bg-zinc-900 hover:bg-zinc-800 text-zinc-500 hover:text-zinc-300
-                border border-zinc-800 transition-all duration-150 cursor-pointer"
-            >
-              {t.tryAgain}
+                border border-zinc-800 transition-all duration-150">
+              Try again
             </button>
           </div>
         )}
@@ -1005,16 +938,14 @@ export const DownloadPopup: React.FC<DownloadPopupProps> = ({
                 style={{ fontSize: '24px', fontVariationSettings: "'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 24" }}>check_circle</span>
             </div>
             <div className="flex flex-col gap-1">
-              <p className="text-sm font-semibold text-zinc-300">{t.clipQueued}</p>
-              <p className="text-xs text-zinc-600">{t.beingPrepared}</p>
+              <p className="text-sm font-semibold text-zinc-300">Clip Queued</p>
+              <p className="text-xs text-zinc-600">Being prepared — we'll notify you when ready.</p>
             </div>
-            <button 
-              onClick={onClose}
+            <button onClick={onClose}
               className="w-full h-9 rounded-xl text-sm font-medium
                 bg-zinc-900 hover:bg-zinc-800 text-zinc-500 hover:text-zinc-300
-                border border-zinc-800 transition-all duration-150 cursor-pointer"
-            >
-              {t.done}
+                border border-zinc-800 transition-all duration-150">
+              Done
             </button>
           </div>
         )}
