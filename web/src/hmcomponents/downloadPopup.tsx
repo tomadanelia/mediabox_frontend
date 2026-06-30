@@ -32,7 +32,7 @@ const translations = {
     tryAgain: "კიდევ სცადე",
     clipQueued: "კლიპი რიგშია",
     beingPrepared: "მზადდება — გაცნობებთ როცა მზად იქნება",
-    done: "დასრულებული",
+    done: "ჩამოტვირთვა დასრულდა",
     paused: "Paused",
     loadingPreview: "Loading preview…",
     maxClipLength: "მაქსიმალური კლიპის სიგრძეა",
@@ -67,6 +67,11 @@ const translations = {
     loadingPreview: "Loading preview…",
     maxClipLength: "Max clip length is",
   }
+}
+function zoomIdxForDuration(sec: number): number {
+  const needed = sec * 3;
+  const idx = ZOOM_LEVELS.slice().reverse().findIndex(z => z >= needed);
+  return idx !== -1 ? ZOOM_LEVELS.length - 1 - idx : ZOOM_LEVELS.length - 1;
 }
 function formatDuration(seconds: number): string {
   const m = Math.floor(seconds / 60);
@@ -169,7 +174,7 @@ const TimeField: React.FC<TimeFieldProps> = ({ label, value, min, max, align, on
           onClick={startEdit}
           title="Click to edit"
           className="text-[11px] font-mono text-zinc-400 hover:text-zinc-200
-            hover:bg-zinc-800/80 rounded px-1 py-0.5 transition-all text-left"
+            hover:bg-zinc-800/80 rounded px-1 py-0.5 transition-all text-left cursor-pointer"
         >
           {formatTime(value)}
         </button>
@@ -348,7 +353,7 @@ const TrimStrip: React.FC<TrimStripProps> = ({
   return (
     <div
       ref={ref}
-      className="relative w-full select-none"
+      className="relative w-full select-none cursor-pointer"
       style={{ height: '64px' }}
       onPointerDown={onPointerDown}
       onPointerMove={onPointerMove}
@@ -628,7 +633,7 @@ export const DownloadPopup: React.FC<DownloadPopupProps> = ({
   const t = translations[language];
   const [start,      setStart]      = useState(() => Math.max(oldestTimestamp, center - DEFAULT_CLIP_SEC / 2));
   const [end,        setEnd]        = useState(() => Math.min(now,             center + DEFAULT_CLIP_SEC / 2));
-  const [zoomIdx,    setZoomIdx]    = useState(0);
+  const [zoomIdx,    setZoomIdx]    = useState(() => zoomIdxForDuration(DEFAULT_CLIP_SEC));
   const [viewCenter, setViewCenter] = useState(center);
 
   const viewWindow = ZOOM_LEVELS[zoomIdx];
@@ -719,9 +724,11 @@ export const DownloadPopup: React.FC<DownloadPopupProps> = ({
             </span>
             <span className="text-sm font-semibold text-zinc-300 tracking-wide">{t.title}</span>
           </div>
-          <button onClick={onClose}
+          <button 
+            onClick={onClose}
             className="w-7 h-7 flex items-center justify-center rounded-lg
-              text-zinc-700 hover:text-zinc-400 hover:bg-zinc-800 transition-all">
+              text-zinc-700 hover:text-zinc-400 hover:bg-zinc-800 transition-all cursor-pointer"
+          >
             <span className="material-symbols-outlined" style={{ fontSize: '17px' }}>close</span>
           </button>
         </div>
@@ -748,21 +755,25 @@ export const DownloadPopup: React.FC<DownloadPopupProps> = ({
 
             {/* Zoom + time row */}
             <div className="flex items-center gap-2">
-              <button onClick={() => zoom(-1)}
+              <button 
+                onClick={() => zoom(-1)}
                 disabled={zoomIdx === 0}
                 className="w-7 h-7 flex items-center justify-center rounded-lg
                   bg-zinc-900 border border-zinc-800 text-zinc-500
                   hover:text-zinc-300 hover:bg-zinc-800
-                  disabled:opacity-25 disabled:cursor-not-allowed transition-all">
+                  disabled:opacity-25 disabled:cursor-not-allowed transition-all cursor-pointer"
+              >
                 <span className="material-symbols-outlined" style={{ fontSize: '16px' }}>remove</span>
               </button>
               <span className="text-[10px] font-mono text-zinc-700 w-8 text-center">{zoomLabel}</span>
-              <button onClick={() => zoom(1)}
+              <button 
+                onClick={() => zoom(1)}
                 disabled={zoomIdx === ZOOM_LEVELS.length - 1}
                 className="w-7 h-7 flex items-center justify-center rounded-lg
                   bg-zinc-900 border border-zinc-800 text-zinc-500
                   hover:text-zinc-300 hover:bg-zinc-800
-                  disabled:opacity-25 disabled:cursor-not-allowed transition-all">
+                  disabled:opacity-25 disabled:cursor-not-allowed transition-all cursor-pointer"
+              >
                 <span className="material-symbols-outlined" style={{ fontSize: '16px' }}>add</span>
               </button>
 
@@ -811,30 +822,33 @@ export const DownloadPopup: React.FC<DownloadPopupProps> = ({
             {/* Presets */}
             <div className="flex gap-2">
               {[{ label: '30s', sec: 30 }, { label: '1m', sec: 60 }, { label: '2m', sec: 120 }, { label: '3m', sec: 180 }].map(p => (
-                <button key={p.label}
+                <button 
+                  key={p.label}
                   onClick={() => {
                     const s = Math.max(oldestTimestamp, center - p.sec / 2);
                     const e = Math.min(now, s + p.sec);
                     setStart(s); setEnd(e);
                     setViewCenter((s + e) / 2);
-                    const needed = p.sec * 3;
-                    const idx = ZOOM_LEVELS.slice().reverse().findIndex(z => z >= needed);
-                    if (idx !== -1) setZoomIdx(ZOOM_LEVELS.length - 1 - idx);
+                    setZoomIdx(zoomIdxForDuration(p.sec));
                   }}
                   className="flex-1 py-1.5 rounded-lg text-[11px] font-medium
                     bg-zinc-900 hover:bg-zinc-800 text-zinc-600 hover:text-zinc-400
-                    border border-zinc-800 hover:border-zinc-700 transition-all duration-150">
+                    border border-zinc-800 hover:border-zinc-700 transition-all duration-150 cursor-pointer"
+                >
                   {p.label}
                 </button>
               ))}
             </div>
 
-            <button onClick={handleDownload} disabled={overMax || !channelId}
+            <button 
+              onClick={handleDownload} 
+              disabled={overMax || !channelId}
               className="w-full h-10 rounded-xl text-sm font-semibold
                 flex items-center justify-center gap-2
                 bg-red-600 hover:bg-red-500 active:bg-red-700
                 disabled:bg-zinc-800 disabled:text-zinc-700 disabled:cursor-not-allowed
-                text-white transition-all duration-150">
+                text-white transition-all duration-150 cursor-pointer"
+            >
               <span className="material-symbols-outlined"
                 style={{ fontSize: '17px', fontVariationSettings: "'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 24" }}>
                 download
@@ -883,10 +897,12 @@ export const DownloadPopup: React.FC<DownloadPopupProps> = ({
                 </div>
               ))}
             </div>
-            <button onClick={onClose}
+            <button 
+              onClick={onClose}
               className="w-full h-9 rounded-xl text-sm font-medium
                 bg-zinc-900 hover:bg-zinc-800 text-zinc-600 hover:text-zinc-400
-                border border-zinc-800 hover:border-zinc-700 transition-all duration-150">
+                border border-zinc-800 hover:border-zinc-700 transition-all duration-150 cursor-pointer"
+            >
               {t.gotIt}
             </button>
           </div>
@@ -903,10 +919,12 @@ export const DownloadPopup: React.FC<DownloadPopupProps> = ({
               <p className="text-sm font-semibold text-zinc-300">{t.downloadFailed}</p>
               <p className="text-xs text-zinc-600">{errorMsg}</p>
             </div>
-            <button onClick={() => setPhase('trim')}
+            <button 
+              onClick={() => setPhase('trim')}
               className="w-full h-9 rounded-xl text-sm font-medium
                 bg-zinc-900 hover:bg-zinc-800 text-zinc-500 hover:text-zinc-300
-                border border-zinc-800 transition-all duration-150">
+                border border-zinc-800 transition-all duration-150 cursor-pointer"
+            >
               {t.tryAgain}
             </button>
           </div>
@@ -923,10 +941,12 @@ export const DownloadPopup: React.FC<DownloadPopupProps> = ({
               <p className="text-sm font-semibold text-zinc-300">{t.clipQueued}</p>
               <p className="text-xs text-zinc-600">{t.beingPrepared}</p>
             </div>
-            <button onClick={onClose}
+            <button 
+              onClick={onClose}
               className="w-full h-9 rounded-xl text-sm font-medium
                 bg-zinc-900 hover:bg-zinc-800 text-zinc-500 hover:text-zinc-300
-                border border-zinc-800 transition-all duration-150">
+                border border-zinc-800 transition-all duration-150 cursor-pointer"
+            >
               {t.done}
             </button>
           </div>
