@@ -3,7 +3,71 @@ import { useState, useRef, useCallback, useEffect } from 'react';
 import { requestDownload } from '../../src/services/downloadService';
 import type { DownloadResult } from '../../src/services/downloadService';
 import { getArchiveUrl, probeRewindableHours } from '@/services/streamService';
+import useUIStore from '../../src/store/ui-store'; 
 
+// 2. Define your translations mapping
+const translations = {
+  Ge: {
+    title: "კლიპის ჩამოტვირთვა",
+    startTime: "საწყისი დრო",
+    endTime: "საბოლოო დრო",
+    duration: "ხანგრძლივობა",
+    cancel: "გაუქმება",
+    download: "ჩამოტვირთვა",
+    maxLimitWarning: "მაქსიმალური ხანგრძლივობაა 20 წუთი",
+    preparing: "მზადდება ჩამოსატვირთად...",
+    errorTitle: "შეცდომა",
+    errorRange: "გთხოვთ აირჩიოთ სწორი დროის შუალედი",
+    successMessage: "ჩამოტვირთვა დაიწყო წარმატებით",
+    start: "დასაწყისი",
+    end: "დასასრული",
+    preparingClip: "მზადდება კლიპი...",
+    notAvailableYet: "ჯერ არ არის ხელმისაწვდომი",
+    downloadComingSoon: "ჩამოტვირთვა მალე გამოჩნდება — შეინახეთ არქივის კლიპები",
+    trimToMoment: "ჩასწორება ზუსტ მომენტამდე",
+    hdQuality: "HD ხარისხის ექსპორტი",
+    upTo3Min: "3 წუთამდე",
+    gotIt: "კარგი",
+    downloadFailed: "ჩამოტვირთვა ვერ მოხერხდა",
+    tryAgain: "კიდევ სცადე",
+    clipQueued: "კლიპი რიგშია",
+    beingPrepared: "მზადდება — გაცნობებთ როცა მზად იქნება",
+    done: "დასრულებული",
+    paused: "Paused",
+    loadingPreview: "Loading preview…",
+    maxClipLength: "მაქსიმალური კლიპის სიგრძეა",
+  },
+  En: {
+    title: "Download Clip",
+    startTime: "Start Time",
+    endTime: "End Time",
+    duration: "Duration",
+    cancel: "Cancel",
+    download: "Download",
+    maxLimitWarning: "Maximum clip duration is 20 minutes",
+    preparing: "Preparing download...",
+    errorTitle: "Error",
+    errorRange: "Please select a valid time range",
+    successMessage: "Download started successfully",
+    start: "Start",
+    end: "End",
+    preparingClip: "Preparing clip…",
+    notAvailableYet: "Not Available Yet",
+    downloadComingSoon: "Download is coming soon — trim and save archive clips.",
+    trimToMoment: "Trim to exact moment",
+    hdQuality: "HD quality export",
+    upTo3Min: "Up to 3 minutes",
+    gotIt: "Got it",
+    downloadFailed: "Download Failed",
+    tryAgain: "Try again",
+    clipQueued: "Clip Queued",
+    beingPrepared: "Being prepared — we'll notify you when ready.",
+    done: "Done",
+    paused: "Paused",
+    loadingPreview: "Loading preview…",
+    maxClipLength: "Max clip length is",
+  }
+}
 function formatDuration(seconds: number): string {
   const m = Math.floor(seconds / 60);
   const s = Math.floor(seconds % 60);
@@ -533,7 +597,7 @@ const ClipPreview: React.FC<ClipPreviewProps> = ({ channelId, timestamp, archive
 
           {paused && (
             <div className="absolute top-2 right-2 px-2 py-0.5 rounded-md bg-black/70 border border-zinc-700/60 pointer-events-none">
-              <span className="text-[10px] font-mono text-zinc-400 uppercase tracking-wider">Paused</span>
+              <span className="text-[10px] font-mono text-zinc-400 uppercase tracking-wider">{translations.En.paused}</span>
             </div>
           )}
         </>
@@ -545,7 +609,7 @@ const ClipPreview: React.FC<ClipPreviewProps> = ({ channelId, timestamp, archive
           >
             movie
           </span>
-          <span className="text-[10px] text-zinc-700 tracking-wide">Loading preview…</span>
+          <span className="text-[10px] text-zinc-700 tracking-wide">{translations.En.loadingPreview}</span>
         </div>
       )}
     </div>
@@ -560,7 +624,8 @@ export const DownloadPopup: React.FC<DownloadPopupProps> = ({
   const nowRef = useRef(Math.floor(Date.now() / 1000));
   const now    = nowRef.current;
   const center = currentTimestamp ?? now - 60;
-
+  const language = useUIStore((state) => state.language);
+  const t = translations[language];
   const [start,      setStart]      = useState(() => Math.max(oldestTimestamp, center - DEFAULT_CLIP_SEC / 2));
   const [end,        setEnd]        = useState(() => Math.min(now,             center + DEFAULT_CLIP_SEC / 2));
   const [zoomIdx,    setZoomIdx]    = useState(0);
@@ -652,7 +717,7 @@ export const DownloadPopup: React.FC<DownloadPopupProps> = ({
               style={{ fontSize: '18px', fontVariationSettings: "'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 24" }}>
               download
             </span>
-            <span className="text-sm font-semibold text-zinc-300 tracking-wide">Download Clip</span>
+            <span className="text-sm font-semibold text-zinc-300 tracking-wide">{t.title}</span>
           </div>
           <button onClick={onClose}
             className="w-7 h-7 flex items-center justify-center rounded-lg
@@ -705,7 +770,7 @@ export const DownloadPopup: React.FC<DownloadPopupProps> = ({
 
               <div className="flex items-center gap-3">
                 <TimeField
-                  label="Start"
+                  label={t.start}
                   value={start}
                   min={oldestTimestamp}
                   max={end - 1}
@@ -722,7 +787,7 @@ export const DownloadPopup: React.FC<DownloadPopupProps> = ({
                   {formatDuration(clipDuration)}
                 </div>
                 <TimeField
-                  label="End"
+                  label={t.end}
                   value={end}
                   min={start + 1}
                   max={now}
@@ -739,7 +804,7 @@ export const DownloadPopup: React.FC<DownloadPopupProps> = ({
             {overMax && (
               <div className="flex items-center gap-2 px-3 py-2 rounded-xl bg-red-500/6 border border-red-500/18">
                 <span className="material-symbols-outlined text-red-500" style={{ fontSize: '14px' }}>warning</span>
-                <span className="text-xs text-red-500/80">Max clip length is {formatDuration(MAX_CLIP_SEC)}</span>
+                <span className="text-xs text-red-500/80">{t.maxClipLength} {formatDuration(MAX_CLIP_SEC)}</span>
               </div>
             )}
 
@@ -774,7 +839,7 @@ export const DownloadPopup: React.FC<DownloadPopupProps> = ({
                 style={{ fontSize: '17px', fontVariationSettings: "'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 24" }}>
                 download
               </span>
-              Download {formatDuration(clipDuration)}
+              {t.download} {formatDuration(clipDuration)}
             </button>
           </div>
         )}
@@ -783,7 +848,7 @@ export const DownloadPopup: React.FC<DownloadPopupProps> = ({
         {phase === 'loading' && (
           <div className="px-5 py-14 flex flex-col items-center gap-4">
             <div className="w-10 h-10 rounded-full border-2 border-zinc-800 border-t-red-600 animate-spin" />
-            <p className="text-xs text-zinc-600">Preparing clip…</p>
+            <p className="text-xs text-zinc-600">{t.preparingClip}</p>
           </div>
         )}
 
@@ -799,13 +864,17 @@ export const DownloadPopup: React.FC<DownloadPopupProps> = ({
               </span>
             </div>
             <div className="flex flex-col gap-1.5">
-              <p className="text-sm font-semibold text-zinc-300">Not Available Yet</p>
+              <p className="text-sm font-semibold text-zinc-300">{t.notAvailableYet}</p>
               <p className="text-xs text-zinc-600 max-w-[230px] leading-relaxed">
-                Download is coming soon — trim and save archive clips.
+                {t.downloadComingSoon}
               </p>
             </div>
             <div className="w-full flex flex-col gap-1.5">
-              {[{ icon: 'cut', label: 'Trim to exact moment' }, { icon: 'hd', label: 'HD quality export' }, { icon: 'schedule', label: 'Up to 3 minutes' }].map(f => (
+              {[
+                { icon: 'cut', label: t.trimToMoment }, 
+                { icon: 'hd', label: t.hdQuality }, 
+                { icon: 'schedule', label: t.upTo3Min }
+              ].map(f => (
                 <div key={f.icon} className="flex items-center gap-3 px-3 py-2.5 rounded-xl bg-zinc-900 border border-zinc-800/80">
                   <span className="material-symbols-outlined text-zinc-700"
                     style={{ fontSize: '15px', fontVariationSettings: "'FILL' 0, 'wght' 300, 'GRAD' 0, 'opsz' 24" }}>{f.icon}</span>
@@ -818,7 +887,7 @@ export const DownloadPopup: React.FC<DownloadPopupProps> = ({
               className="w-full h-9 rounded-xl text-sm font-medium
                 bg-zinc-900 hover:bg-zinc-800 text-zinc-600 hover:text-zinc-400
                 border border-zinc-800 hover:border-zinc-700 transition-all duration-150">
-              Got it
+              {t.gotIt}
             </button>
           </div>
         )}
@@ -831,14 +900,14 @@ export const DownloadPopup: React.FC<DownloadPopupProps> = ({
                 style={{ fontSize: '24px', fontVariationSettings: "'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 24" }}>error</span>
             </div>
             <div className="flex flex-col gap-1">
-              <p className="text-sm font-semibold text-zinc-300">Download Failed</p>
+              <p className="text-sm font-semibold text-zinc-300">{t.downloadFailed}</p>
               <p className="text-xs text-zinc-600">{errorMsg}</p>
             </div>
             <button onClick={() => setPhase('trim')}
               className="w-full h-9 rounded-xl text-sm font-medium
                 bg-zinc-900 hover:bg-zinc-800 text-zinc-500 hover:text-zinc-300
                 border border-zinc-800 transition-all duration-150">
-              Try again
+              {t.tryAgain}
             </button>
           </div>
         )}
@@ -851,14 +920,14 @@ export const DownloadPopup: React.FC<DownloadPopupProps> = ({
                 style={{ fontSize: '24px', fontVariationSettings: "'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 24" }}>check_circle</span>
             </div>
             <div className="flex flex-col gap-1">
-              <p className="text-sm font-semibold text-zinc-300">Clip Queued</p>
-              <p className="text-xs text-zinc-600">Being prepared — we'll notify you when ready.</p>
+              <p className="text-sm font-semibold text-zinc-300">{t.clipQueued}</p>
+              <p className="text-xs text-zinc-600">{t.beingPrepared}</p>
             </div>
             <button onClick={onClose}
               className="w-full h-9 rounded-xl text-sm font-medium
                 bg-zinc-900 hover:bg-zinc-800 text-zinc-500 hover:text-zinc-300
                 border border-zinc-800 transition-all duration-150">
-              Done
+              {t.done}
             </button>
           </div>
         )}
