@@ -106,7 +106,7 @@ const TimeField: React.FC<TimeFieldProps> = ({ label, value, min, max, align, on
         <button
           onClick={startEdit}
           title="Click to edit"
-          className="text-[11px] font-mono text-zinc-400 hover:text-zinc-200
+          className="text-[11px] font-mono cursor-pointer text-zinc-400 hover:text-zinc-200
             hover:bg-zinc-800/80 rounded px-1 py-0.5 transition-all text-left"
         >
           {formatTime(value)}
@@ -140,6 +140,11 @@ const TrimStrip: React.FC<TrimStripProps> = ({
   const [frameView,    setFrameView]    = useState({ start: viewStart, end: viewEnd });
   const isDragging                       = useRef(false);
   const lastFrameView                    = useRef({ start: viewStart, end: viewEnd });
+
+  // Drives the CSS cursor on the strip container — updated on every
+  // pointermove while not dragging (hover hit-test), and pinned to the
+  // active mode while dragging.
+  const [cursorStyle, setCursorStyle] = useState<string>('default');
 
   useEffect(() => {
     if (isDragging.current) return;
@@ -180,6 +185,45 @@ const TrimStrip: React.FC<TrimStripProps> = ({
     // which is what was actually breaking playback after the first scrub.
     return Math.round(live.current.viewStart + pct * (live.current.viewEnd - live.current.viewStart));
   };
+
+  // Shared hit-test: given a clientX, figure out which drag mode (if any)
+  // it falls on. Used both by onPointerDown (to start a drag) and by
+  // onPointerMove (to drive hover cursor feedback) so the two never
+  // disagree about hit regions.
+  const getModeAtX = useCallback((clientX: number): DragMode => {
+    const rect = ref.current?.getBoundingClientRect();
+    if (!rect) return null;
+    const l = live.current;
+
+    const px     = clientX - rect.left;
+    const w      = rect.width;
+    const vRange = l.viewEnd - l.viewStart;
+    const startPx = ((l.start - l.viewStart) / vRange) * w;
+    const endPx   = ((l.end   - l.viewStart) / vRange) * w;
+
+    // Correct hit centers: start handle is fully LEFT of startPx, end is fully RIGHT of endPx
+    const startHandleCenter = startPx - HANDLE_WIDTH_PX / 2;
+    const endHandleCenter   = endPx   + HANDLE_WIDTH_PX / 2;
+
+    const nearStart = Math.abs(px - startHandleCenter) <= HANDLE_HIT_PX;
+    const nearEnd   = Math.abs(px - endHandleCenter)   <= HANDLE_HIT_PX;
+
+    if (nearStart && nearEnd) {
+      return px <= (startHandleCenter + endHandleCenter) / 2 ? 'start' : 'end';
+    } else if (nearStart) {
+      return 'start';
+    } else if (nearEnd) {
+      return 'end';
+    } else if (px > startPx - HANDLE_HIT_PX && px < endPx + HANDLE_HIT_PX) {
+      return 'body';
+    }
+    return null;
+  }, []);
+
+  const modeToCursor = (mode: DragMode): string =>
+    mode === 'start' || mode === 'end' ? 'ew-resize' :
+    mode === 'body'                    ? 'grab' :
+                                          'default';
 
   const runFrame = useCallback(() => {
     const d = drag.current;
@@ -231,56 +275,34 @@ const TrimStrip: React.FC<TrimStripProps> = ({
   }, []);
 
   const onPointerDown = useCallback((e: React.PointerEvent<HTMLDivElement>) => {
-    const rect = ref.current?.getBoundingClientRect();
-    if (!rect) return;
-    const l = live.current;
-
-    const px     = e.clientX - rect.left;
-    const w      = rect.width;
-    const vRange = l.viewEnd - l.viewStart;
-    const startPx = ((l.start - l.viewStart) / vRange) * w;
-    const endPx   = ((l.end   - l.viewStart) / vRange) * w;
-
-    // Correct hit centers: start handle is fully LEFT of startPx, end is fully RIGHT of endPx
-    const startHandleCenter = startPx - HANDLE_WIDTH_PX / 2;
-    const endHandleCenter   = endPx   + HANDLE_WIDTH_PX / 2;
-
-    const nearStart = Math.abs(px - startHandleCenter) <= HANDLE_HIT_PX;
-    const nearEnd   = Math.abs(px - endHandleCenter)   <= HANDLE_HIT_PX;
-    let mode: DragMode = null;
-
-    if (nearStart && nearEnd) {
-      mode = px <= (startHandleCenter + endHandleCenter) / 2 ? 'start' : 'end';
-    } else if (nearStart) {
-      mode = 'start';
-    } else if (nearEnd) {
-      mode = 'end';
-    } else if (px > startPx - HANDLE_HIT_PX && px < endPx + HANDLE_HIT_PX) {
-      mode = 'body';
-    }
-
+    const mode = getModeAtX(e.clientX);
     if (!mode) return;
     e.currentTarget.setPointerCapture(e.pointerId);
     isDragging.current = true;
+    setCursorStyle(mode === 'body' ? 'grabbing' : 'ew-resize');
 
     drag.current = {
       mode,
-      bodyOrigStart: l.start,
-      bodyOrigEnd:   l.end,
+      bodyOrigStart: live.current.start,
+      bodyOrigEnd:   live.current.end,
       bodyStartX:    e.clientX,
       rafId:         requestAnimationFrame(runFrame),
       currentX:      e.clientX,
     };
-  }, [runFrame]);
+  }, [runFrame, getModeAtX]);
 
   const onPointerMove = useCallback((e: React.PointerEvent) => {
     drag.current.currentX = e.clientX;
-  }, []);
+    if (!isDragging.current) {
+      setCursorStyle(modeToCursor(getModeAtX(e.clientX)));
+    }
+  }, [getModeAtX]);
 
   const onPointerUp = useCallback(() => {
     cancelAnimationFrame(drag.current.rafId);
     drag.current.mode  = null;
     isDragging.current = false;
+    setCursorStyle('default');
     const l = live.current;
     lastFrameView.current = { start: l.viewStart, end: l.viewEnd };
     setFrameView({ start: l.viewStart, end: l.viewEnd });
@@ -292,7 +314,7 @@ const TrimStrip: React.FC<TrimStripProps> = ({
     <div
       ref={ref}
       className="relative w-full select-none"
-      style={{ height: '64px' }}
+      style={{ height: '64px', cursor: cursorStyle }}
       onPointerDown={onPointerDown}
       onPointerMove={onPointerMove}
       onPointerUp={onPointerUp}
@@ -587,11 +609,11 @@ const ClipPreview: React.FC<ClipPreviewProps> = ({ channelId, timestamp, archive
           {/* Click-to-pause overlay */}
           <button
             onClick={togglePause}
-            className="absolute inset-0 w-full h-full flex items-center justify-center cursor-pointer bg-transparent"
+            className="absolute  cursor-pointer inset-0 w-full h-full flex items-center justify-center cursor-pointer bg-transparent"
             style={{ WebkitTapHighlightColor: 'transparent' }}
             aria-label={paused ? 'Play' : 'Pause'}
           >
-            <div className={`flex items-center justify-center w-10 h-10 rounded-full
+            <div className={`flex cursor-pointer items-center justify-center w-10 h-10 rounded-full
               bg-black/60 border border-white/15 backdrop-blur-sm
               transition-opacity duration-150
               ${paused ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}`}>
@@ -611,7 +633,7 @@ const ClipPreview: React.FC<ClipPreviewProps> = ({ channelId, timestamp, archive
 
           {paused && (
             <div className="absolute top-2 right-2 px-2 py-0.5 rounded-md bg-black/70 border border-zinc-700/60 pointer-events-none">
-              <span className="text-[10px] font-mono text-zinc-400 uppercase tracking-wider">Paused</span>
+              <span className="text-[10px] font-mono text-zinc-400 uppercase tracking-wider">დაპაუზებული</span>
             </div>
           )}
         </>
@@ -743,7 +765,7 @@ export const DownloadPopup: React.FC<DownloadPopupProps> = ({
           </div>
           <button onClick={onClose}
             className="w-7 h-7 flex items-center justify-center rounded-lg
-              text-zinc-700 hover:text-zinc-400 hover:bg-zinc-800 transition-all">
+              text-zinc-700 hover:text-zinc-400 hover:bg-zinc-800 transition-all cursor-pointer">
             <span className="material-symbols-outlined" style={{ fontSize: '17px' }}>close</span>
           </button>
         </div>
@@ -775,7 +797,7 @@ export const DownloadPopup: React.FC<DownloadPopupProps> = ({
                 className="w-7 h-7 flex items-center justify-center rounded-lg
                   bg-zinc-900 border border-zinc-800 text-zinc-500
                   hover:text-zinc-300 hover:bg-zinc-800
-                  disabled:opacity-25 disabled:cursor-not-allowed transition-all">
+                  disabled:opacity-25 disabled:cursor-not-allowed transition-all cursor-pointer">
                 <span className="material-symbols-outlined" style={{ fontSize: '16px' }}>remove</span>
               </button>
               <span className="text-[10px] font-mono text-zinc-700 w-8 text-center">{zoomLabel}</span>
@@ -784,7 +806,7 @@ export const DownloadPopup: React.FC<DownloadPopupProps> = ({
                 className="w-7 h-7 flex items-center justify-center rounded-lg
                   bg-zinc-900 border border-zinc-800 text-zinc-500
                   hover:text-zinc-300 hover:bg-zinc-800
-                  disabled:opacity-25 disabled:cursor-not-allowed transition-all">
+                  disabled:opacity-25 disabled:cursor-not-allowed transition-all cursor-pointer">
                 <span className="material-symbols-outlined" style={{ fontSize: '16px' }}>add</span>
               </button>
 
@@ -826,7 +848,7 @@ export const DownloadPopup: React.FC<DownloadPopupProps> = ({
             {overMax && (
               <div className="flex items-center gap-2 px-3 py-2 rounded-xl bg-red-500/6 border border-red-500/18">
                 <span className="material-symbols-outlined text-red-500" style={{ fontSize: '14px' }}>warning</span>
-                <span className="text-xs text-red-500/80">Max clip length is {formatDuration(MAX_CLIP_SEC)}</span>
+                <span className="text-xs text-red-500/80">მაქსიმალური სიგრძეა {formatDuration(MAX_CLIP_SEC)}</span>
               </div>
             )}
 
@@ -845,7 +867,7 @@ export const DownloadPopup: React.FC<DownloadPopupProps> = ({
                   }}
                   className="flex-1 py-1.5 rounded-lg text-[11px] font-medium
                     bg-zinc-900 hover:bg-zinc-800 text-zinc-600 hover:text-zinc-400
-                    border border-zinc-800 hover:border-zinc-700 transition-all duration-150">
+                    border border-zinc-800 hover:border-zinc-700 transition-all duration-150 cursor-pointer">
                   {p.label}
                 </button>
               ))}
@@ -856,7 +878,7 @@ export const DownloadPopup: React.FC<DownloadPopupProps> = ({
                 flex items-center justify-center gap-2
                 bg-red-600 hover:bg-red-500 active:bg-red-700
                 disabled:bg-zinc-800 disabled:text-zinc-700 disabled:cursor-not-allowed
-                text-white transition-all duration-150">
+                text-white transition-all duration-150 cursor-pointer">
               <span className="material-symbols-outlined"
                 style={{ fontSize: '17px', fontVariationSettings: "'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 24" }}>
                 download
@@ -870,7 +892,7 @@ export const DownloadPopup: React.FC<DownloadPopupProps> = ({
         {phase === 'loading' && (
           <div className="px-5 py-14 flex flex-col items-center gap-4">
             <div className="w-10 h-10 rounded-full border-2 border-zinc-800 border-t-red-600 animate-spin" />
-            <p className="text-xs text-zinc-600">Preparing clip…</p>
+            <p className="text-xs text-zinc-600">კლიპი მზადდება…</p>
           </div>
         )}
 
@@ -938,14 +960,14 @@ export const DownloadPopup: React.FC<DownloadPopupProps> = ({
                 style={{ fontSize: '24px', fontVariationSettings: "'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 24" }}>check_circle</span>
             </div>
             <div className="flex flex-col gap-1">
-              <p className="text-sm font-semibold text-zinc-300">Clip Queued</p>
-              <p className="text-xs text-zinc-600">Being prepared — we'll notify you when ready.</p>
+              <p className="text-sm font-semibold text-zinc-300">რიგშია</p>
+              <p className="text-xs text-zinc-600">როცა მზად იქნება,შეგატყობინებთ</p>
             </div>
             <button onClick={onClose}
               className="w-full h-9 rounded-xl text-sm font-medium
                 bg-zinc-900 hover:bg-zinc-800 text-zinc-500 hover:text-zinc-300
-                border border-zinc-800 transition-all duration-150">
-              Done
+                border border-zinc-800 transition-all duration-150 cursor-pointer">
+              გადმოწერა დასრულდა
             </button>
           </div>
         )}
