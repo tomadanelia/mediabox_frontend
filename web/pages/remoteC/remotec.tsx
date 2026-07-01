@@ -311,12 +311,12 @@ export default function RemotePage() {
   const isSpinning = status === 'fetching' || status === 'connecting'
 
   const statusConfig: Record<ConnectionStatus, { bg: string; color: string; label: string; icon: string }> = {
-    idle:       { bg: 'rgba(255,255,255,0.05)', color: 'rgba(255,255,255,0.30)', label: 'Not connected',    icon: 'wifi_off'  },
-    fetching:   { bg: 'rgba(213,43,30,0.10)',   color: R,                        label: 'Finding devices…', icon: 'refresh'   },
-    not_ready:  { bg: 'rgba(234,179,8,0.12)',   color: '#facc15',                label: 'TV app not ready', icon: 'wifi_off'  },
-    connecting: { bg: R_LIGHT,                  color: R,                        label: 'Connecting…',      icon: 'refresh'   },
-    connected:  { bg: 'rgba(34,197,94,0.12)',   color: '#4ade80',                label: 'Connected',        icon: 'wifi'      },
-    error:      { bg: 'rgba(213,43,30,0.12)',   color: '#f87171',                label: 'Error',            icon: 'wifi_off'  },
+    idle:       { bg: 'rgba(255,255,255,0.05)', color: 'rgba(255,255,255,0.30)', label: 'არ არის დაკავშირებული',    icon: 'wifi_off'  },
+    fetching:   { bg: 'rgba(213,43,30,0.10)',   color: R,                        label: 'იძებნება მოწყობილობები...', icon: 'refresh'   },
+    not_ready:  { bg: 'rgba(234,179,8,0.12)',   color: '#facc15',                label: 'TV აპლიკაცია არ არის მზად', icon: 'wifi_off'  },
+    connecting: { bg: R_LIGHT,                  color: R,                        label: 'კავშირის დამყარება…',      icon: 'refresh'   },
+    connected:  { bg: 'rgba(34,197,94,0.12)',   color: '#4ade80',                label: 'დაკავშირებული',        icon: 'wifi'      },
+    error:      { bg: 'rgba(213,43,30,0.12)',   color: '#f87171',                label: 'შეცდომა',            icon: 'wifi_off'  },
   }
 
   const sc = statusConfig[status]
@@ -416,7 +416,7 @@ export default function RemotePage() {
               WebkitTapHighlightColor:'transparent', transition:'opacity 0.2s',
             }}>
               <Icon name="refresh" size={14} color="#fff" spin={isSpinning} />
-              {status === 'idle' ? 'Connect' : 'Refresh'}
+              {status === 'idle' ? 'დაკავშირება' : 'დაარეფრეშე'}
             </button>
           </div>
 
@@ -428,7 +428,7 @@ export default function RemotePage() {
               fontSize:12, color:'#facc15', lineHeight:1.55,
             }}>
               <Icon name="tv" size={16} color="#facc15" />
-              <span>Open the <strong>Remote</strong> feature in your TV App first, then tap <strong>Refresh</strong>.</span>
+              <span>დაარეფრეშე თავიდან დასაკავშირებლად</span>
             </div>
           )}
 

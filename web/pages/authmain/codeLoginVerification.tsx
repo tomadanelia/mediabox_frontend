@@ -50,6 +50,9 @@ const AuthLoginVerify: React.FC = () => {
     const t = setTimeout(() => setResendTimer(v => v - 1), 1000)
     return () => clearTimeout(t)
   }, [resendTimer])
+  useEffect(() => {
+  inputRefs.current[0]?.focus()
+}, [])
 
   const handleChange = (index: number, value: string) => {
     // only allow single digit
